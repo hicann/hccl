@@ -51,21 +51,6 @@ namespace {
         EXPECT_NE(tag, byteTag);
     }
 
-    TEST(AicpuTaskCacheKeyTest, CounterStateAppendsStuckDetectSuffix)
-    {
-        OpParam param{};
-        param.opType = HcclCMDType::HCCL_CMD_ALLTOALL;
-        param.all2AllDataDes.sendType = HCCL_DATA_TYPE_UINT8;
-        std::string normalTag;
-        ASSERT_EQ(AicpuTaskCacheKey::GetAicpuTaskCacheTag(param, 24, normalTag), HCCL_SUCCESS);
-
-        param.isEnableCounter = 1;
-        std::string counterTag;
-        ASSERT_EQ(AicpuTaskCacheKey::GetAicpuTaskCacheTag(param, 24, counterTag), HCCL_SUCCESS);
-        EXPECT_EQ(counterTag, normalTag + "-sd"); // 仅追加后缀，其余字段一致
-        EXPECT_NE(counterTag, normalTag);         // 计数/非计数互不命中
-    }
-
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)
     class AlltoallvCachePolicyTest : public testing::TestWithParam<HcclCMDType> {
     protected:

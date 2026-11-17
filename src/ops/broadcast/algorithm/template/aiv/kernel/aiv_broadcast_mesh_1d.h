@@ -273,5 +273,4 @@ __aicore__ inline void AivBroadcastV2Mesh1D(KERNEL_ARGS_DEF)
         op.Process<T>(len, sliceId, inputSliceStride);
     }
     op.BarrierAll();
-    op.TailCounter();
 }

@@ -380,10 +380,7 @@ __aicore__ inline void AivAllGatherV2Mesh1DWrite(KERNEL_ARGS_DEF)
     op.Process(len, sliceId, outputSliceStride);
     if (!pingpong) {
         op.BarrierAll();
-    } else {
-        op.SyncBeforeTail();
     }
-    op.TailCounter();
 }
 
 #endif // AIV_ALL_GATHER_MESH_1D_WRITE_H

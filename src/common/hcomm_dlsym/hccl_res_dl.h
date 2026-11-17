@@ -117,11 +117,6 @@ DECL_WEAK_FUNC(
     HcclResult, HcclDedicatedThreadAcquire, HcclComm comm, HcclDedicatedThreadType useType, uint32_t notifyNumPerThread,
     ThreadHandle* thread);
 DECL_SUPPORT_FLAG(HcclDedicatedThreadAcquire);
-
-DECL_WEAK_FUNC(
-    HcclResult, HcclStuckDetectGetCounterAddr, HcclComm comm, uint64_t* headOpCounterAddr, uint64_t* tailOpCounterAddr,
-    uint64_t* addOneMemAddr, uint64_t* counterToken);
-DECL_SUPPORT_FLAG(HcclStuckDetectGetCounterAddr);
 // 动态库管理接口（大驼峰命名）
 void HcclResDlInit(void* libHcommHandle);
 

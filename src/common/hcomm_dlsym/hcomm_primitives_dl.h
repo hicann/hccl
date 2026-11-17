@@ -161,11 +161,6 @@ bool IsHcommDpuInlineReduceSupported();
 HcclResult HcclCheckDpuInlineReduceLocal(const EndpointDesc& hostDpuEndpoint, bool* supported);
 #endif
 
-DECL_WEAK_FUNC(
-    int32_t, HcommLocalReduceOnThread, ThreadHandle thread, void* dst, const void* src, uint64_t count,
-    HcommDataType dataType, HcommReduceOp reduceOp);
-DECL_SUPPORT_FLAG(HcommLocalReduceOnThread);
-
 void HcommPrimitivesDlInit(void* libHcommHandle); // 本模块独立初始化
 
 #ifdef __cplusplus

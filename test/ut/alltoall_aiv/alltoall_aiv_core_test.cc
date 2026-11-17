@@ -221,53 +221,5 @@ namespace {
         RunScenario<uint8_t>(4, 48, 8, 512 * 1024 + 1, 64);
         RunScenario<uint8_t>(4, 48, 4, 1, 64);
     }
-
-    constexpr uintptr_t COUNTER_HEAD_ADDR = 0x500000000ULL;
-    constexpr uintptr_t COUNTER_TAIL_ADDR = 0x500000004ULL;
-    constexpr uintptr_t COUNTER_ADD_ONE_ADDR = 0x500000008ULL;
-
-    GM_ADDR MakeCounterAddr(uintptr_t value) { return reinterpret_cast<GM_ADDR>(value); }
-
-    void RunCounterEntry(
-        uint32_t blocks, uint32_t block, GM_ADDR head, GM_ADDR tail, GM_ADDR addOne, bool enable, Trace& trace)
-    {
-        trace.block = block;
-        currentTrace = &trace;
-        AivAlltoAllV2Mesh1DWrite<uint32_t>(
-            nullptr, Address(INPUT_BASE, 0), Address(OUTPUT_BASE, 0), 0, 0, 2, 1, 0, 0, 0, 1, 4, 4, 1, 0, 0, blocks,
-            true, head, tail, addOne, sizeof(int32_t), enable, true);
-        currentTrace = nullptr;
-    }
-
-    TEST(AlltoAllAivCoreTest, PingpongSyncBeforeTailEnabled)
-    {
-        Trace trace{};
-        RunCounterEntry(
-            1, 0, MakeCounterAddr(COUNTER_HEAD_ADDR), MakeCounterAddr(COUNTER_TAIL_ADDR),
-            MakeCounterAddr(COUNTER_ADD_ONE_ADDR), true, trace);
-        EXPECT_EQ(trace.headCounters, 1u);
-        EXPECT_EQ(trace.tailCounters, 1u);
-        EXPECT_EQ(trace.syncBeforeTail, 1u);
-    }
-
-    TEST(AlltoAllAivCoreTest, PingpongSyncBeforeTailDisabled)
-    {
-        Trace trace{};
-        RunCounterEntry(1, 0, nullptr, nullptr, nullptr, false, trace);
-        EXPECT_EQ(trace.headCounters, 0u);
-        EXPECT_EQ(trace.tailCounters, 0u);
-        EXPECT_EQ(trace.syncBeforeTail, 0u);
-    }
-
-    TEST(AlltoAllAivCoreTest, PingpongSyncBeforeTailNonBlock0)
-    {
-        Trace trace{};
-        RunCounterEntry(
-            2, 1, MakeCounterAddr(COUNTER_HEAD_ADDR), MakeCounterAddr(COUNTER_TAIL_ADDR),
-            MakeCounterAddr(COUNTER_ADD_ONE_ADDR), true, trace);
-        EXPECT_EQ(trace.headCounters, 0u);
-        EXPECT_EQ(trace.tailCounters, 0u);
-        EXPECT_EQ(trace.syncBeforeTail, 1u); // 所有 block 参与本地会合
-    }
 } // namespace
 } // namespace alltoall_aiv_test

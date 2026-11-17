@@ -465,10 +465,10 @@ CcuResult CcuAllReduceMesh1DMem2Mem2DieOneShotKernel(CcuKernelArg arg)
     CCU_CHK_RET(PostSync(ctx));
 
     CCU_CHK_RET(MissionSync(ctx, 0));
+
     CCU_CHK_RET(InplaceCrossRankSync(ctx));
 
     CCU_CHK_RET(DoLocalReduce(ctx));
-
     CCU_CHK_RET(MissionSync(ctx, 1));
 
     HCCL_INFO("[CcuKernelAllReduceMesh1DMem2Mem2DieOneShot] AllReduceMesh1DMem2Mem2DieOneShot end");

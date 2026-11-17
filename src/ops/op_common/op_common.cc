@@ -49,9 +49,6 @@
 #include "ccu_fallback.h"
 #include "ccu_fallback_c.h"
 #include "hostdpu_inline_reduce.h"
-#include "algorithm/template/ccu/ccu_stuck_counter.h"
-#include "algorithm/template/ccu/ccu_stuck_counter_trampoline.h"
-#include "stuck_detect_counter_helper.h"
 #include "aicpu_timeout.h"
 #include "exec_timeout_manager.h"
 #include "hccl_aiv_utils.h"
@@ -1272,14 +1269,6 @@ HcclResult HcclAicpuKernelEntranceLaunch(
     // 当前aicpu launch接口只能有一个输入参数，将Context指针放在param参数中
     param.resCtx = resCtxSequence;
     param.aicpuRecordCpuIdx = HOST_WAIT_AICPU_NOTIFYIDX;
-
-    OpCounterInfo stuckCounter = {};
-    (void)GetStuckDetectCounterInfo(comm, stuckCounter);
-    // AICPU插桩计数地址填入OpParam
-    param.counterHeadAddr = stuckCounter.headCountMem;
-    param.counterTailAddr = stuckCounter.tailCountMem;
-    param.counterAddOneAddr = stuckCounter.addOneMem;
-    param.isEnableCounter = stuckCounter.isEnableCounter ? 1U : 0U;
 
     if (param.engine == COMM_ENGINE_CPU && !IsHostDpuThreadNewFlowEnabled()) {
         // 旧路径通过共享内存请求DPU执行，需要注册DPU回调；
@@ -2633,9 +2622,6 @@ HcclResult HcclGetChannelForCcu(HcclComm comm, const OpParam& param, AlgResource
     // OpParam.userRank 并非所有算子路径都会赋值（仅 Reduce 赋值），这里直接从 comm 查询本端全局 rank
     u32 userRank = INVALID_VALUE_RANKID;
     CHK_RET(HcclGetRankId(comm, &userRank));
-    OpCounterInfo stuckCounter;
-    uint64_t stuckToken = 0;
-    CHK_RET(GetStuckDetectCounterInfo(comm, stuckCounter, &stuckToken));
     // 以kernel为粒度申请channel
     for (CcuKernelInfo& kernelInfo : resRequest.ccuKernelInfos) {
         u32 channelNum = kernelInfo.channels.size();
@@ -2660,9 +2646,6 @@ HcclResult HcclGetChannelForCcu(HcclComm comm, const OpParam& param, AlgResource
             kernelArgBase->channels[i] = kernelChannels[i];
         }
         kernelArgBase->channelCount = channelNum;
-        FillCcuStuckCounter(
-            *kernelArgBase, stuckCounter.isEnableCounter, stuckCounter.headCountMem, stuckCounter.tailCountMem,
-            stuckCounter.addOneMem, stuckToken);
         HCCL_INFO("[HcclGetChannelForCcu] Get [%lu] channels, dieId[%u]", channelNum, kernelInfo.dieId);
     }
     return HCCL_SUCCESS;
@@ -2824,7 +2807,8 @@ static void DestroyAllDescs(ResDescByDie& descs)
 
 // 查询单个 kernel 的资源需求，按 (dieId, resGroup, resType) 累加到 groupedResMap。
 static HcclResult AccumulateKernelRes(
-    CcuKernelInfo& kernelInfo, std::map<uint32_t, std::map<u32, std::map<HcommCcuResType, uint32_t>>>& groupedResMap)
+    const CcuKernelInfo& kernelInfo,
+    std::map<uint32_t, std::map<u32, std::map<HcommCcuResType, uint32_t>>>& groupedResMap)
 {
     HcommCcuResDescHandle kernelDesc = 0;
     CcuResult createRet = HcommCcuInsResDescCreate(kernelInfo.dieId, &kernelDesc);
@@ -2837,9 +2821,8 @@ static HcclResult AccumulateKernelRes(
 
     const void* kernelArgs[] = {kernelInfo.kernelArg};
     constexpr uint32_t kernelArgNum = 1;
-    InstallCcuStuckTrampoline(kernelInfo);
-    CcuResult queryRet
-        = HcommCcuKernelQueryResReq(GetCcuRegisteredKernelFunc(kernelInfo), kernelArgs, kernelArgNum, kernelDesc);
+    CcuResult queryRet = HcommCcuKernelQueryResReq(
+        reinterpret_cast<void*>(kernelInfo.kernelFunc), kernelArgs, kernelArgNum, kernelDesc);
     if (queryRet != CCU_SUCCESS) {
         HCCL_ERROR("[AccumulateKernelRes] HcommCcuKernelQueryResReq failed: ccuRet -> %d", queryRet);
         HcommCcuInsResDescDestroy(kernelDesc);
@@ -3016,9 +2999,8 @@ static HcclResult RegisterCcuKernels(
                 continue;
             CcuKernelHandle kernelHandle;
             const void* kernelArgs[] = {kernelInfo.kernelArg};
-            InstallCcuStuckTrampoline(kernelInfo);
             CcuResult regRet = HcommCcuKernelRegister(
-                insHandle, kernelInfo.dieId, kernelInfo.kernelFuncName, GetCcuRegisteredKernelFunc(kernelInfo),
+                insHandle, kernelInfo.dieId, kernelInfo.kernelFuncName, reinterpret_cast<void*>(kernelInfo.kernelFunc),
                 kernelArgs, 1, &kernelHandle);
             if (regRet == CCU_E_UNAVAIL) {
                 HCCL_WARNING("[RegisterCcuKernels] kernel[%s] unavailable, fallback.", kernelInfo.kernelFuncName);

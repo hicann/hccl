@@ -167,7 +167,6 @@ __aicore__ inline void AivReduceScatterV2Mesh1DCoreCtrl(KERNEL_ARGS_DEF)
     }
     op.Process(sliceId);
     op.BarrierAll();
-    op.TailCounter();
 }
 
 #endif // AIV_REDUCE_SCATTER_MESH_1D_CORE_CTRL_H

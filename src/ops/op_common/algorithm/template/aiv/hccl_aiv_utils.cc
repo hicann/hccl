@@ -10,7 +10,6 @@
 
 #include <cstddef>
 #include <mutex>
-#include <type_traits>
 #include <condition_variable>
 #include <vector>
 #include <iostream>
@@ -29,8 +28,6 @@
 #include "dlsym_common.h"
 #include "dlhcomm_function.h"
 #include "adapter_error_manager_pub.h"
-#include "stuck_detect_counter_helper.h"
-#include "aiv_stuck_counter_util.h"
 #ifdef HCCL_STATIC_MODE
 #include "acl_rt.h"
 #endif
@@ -577,9 +574,6 @@ using AivKernelArgs = struct AivKernelArgsDef {
 static_assert(
     offsetof(AivKernelArgs, isWrite) == offsetof(AivKernelArgs, isEnableCounter) + sizeof(u32),
     "AivKernelArgs bool fields must keep 4-byte alignment to match device kernel arg packing");
-static_assert(
-    std::is_same<decltype(AivKernelArgs::isEnableCounter), bool>::value,
-    "host AivKernelArgs::isEnableCounter must be bool to match device layout");
 
 using AivExtraKernelArgs = struct AivExtraKernelArgsDef {
     const void* buffersIn; // 注册的CCLIN地址，所有卡可访问
@@ -613,8 +607,7 @@ using AivExtraKernelArgs = struct AivExtraKernelArgsDef {
         u32 dataType, u32 reduceOp, u32 root, u32 tag, u64 inputSliceStride, u64 outputSliceStride, u64 repeatNum,
         u64 inputRepeatStride, u64 outputRepeatStride, u32 numBlocks, bool isOpBase = true,
         const void* headCountMem = nullptr, const void* tailCountMem = nullptr, const void* addOneMem = nullptr,
-        u32 counterMemSize = 0, bool isEnableCounter = false, const ExtraArgs* extraArgsPtr = nullptr,
-        bool isWrite = false)
+        u32 counterMemSize = 0, const ExtraArgs* extraArgsPtr = nullptr, bool isWrite = false)
         : buffersIn(buffIn),
           input(input),
           output(output),
@@ -637,7 +630,7 @@ using AivExtraKernelArgs = struct AivExtraKernelArgsDef {
           tailCountMem(tailCountMem),
           addOneMem(addOneMem),
           counterMemSize(counterMemSize),
-          isEnableCounter(isEnableCounter),
+          isEnableCounter(false),
           isWrite(isWrite)
     {
         if (extraArgsPtr != nullptr) {
@@ -683,8 +676,7 @@ using AivBsrKernelArgs = struct AivBsrKernelArgsDef {
         u32 dataType, u32 reduceOp, u32 root, u32 tag, u64 inputSliceStride, u64 outputSliceStride, u64 repeatNum,
         u64 inputRepeatStride, u64 outputRepeatStride, u32 numBlocks, bool isOpBase = true,
         const void* headCountMem = nullptr, const void* tailCountMem = nullptr, const void* addOneMem = nullptr,
-        u32 counterMemSize = 0, bool isEnableCounter = false, const ExtraArgsBsr* extraArgsBsrPtr = nullptr,
-        bool isWrite = false)
+        u32 counterMemSize = 0, const ExtraArgsBsr* extraArgsBsrPtr = nullptr, bool isWrite = false)
         : buffersIn(buffIn),
           input(input),
           output(output),
@@ -707,7 +699,7 @@ using AivBsrKernelArgs = struct AivBsrKernelArgsDef {
           tailCountMem(tailCountMem),
           addOneMem(addOneMem),
           counterMemSize(counterMemSize),
-          isEnableCounter(isEnableCounter),
+          isEnableCounter(false),
           isWrite(isWrite)
     {
         if (extraArgsBsrPtr != nullptr) {
@@ -1337,9 +1329,6 @@ HcclResult ExecuteKernelLaunch(const AivOpArgs& opArgs)
         }
     }
 
-    OpCounterInfo stuckCounter = {};
-    (void)GetStuckDetectCounterInfo(opArgs.hcclComm, stuckCounter);
-
     if (opArgs.cmdType == HcclCMDType::HCCL_CMD_ALLTOALLV) {
         AivExtraKernelArgs aivExtraKernelArgs{
             opArgs.buffersIn,
@@ -1360,14 +1349,12 @@ HcclResult ExecuteKernelLaunch(const AivOpArgs& opArgs)
             opArgs.outputRepeatStride,
             opArgs.numBlocks,
             opArgs.isOpBase,
-            nullptr,
-            nullptr,
-            nullptr,
-            0U,
-            false,
+            reinterpret_cast<void*>(opArgs.counter.headCountMem),
+            reinterpret_cast<void*>(opArgs.counter.tailCountMem),
+            reinterpret_cast<void*>(opArgs.counter.addOneMem),
+            opArgs.counter.memSize,
             &opArgs.extraArgs,
             opArgs.isWrite};
-        FillAivStuckCounter(aivExtraKernelArgs, stuckCounter);
         CHK_RET(ExecuteKernelLaunchInner(opArgs, &aivExtraKernelArgs, sizeof(aivExtraKernelArgs)));
     } else if (opArgs.cmdType == HcclCMDType::HCCL_CMD_BATCH_SEND_RECV) {
         // batch_send_recv 应使用独立的入口 ExecuteKernelLaunchBsr
@@ -1394,13 +1381,12 @@ HcclResult ExecuteKernelLaunch(const AivOpArgs& opArgs)
             opArgs.outputRepeatStride,
             opArgs.numBlocks,
             opArgs.isOpBase,
-            nullptr,
-            nullptr,
-            nullptr,
-            0U,
+            reinterpret_cast<void*>(opArgs.counter.headCountMem),
+            reinterpret_cast<void*>(opArgs.counter.tailCountMem),
+            reinterpret_cast<void*>(opArgs.counter.addOneMem),
+            opArgs.counter.memSize,
             false,
             opArgs.isWrite};
-        FillAivStuckCounter(aivKernelArgs, stuckCounter);
         CHK_RET(ExecuteKernelLaunchInner(opArgs, &aivKernelArgs, sizeof(aivKernelArgs)));
     }
     return HCCL_SUCCESS;
@@ -1415,8 +1401,6 @@ HcclResult ExecuteKernelLaunchBsr(const AivOpArgs& opArgs, const ExtraArgsBsr& e
                    "HcclSelectAlgGraphMode."),
         HCCL_E_INTERNAL);
 
-    OpCounterInfo stuckCounter = {};
-    (void)GetStuckDetectCounterInfo(opArgs.hcclComm, stuckCounter); // 与通用入口一致：每次 launch 统一取址
     AivBsrKernelArgs aivBsrKernelArgs{
         opArgs.buffersIn,
         opArgs.input,
@@ -1436,11 +1420,10 @@ HcclResult ExecuteKernelLaunchBsr(const AivOpArgs& opArgs, const ExtraArgsBsr& e
         opArgs.outputRepeatStride,
         opArgs.numBlocks,
         opArgs.isOpBase,
-        reinterpret_cast<void*>(stuckCounter.headCountMem),
-        reinterpret_cast<void*>(stuckCounter.tailCountMem),
-        reinterpret_cast<void*>(stuckCounter.addOneMem),
-        stuckCounter.memSize,
-        stuckCounter.isEnableCounter,
+        reinterpret_cast<void*>(opArgs.counter.headCountMem),
+        reinterpret_cast<void*>(opArgs.counter.tailCountMem),
+        reinterpret_cast<void*>(opArgs.counter.addOneMem),
+        opArgs.counter.memSize,
         &extraArgsBsr,
         opArgs.isWrite};
     CHK_RET(ExecuteKernelLaunchInner(opArgs, &aivBsrKernelArgs, sizeof(aivBsrKernelArgs)));

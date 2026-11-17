@@ -12,7 +12,6 @@
 #include <dlfcn.h>
 #include <cstdio>
 #include <cstdlib>
-#include "log.h"
 
 // ---------- 桩函数定义（签名与真实API完全一致）----------
 DEFINE_WEAK_FUNC(HcclResult, HcclGetRemoteIpcHcclBuf, HcclComm comm, uint64_t remoteRank, void** addr, uint64_t* size);
@@ -42,10 +41,6 @@ DEFINE_WEAK_FUNC(
     HcclResult, HcclDedicatedThreadAcquire, HcclComm comm, HcclDedicatedThreadType useType, uint32_t notifyNumPerThread,
     ThreadHandle* thread);
 
-DEFINE_WEAK_FUNC(
-    HcclResult, HcclStuckDetectGetCounterAddr, HcclComm comm, uint64_t* headOpCounterAddr, uint64_t* tailOpCounterAddr,
-    uint64_t* addOneMemAddr, uint64_t* counterToken);
-
 // 初始化
 void HcclResDlInit(void* libHcommHandle)
 {
@@ -61,6 +56,4 @@ void HcclResDlInit(void* libHcommHandle)
     INIT_SUPPORT_FLAG(libHcommHandle, HcclEngineCtxDestroy);
     INIT_SUPPORT_FLAG(libHcommHandle, HcclThreadAcquireWithConfig);
     INIT_SUPPORT_FLAG(libHcommHandle, HcclDedicatedThreadAcquire);
-    INIT_SUPPORT_FLAG(libHcommHandle, HcclStuckDetectGetCounterAddr);
-    HCCL_INFO("[StuckDetect][Dl] GetCounterAddr=%d.", HcommIsSupportHcclStuckDetectGetCounterAddr() ? 1 : 0);
 }

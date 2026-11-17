@@ -162,10 +162,7 @@ __aicore__ inline void AivAlltoAllV2Mesh1DWrite(KERNEL_ARGS_DEF)
     op.Process();
     if (!pingpong) {
         op.BarrierAll();
-    } else {
-        op.SyncBeforeTail();
     }
-    op.TailCounter();
 }
 
 #endif // AIV_ALL_TO_ALL_MESH_1D_WRITE_H

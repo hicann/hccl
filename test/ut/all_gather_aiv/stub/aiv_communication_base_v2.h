@@ -19,8 +19,8 @@ public:
     template <typename... ExtraArgs>
     void Init(
         GM_ADDR, uint64_t input, uint64_t output, uint32_t rank, uint32_t, uint32_t ranks, uint64_t len, uint32_t,
-        uint32_t, uint32_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, GM_ADDR headCountMem,
-        GM_ADDR tailCountMem, GM_ADDR addOneMem, uint32_t, bool isEnableCounter, uint32_t blocks, ExtraArgs...)
+        uint32_t, uint32_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, GM_ADDR, GM_ADDR, GM_ADDR, uint32_t, bool,
+        uint32_t blocks, ExtraArgs...)
     {
         input_ = input;
         output_ = output;
@@ -29,11 +29,6 @@ public:
         numBlocks_ = blocks;
         blockIdx_ = all_gather_aiv_test::currentTrace->block;
         myGmIn_ = GetGmIn(rank);
-        stuckHead_ = headCountMem;
-        stuckTail_ = tailCountMem;
-        stuckAddOne_ = addOneMem;
-        stuckEnabled_ = isEnableCounter && headCountMem != nullptr && tailCountMem != nullptr && addOneMem != nullptr;
-        HeadCounter();
     }
     GM_ADDR GetGmIn(uint32_t rank)
     {
@@ -84,24 +79,6 @@ public:
     bool IsFirstOP(uint32_t) const { return false; }
     void BarrierForFirstOP() {}
     void BarrierAll() {}
-    void HeadCounter()
-    {
-        if (stuckEnabled_ && blockIdx_ == 0) {
-            ++all_gather_aiv_test::currentTrace->headCounters;
-        }
-    }
-    void TailCounter()
-    {
-        if (stuckEnabled_ && blockIdx_ == 0) {
-            ++all_gather_aiv_test::currentTrace->tailCounters;
-        }
-    }
-    void SyncBeforeTail()
-    {
-        if (stuckEnabled_) {
-            ++all_gather_aiv_test::currentTrace->syncBeforeTail;
-        }
-    }
 
     uint64_t input_ = 0;
     uint64_t output_ = 0;
@@ -113,10 +90,6 @@ public:
     uint32_t curTag_ = 0;
     bool useDoubleBuffer_ = true;
     GM_ADDR myGmIn_ = nullptr;
-    GM_ADDR stuckHead_ = nullptr;
-    GM_ADDR stuckTail_ = nullptr;
-    GM_ADDR stuckAddOne_ = nullptr;
-    bool stuckEnabled_ = false;
     AscendC::TQueBind<AscendC::QuePosition::VECIN, AscendC::QuePosition::VECOUT, 1> inOutQue;
 };
 #endif

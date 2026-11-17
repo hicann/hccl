@@ -10,7 +10,6 @@
 
 #include <gtest/gtest.h>
 #include <algorithm>
-#include <cstdint>
 #include <map>
 #include <set>
 #include <tuple>
@@ -343,54 +342,6 @@ namespace {
             Validate<uint32_t>(Config{1, blocks, 0, 64});
             Validate<float>(Config{1, blocks, 0, 1});
         }
-    }
-    constexpr uintptr_t COUNTER_HEAD_ADDR = 0x500000000ULL;
-    constexpr uintptr_t COUNTER_TAIL_ADDR = 0x500000004ULL;
-    constexpr uintptr_t COUNTER_ADD_ONE_ADDR = 0x500000008ULL;
-
-    GM_ADDR MakeCounterAddr(uintptr_t value) { return reinterpret_cast<GM_ADDR>(value); }
-
-    void RunCounterEntry(
-        uint32_t blocks, uint32_t block, GM_ADDR head, GM_ADDR tail, GM_ADDR addOne, bool enable, Trace& trace)
-    {
-        trace.block = block;
-        currentTrace = &trace;
-        AivAllReduceV2Mesh1DTwoShot<uint32_t>(
-            nullptr, Address(INPUT_BASE, 0), Address(OUTPUT_BASE, 0), 0, 0, 2, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, blocks,
-            true, head, tail, addOne, sizeof(int32_t), enable, false);
-        currentTrace = nullptr;
-    }
-
-    TEST(AllReduceAivCoreTest, EntryCounterEnabled)
-    {
-        Trace trace;
-        RunCounterEntry(
-            1, 0, MakeCounterAddr(COUNTER_HEAD_ADDR), MakeCounterAddr(COUNTER_TAIL_ADDR),
-            MakeCounterAddr(COUNTER_ADD_ONE_ADDR), true, trace);
-        EXPECT_EQ(trace.headCounters, 1u);
-        EXPECT_EQ(trace.tailCounters, 1u);
-        // AllReduce 入口无条件 BarrierAll，不经过 pingpong 的 SyncBeforeTail
-        EXPECT_EQ(trace.syncBeforeTail, 0u);
-    }
-
-    TEST(AllReduceAivCoreTest, EntryCounterDisabled)
-    {
-        Trace trace;
-        RunCounterEntry(1, 0, nullptr, nullptr, nullptr, false, trace);
-        EXPECT_EQ(trace.headCounters, 0u);
-        EXPECT_EQ(trace.tailCounters, 0u);
-        EXPECT_EQ(trace.syncBeforeTail, 0u);
-    }
-
-    TEST(AllReduceAivCoreTest, EntryCounterNonBlock0)
-    {
-        Trace trace;
-        RunCounterEntry(
-            2, 1, MakeCounterAddr(COUNTER_HEAD_ADDR), MakeCounterAddr(COUNTER_TAIL_ADDR),
-            MakeCounterAddr(COUNTER_ADD_ONE_ADDR), true, trace);
-        EXPECT_EQ(trace.headCounters, 0u);
-        EXPECT_EQ(trace.tailCounters, 0u);
-        EXPECT_EQ(trace.syncBeforeTail, 0u); // AllReduce 无条件 BarrierAll
     }
 } // namespace
 } // namespace all_reduce_aiv_test

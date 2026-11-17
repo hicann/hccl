@@ -12,7 +12,6 @@
 #include <dlfcn.h>
 #include <cstdio>
 #include <cstdlib>
-#include "log.h"
 
 DEFINE_WEAK_FUNC(
     int32_t, HcommWriteWithNotifyOnThread, ThreadHandle thread, ChannelHandle channel, void* dst, const void* src,
@@ -76,9 +75,6 @@ DEFINE_WEAK_FUNC(int32_t, HcommAicpuTsTaskCacheStart, const char* tag, void** ad
 DEFINE_WEAK_FUNC(int32_t, HcommAicpuTsTaskCacheEnd, const char* tag);
 DEFINE_WEAK_FUNC(int32_t, HcommAicpuTsTaskCacheExecute, const char* tag, void** addrs, uint64_t* sizes, uint64_t count);
 DEFINE_WEAK_FUNC(int32_t, HcommAicpuTsTaskCacheClear, const char* tag);
-DEFINE_WEAK_FUNC(
-    int32_t, HcommLocalReduceOnThread, ThreadHandle thread, void* dst, const void* src, uint64_t count,
-    HcommDataType dataType, HcommReduceOp reduceOp);
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)
 DEFINE_WEAK_FUNC(
     HcommResult, HcommEndpointCheckFeature, HcommEndpointFeatureType featureType, const EndpointDesc* endpointDesc,
@@ -143,7 +139,6 @@ void HcommPrimitivesDlInit(void* libHcommHandle)
     INIT_SUPPORT_FLAG(libHcommHandle, HcommAicpuTsTaskCacheEnd);
     INIT_SUPPORT_FLAG(libHcommHandle, HcommAicpuTsTaskCacheExecute);
     INIT_SUPPORT_FLAG(libHcommHandle, HcommAicpuTsTaskCacheClear);
-    INIT_SUPPORT_FLAG(libHcommHandle, HcommLocalReduceOnThread);
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)
     INIT_SUPPORT_FLAG(libHcommHandle, HcommEndpointCheckFeature);
 #endif
@@ -155,7 +150,6 @@ void HcommPrimitivesDlInit(void* libHcommHandle)
     } else {
         g_HcommBatchTransferOnThreadSupported = true;
     }
-    HCCL_INFO("[StuckDetect][Dl] LocalReduce=%d.", HcommIsSupportHcommLocalReduceOnThread() ? 1 : 0);
 }
 
 bool IsHcommDefaultTimeoutSupported()

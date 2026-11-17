@@ -47,12 +47,6 @@ struct SkArgsStruct {
     alignas(SK_ARGS_BOOL_ALIGN_SIZE) bool isWrite;
 };
 
-static_assert(
-    Std::is_same<decltype(SkArgsStruct::isEnableCounter), bool>::value, "SkArgsStruct::isEnableCounter must be bool");
-static_assert(
-    alignof(SkArgsStruct::isEnableCounter) == SK_ARGS_BOOL_ALIGN_SIZE,
-    "SkArgsStruct bool fields must be aligned to SK_ARGS_BOOL_ALIGN_SIZE");
-
 // __sk__定义的函数参数
 #define SK_BIND_FUNC_ARGS __gm__ struct SkArgsStruct* args
 
@@ -157,10 +151,6 @@ public:
 
         GetTag(buffIn);
         InitBuffArray(buffIn, pingpong);
-
-        InitStuckCounter(
-            reinterpret_cast<__gm__ int32_t*>(headCountMem), reinterpret_cast<__gm__ int32_t*>(tailCountMem),
-            reinterpret_cast<__gm__ int32_t*>(addOneMem), isEnableCounter);
     }
 
     __aicore__ inline void Init(GM_ADDR hiddenInput, GM_ADDR input, GM_ADDR output, bool pingpong = false)
@@ -210,11 +200,6 @@ public:
         if (args->clearEnable == 1) {
             ClearSyncBuf();
         }
-
-        InitStuckCounter(
-            reinterpret_cast<__gm__ int32_t*>(args->headCountMem),
-            reinterpret_cast<__gm__ int32_t*>(args->tailCountMem), reinterpret_cast<__gm__ int32_t*>(args->addOneMem),
-            args->isEnableCounter != 0);
     }
 
     __aicore__ inline void InitBuffArray(GM_ADDR buffIn, bool pingpong = false)
@@ -329,35 +314,6 @@ public:
     // SuperKernel满核启动时，blockIdx超出算子自身核数(numBlocks_)的核为空闲核
     __aicore__ inline bool IsIdleCore() const { return blockIdx_ >= static_cast<uint32_t>(numBlocks_); }
 
-    __aicore__ inline void
-    InitStuckCounter(__gm__ int32_t* head, __gm__ int32_t* tail, __gm__ int32_t* addOne, bool enable)
-    {
-        stuckHead_ = head;
-        stuckTail_ = tail;
-        stuckAddOne_ = addOne;
-        stuckEnabled_ = enable && (head != nullptr) && (tail != nullptr) && (addOne != nullptr);
-        HeadCounter();
-    }
-
-    __aicore__ inline void EmitStuckCounter(__gm__ int32_t* countMem)
-    {
-        if (!stuckEnabled_ || countMem == nullptr || GetBlockIdx() != 0) {
-            return;
-        }
-        CpGM2GM<int32_t>(countMem, stuckAddOne_, 1, static_cast<uint32_t>(HcclReduceOp::HCCL_REDUCE_SUM));
-    }
-
-    __aicore__ inline void HeadCounter() { EmitStuckCounter(stuckHead_); }
-
-    __aicore__ inline void TailCounter() { EmitStuckCounter(stuckTail_); }
-
-    __aicore__ inline void SyncBeforeTail()
-    {
-        if (stuckEnabled_) {
-            SyncAll<true>();
-        }
-    }
-
     __aicore__ inline void ClearGM();
 
     __aicore__ inline void SendRecvBarrierForFirstOP(uint32_t myRank, uint32_t remoteRank);
@@ -434,12 +390,6 @@ public:
     uint32_t pingpongOffset;
     uint32_t countOffset;
     uint32_t separateOffset;
-
-    // 卡死检测计数（Init 存参，Head/TailCounter 消费）
-    __gm__ int32_t* stuckHead_ = nullptr;
-    __gm__ int32_t* stuckTail_ = nullptr;
-    __gm__ int32_t* stuckAddOne_ = nullptr;
-    bool stuckEnabled_ = false;
 };
 
 __aicore__ inline void AivCommBase::Record(uint32_t targetRank, uint64_t flag_offset, int32_t curTag)

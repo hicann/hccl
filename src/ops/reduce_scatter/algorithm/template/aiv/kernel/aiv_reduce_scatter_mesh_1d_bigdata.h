@@ -178,7 +178,6 @@ __aicore__ inline void AivReduceScatterV2Mesh1DBigData(KERNEL_ARGS_DEF)
     }
     op.Process(sliceId, len, inputSliceStride);
     op.BarrierAll();
-    op.TailCounter();
 }
 
 template <typename T>
@@ -203,5 +202,4 @@ __aicore__ inline void AivReduceScatterV2Mesh1DBigDataSuperKernel(SUPERKERNEL_AR
         op.output_ += curSize;
         loopTag += curSize / UB_DB_DATA_BATCH_SIZE + 1;
     }
-    op.TailCounter();
 }

@@ -92,5 +92,4 @@ __aicore__ inline void AivSendV2Mesh1D(KERNEL_ARGS_DEF)
     }
     op.Process(len, sliceId);
     op.SendRecvBarrierAll(rank, sendRecvRemoteRank);
-    op.TailCounter();
 }

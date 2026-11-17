@@ -226,10 +226,7 @@ __aicore__ inline void AivReduceScatterV2LocalTreeCoreCtrl(KERNEL_ARGS_DEF)
     op.Process(sliceId);
     if (!pingpong) {
         op.BarrierAll();
-    } else {
-        op.SyncBeforeTail();
     }
-    op.TailCounter();
 }
 
 template <typename T>
@@ -257,7 +254,6 @@ __aicore__ inline void AivReduceScatterV2LocalTreeCoreCtrlSuperKernel(SUPERKERNE
         op.output_ += curSize;
         loopTag += curSize / UB_DB_DATA_BATCH_SIZE + 1;
     }
-    op.TailCounter();
 }
 
 #endif // AIV_REDUCE_SCATTER_LOCAL_TREE_CORECTRL_H

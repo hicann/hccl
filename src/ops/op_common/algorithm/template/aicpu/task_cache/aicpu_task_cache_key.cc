@@ -118,26 +118,14 @@ HcclResult AicpuTaskCacheKey::GetAicpuTaskCacheTag(const OpParam& param, uint64_
     CHK_SAFETY_FUNC_RET(memcpy_s(ptr, COMM_INDENTIFIER_MAX_LENGTH, commId, commLen));
     ptr += commLen;
 
-    // 计数使能态追加 "-sd" 后缀：与不含计数 task 的条目使用不同缓存键，避免开关切换时串用
-    constexpr size_t STUCK_DETECT_TAG_LEN = sizeof("-sd") - 1; // 3
-    if (param.isEnableCounter != 0) {
-        const size_t usedSize = static_cast<size_t>(ptr - buf);
-        CHK_PRT_RET(
-            usedSize + STUCK_DETECT_TAG_LEN >= RESERVED_SIZE,
-            HCCL_ERROR("[AicpuTaskCacheKey][GetAicpuTaskCacheTag] tag too long, used[%zu].", usedSize), HCCL_E_PARA);
-        CHK_SAFETY_FUNC_RET(memcpy_s(ptr, RESERVED_SIZE - usedSize, "-sd", STUCK_DETECT_TAG_LEN));
-        ptr += STUCK_DETECT_TAG_LEN;
-    }
-
     // 重新更新cacheTag长度
     cacheTag.assign(buf, static_cast<size_t>(ptr - buf));
 
     HCCL_INFO(
         "[AicpuTaskCacheKey][GetAicpuTaskCacheTag] cacheTag[%s] from commId[%s] opType[%d] dataType[%d] "
-        "reduceType[%d] isZeroCopy[%d] inputSize[%llu] opMode[%d] supportSymmetricMemory[%d] rootRank[%d] "
-        "isEnableCounter[%u]",
+        "reduceType[%d] isZeroCopy[%d] inputSize[%llu] opMode[%d] supportSymmetricMemory[%d] rootRank[%d]",
         cacheTag.c_str(), commId, opType, dataType, reduceType, isZeroCopy, cacheInputSize, opMode,
-        supportSymmetricMemory, rootRank, param.isEnableCounter);
+        supportSymmetricMemory, rootRank);
 
     return HCCL_SUCCESS;
 }

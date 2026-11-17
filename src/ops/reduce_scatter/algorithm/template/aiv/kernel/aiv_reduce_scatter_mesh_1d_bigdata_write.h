@@ -164,7 +164,6 @@ __aicore__ inline void AivReduceScatterV2Mesh1DBigDataWrite(KERNEL_ARGS_DEF)
     }
     op.Process(sliceId, len, inputSliceStride);
     op.BarrierAll();
-    op.TailCounter();
 }
 
 #endif // AIV_REDUCE_SCATTER_MESH_1D_BIGDATA_WRITE_H

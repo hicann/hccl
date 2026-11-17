@@ -300,24 +300,4 @@ bool HcommIsSupportHcclDedicatedThreadAcquire(void) { return false; }
 int GetHcommVersion(void) { return CANN_VERSION_NUM; }
 bool HcommIsSupportHcclCommRegCommStateCallback(void) { return g_resources.callbackSupported; }
 bool IsHcommDefaultTimeoutSupported(void) { return false; }
-// stuck-detect helper 依赖（本 UT 不链接 hccl_res_dl.cc / hcomm_dlsym.cc），按“不支持”降级
-void HcommDlInit(void) {}
-bool HcommIsSupportHcclStuckDetectGetCounterAddr(void) { return g_resources.stuckDetectSupported; }
-HcclResult HcclStuckDetectGetCounterAddr(
-    HcclComm, uint64_t* headOpCounterAddr, uint64_t* tailOpCounterAddr, uint64_t* addOneMemAddr, uint64_t* counterToken)
-{
-    if (headOpCounterAddr != nullptr) {
-        *headOpCounterAddr = g_resources.stuckHeadAddr;
-    }
-    if (tailOpCounterAddr != nullptr) {
-        *tailOpCounterAddr = g_resources.stuckTailAddr;
-    }
-    if (addOneMemAddr != nullptr) {
-        *addOneMemAddr = g_resources.stuckAddOneAddr;
-    }
-    if (counterToken != nullptr) {
-        *counterToken = g_resources.stuckToken;
-    }
-    return HCCL_SUCCESS;
-}
 } // extern "C"
