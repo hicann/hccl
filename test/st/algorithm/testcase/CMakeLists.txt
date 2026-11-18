@@ -196,6 +196,12 @@ if("all" IN_LIST ST_TASKS OR "alltoallvc" IN_LIST ST_TASKS)
     add_st_test(alltoallvc alltoallvc_testcase.cc)
 endif()
 
+# OrderLaunch capture(ACLGRAPH)入图路径ST用例：断言 NONE 零入图与 ACTIVE 下每 rank 入图一次；
+# 保序链 ST 不可达，回归保护见 test/ut/order_launch
+if("all" IN_LIST ST_TASKS OR "order_launch_capture" IN_LIST ST_TASKS)
+    add_st_test(order_launch_capture order_launch_aicpu_testcase.cc)
+endif()
+
 # CommWorker/CommWorkerMgr生命周期用例：libhccl.so按hccl.map符号白名单
 # 隐藏内部符号，CommWorker/CommWorkerMgr无法从库链接，故生产源码随用例直接编译，
 # aclrt*/日志语义由ST桩框架与用例内桩提供

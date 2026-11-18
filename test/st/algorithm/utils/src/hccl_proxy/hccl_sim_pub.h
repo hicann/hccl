@@ -35,4 +35,13 @@ enum class StreamType {
 };
 
 constexpr uint32_t ROOTINFO_INDENTIFIER_MAX_LENGTH = 128;
+
+// rtStreamAddToModel 桩累计调用数，ST 用例以差值断言 capture ACTIVE 入图路径是否被触达
+#ifdef __cplusplus
+extern "C" {
+#endif
+uint32_t AclStubGetRtStreamAddToModelCallCount();
+#ifdef __cplusplus
+}
+#endif
 #endif // SIM_SIM_PUBLIC_H

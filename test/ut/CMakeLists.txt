@@ -54,6 +54,8 @@ add_subdirectory(alg_attrs)
 add_subdirectory(selector_mapper)
 # tuner: tuner_setup.cc 宿主侧 UT（dlopen/header 校验/Create 回退/Copy 回滚/幂等/Update 路径）
 add_subdirectory(tuner)
+# order_launch：ACLGRAPH 入图链路 UT（ST 保序线程按设计桩为 0 不可达，由 UT 提供回归保护）
+add_subdirectory(order_launch)
 # reduce_scatter_seq64: RS/AR AicpuReduce 模板 cost 建模 + MeshNHRAicpuReduce attrs 注册准入。
 # 测 src/ 产品代码，与 alltoall_hier 同级无条件注册；注意 build.sh -u 的 UT 构建不传
 # ENABLE_EXPERIMENTAL，放入下方 if(ENABLE_EXPERIMENTAL) 分支将不被 -u 覆盖。

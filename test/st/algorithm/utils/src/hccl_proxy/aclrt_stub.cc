@@ -15,6 +15,7 @@
 #include <mutex>
 #include <set>
 #include <cstring>
+#include <cstdlib>
 #include <memory>
 #include "securec.h"
 #include "acl/acl_rt.h"
@@ -38,6 +39,9 @@ namespace {
 std::mutex g_stubMallocMutex;
 std::set<void*> g_stubMallocPtrs;
 char g_aicpuKernelHandle;
+
+// rtStreamAddToModel 桩调用计数（各 rank 并发调用需原子）
+std::atomic<uint32_t> g_rtStreamAddToModelCalls{0};
 
 // SimWorld无真实context对象，句柄直接按deviceId编码（+1避开device 0编码为nullptr），使context桩
 // 对齐真实ACL语义：context携带device绑定，跨线程传递句柄即传递device归属。CommWorker将发起线程
@@ -232,9 +236,17 @@ aclError aclrtDestroyStream(aclrtStream stream)
 }
 
 int rtModelFake = 0;
+// 经 HCCL_STUB_CAPTURE_ACTIVE=1 回填 ACTIVE 使 ACLGRAPH 入图路径在 ST 可达；其余取值回填 NONE，存量行为不变
 aclError aclmdlRICaptureGetInfo(aclrtStream stream, aclmdlRICaptureStatus* status, aclmdlRI* modelRI)
 {
+    if (status == nullptr || modelRI == nullptr) {
+        return ACL_ERROR_INVALID_PARAM;
+    }
     *modelRI = &rtModelFake;
+    const char* captureActive = getenv("HCCL_STUB_CAPTURE_ACTIVE");
+    *status = ((captureActive != nullptr) && (std::strcmp(captureActive, "1") == 0)) ?
+                  aclmdlRICaptureStatus::ACL_MODEL_RI_CAPTURE_STATUS_ACTIVE :
+                  aclmdlRICaptureStatus::ACL_MODEL_RI_CAPTURE_STATUS_NONE;
     return ACL_SUCCESS;
 }
 
@@ -477,9 +489,13 @@ aclError aclrtSynchronizeStreamWithTimeout(aclrtStream stream, int32_t timeout)
 
 rtError_t rtStreamAddToModel(rtStream_t stm, rtModel_t captureMdl)
 {
+    g_rtStreamAddToModelCalls.fetch_add(1, std::memory_order_relaxed);
     HCCL_WARNING("[%s] not support.", __func__);
     return RT_ERROR_NONE;
 }
+
+// rtStreamAddToModel 桩累计调用数（用例以差值断言）
+uint32_t AclStubGetRtStreamAddToModelCallCount() { return g_rtStreamAddToModelCalls.load(std::memory_order_relaxed); }
 
 aclError aclsysGetVersionNum(char* pkgNname, int32_t* versionNum)
 {
@@ -549,40 +565,6 @@ aclError aclrtGetThreadLastTaskIdAndStreamId(uint32_t* taskId, uint32_t* streamI
     }
     *taskId = 0;
     *streamId = 0;
-    return ACL_SUCCESS;
-}
-
-aclError aclrtCreateEventExWithFlag(aclrtEvent* event, uint32_t flag)
-{
-    if (event == nullptr) {
-        HCCL_ERROR("[aclrtCreateEventExWithFlag] invalid input event");
-        return ACL_ERROR_INVALID_PARAM;
-    }
-    *event = malloc(sizeof(int));
-    if (*event == nullptr) {
-        HCCL_ERROR("[aclrtCreateEventExWithFlag] malloc event failed");
-        return ACL_ERROR_INTERNAL_ERROR;
-    }
-    return ACL_SUCCESS;
-}
-
-aclError aclrtDestroyEvent(aclrtEvent event)
-{
-    if (event != nullptr) {
-        free(event);
-    }
-    return ACL_SUCCESS;
-}
-
-aclError aclrtRecordEvent(aclrtEvent event, aclrtStream stream)
-{
-    HCCL_WARNING("[%s] not support.", __func__);
-    return ACL_SUCCESS;
-}
-
-aclError aclrtStreamWaitEvent(aclrtStream stream, aclrtEvent event)
-{
-    HCCL_WARNING("[%s] not support.", __func__);
     return ACL_SUCCESS;
 }
 

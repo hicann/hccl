@@ -12,32 +12,10 @@
 #include "hcomm_primitives_dl.h"
 #include "hccl_res_dl.h"
 #include "dlhcomm_function.h"
+#include "rt_external.h"
+#include "acl/acl_rt.h"
 
 namespace ops_hccl {
-
-static HcclResult OpLaunchGetUnfoldStream(HcclComm comm, ThreadHandle unfoldThread, aclrtStream& resolvedStream)
-{
-    void* unfoldStream = nullptr;
-    auto& HcclThreadResGetInfoFunc = ops_hccl::DlHcommFunction::GetInstance();
-    if (!HcclThreadResGetInfoFunc.dlHcclThreadResGetInfo) {
-        resolvedStream = nullptr;
-        HCCL_WARNING("HcclThreadResGetInfoFunc dlHcclThreadResGetInfo is invalid.");
-        return HCCL_SUCCESS;
-    }
-    HcclResult ret
-        = HcclThreadResGetInfoFunc.dlHcclThreadResGetInfo(comm, unfoldThread, 0, sizeof(void*), &unfoldStream);
-    if (ret == HCCL_E_NOT_SUPPORT) {
-        resolvedStream = nullptr;
-        HCCL_WARNING("HcclThreadResGetInfoFunc dlHcclThreadResGetInfo is not supported.");
-        return HCCL_SUCCESS;
-    } else if (ret != HCCL_SUCCESS) {
-        resolvedStream = nullptr;
-        HCCL_WARNING("HcclThreadResGetInfoFunc dlHcclThreadResGetInfo not success.");
-        return HCCL_SUCCESS;
-    }
-    resolvedStream = unfoldStream;
-    return HCCL_SUCCESS;
-}
 
 static HcclResult OpLaunchGetHostOrderStream(ThreadHandle hostOrderThread, aclrtStream& resolvedStream)
 {
@@ -83,58 +61,56 @@ static HcclDedicatedThreadType GetOrderLaunchHostThreadType(OrderLaunchMode mode
     return HCCL_DED_THREAD_TYPE_AICPU_ORDER_LAUNCH_OPBASE;
 }
 
-static HcclResult OpLaunchGetOrderStreams(
-    HcclComm comm, ThreadHandle hostOrderThread, ThreadHandle unfoldThread, aclrtStream& hostOrderStream,
-    aclrtStream& unfoldStream)
+/**
+ * @brief ACLGRAPH模式：将hostOrderThread对应的hostOrderStream经rtStreamAddToModel显式加入capture模型。
+ * 替代原event0的归属传播入图：显式入图的流不参与EndCapture的join-back拓扑校验，且hostOrderStream上的
+ * notify任务仍可被采集为图action（replay保序依赖）。实现模式对齐op_common.cc的CaptureSlaveStreams()。
+ * @param stream          算子执行流（用于查询capture状态与rtModel）
+ * @param hostOrderThread Host侧保序线程句柄
+ * @return HcclResult
+ */
+static HcclResult AclgraphOrderLaunchAddHostOrderStreamToModel(aclrtStream stream, ThreadHandle hostOrderThread)
 {
+    // 1、反查hostOrderThread对应的hostOrderStream
+    aclrtStream hostOrderStream = nullptr;
     CHK_RET(OpLaunchGetHostOrderStream(hostOrderThread, hostOrderStream));
-    CHK_RET(OpLaunchGetUnfoldStream(comm, unfoldThread, unfoldStream));
     CHK_PRT_RET(
-        hostOrderStream == nullptr || unfoldStream == nullptr,
+        hostOrderStream == nullptr,
         HCCL_ERROR(
-            "[%s] failed to get hostOrderStream[%p] or unfoldStream[%p]", __func__, hostOrderStream, unfoldStream),
+            "[%s] failed to get hostOrderStream, hostOrderThread[0x%llx], dlsym missing or resGetInfo failed.",
+            __func__, hostOrderThread),
         HCCL_E_RUNTIME);
-    return HCCL_SUCCESS;
-}
 
-static HcclResult AclgraphOrderLaunchEventToOrderStream(
-    HcclComm comm, ThreadHandle hostOrderThread, ThreadHandle unfoldThread, HcclRtEvent event)
-{
-    aclrtStream hostOrderStream = nullptr;
-    aclrtStream unfoldStream = nullptr;
-    CHK_RET(OpLaunchGetOrderStreams(comm, hostOrderThread, unfoldThread, hostOrderStream, unfoldStream));
+    // 2、查询算子执行流的capture状态，取rtModel（isCapture由同流实时查询置位，此处非ACTIVE属状态异常：
+    // 升级告警留痕供replay问题定位；仍按成功降级——若capture恰在本op下发前结束，握手与kernel按eager执行可正确完成）
+    aclmdlRI rtModel = nullptr;
+    aclmdlRICaptureStatus captureStatus = aclmdlRICaptureStatus::ACL_MODEL_RI_CAPTURE_STATUS_NONE;
+    aclError ret = aclmdlRICaptureGetInfo(stream, &captureStatus, &rtModel);
+    if (ret == ACL_ERROR_RT_FEATURE_NOT_SUPPORT) {
+        HCCL_WARNING("[%s]Stream capture is not supported, skip adding hostOrderStream to model.", __func__);
+        return HCCL_SUCCESS;
+    }
+    CHK_PRT_RET(
+        ret != ACL_SUCCESS, HCCL_ERROR("[%s]aclmdlRICaptureGetInfo fail. return[%d].", __func__, ret), HCCL_E_RUNTIME);
+    if (captureStatus != aclmdlRICaptureStatus::ACL_MODEL_RI_CAPTURE_STATUS_ACTIVE) {
+        HCCL_WARNING(
+            "[%s]captureStatus[%d] is not active in ACLGRAPH mode, skip adding hostOrderStream to model; notify "
+            "handshake still proceeds, replay may hang if stream keeps capturing.",
+            __func__, captureStatus);
+        return HCCL_SUCCESS;
+    }
 
-    aclError retEvent = aclrtRecordEvent(event, unfoldStream);
+    // 3、显式入图（幂等：同流重复add同一模型为no-op，与CaptureSlaveStreams每op重复add一致）
+    rtError_t addRet = rtStreamAddToModel(hostOrderStream, rtModel);
     CHK_PRT_RET(
-        retEvent != ACL_SUCCESS, HCCL_ERROR("[%s]aclrtRecordEvent failed, ret[%d]", __func__, retEvent),
+        addRet != RT_ERROR_NONE, HCCL_ERROR("[%s]rtStreamAddToModel fail. return[%d].", __func__, addRet),
         HCCL_E_RUNTIME);
-    retEvent = aclrtStreamWaitEvent(hostOrderStream, event);
-    CHK_PRT_RET(
-        retEvent != ACL_SUCCESS, HCCL_ERROR("[%s]aclrtStreamWaitEvent failed, ret[%d]", __func__, retEvent),
-        HCCL_E_RUNTIME);
-    return HCCL_SUCCESS;
-}
-
-static HcclResult AclgraphOrderLaunchEventToKernelStream(
-    HcclComm comm, ThreadHandle hostOrderThread, ThreadHandle unfoldThread, HcclRtEvent event)
-{
-    aclrtStream hostOrderStream = nullptr;
-    aclrtStream unfoldStream = nullptr;
-    CHK_RET(OpLaunchGetOrderStreams(comm, hostOrderThread, unfoldThread, hostOrderStream, unfoldStream));
-
-    aclError retEvent = aclrtRecordEvent(event, hostOrderStream);
-    CHK_PRT_RET(
-        retEvent != ACL_SUCCESS, HCCL_ERROR("[%s]aclrtRecordEvent failed, ret[%d]", __func__, retEvent),
-        HCCL_E_RUNTIME);
-    retEvent = aclrtStreamWaitEvent(unfoldStream, event);
-    CHK_PRT_RET(
-        retEvent != ACL_SUCCESS, HCCL_ERROR("[%s]aclrtStreamWaitEvent failed, ret[%d]", __func__, retEvent),
-        HCCL_E_RUNTIME);
+    HCCL_INFO("[%s]add hostOrderStream to model success, stream[%p], rtModel[%p]", __func__, hostOrderStream, rtModel);
     return HCCL_SUCCESS;
 }
 
 /**
- * @brief OrderLaunch第一阶段资源准备：获取超时时间、确定启动模式、GE模式覆盖展开线程、ACLGRAPH模式创建event。
+ * @brief OrderLaunch第一阶段资源准备：获取超时时间、确定启动模式、GE模式覆盖展开线程。
  * @param comm          通信域
  * @param param         算子参数
  * @param unfoldThread  展开线程句柄，GE模式下可能被覆盖
@@ -165,11 +141,6 @@ HcclResult OrderLaunch::HcclOrderLaunchPrepare(HcclComm comm, const OpParam& par
         }
     }
 
-    if (launchMode_ == OrderLaunchMode::ORDER_LAUNCH_ACLGRAPH) {
-        CHK_RET(event0Guard_.Create());
-        CHK_RET(event1Guard_.Create());
-    }
-
     HCCL_INFO("[%s]. %s OrderLaunch Prepare success, unfoldThread[0x%llx]", __func__, modeName, unfoldThread);
     return HCCL_SUCCESS;
 }
@@ -178,7 +149,7 @@ HcclResult OrderLaunch::HcclOrderLaunchPrepare(HcclComm comm, const OpParam& par
  * @brief 按序launch第一阶段：将通信算子按序launch到OrderStream。
  * OPBASE / ACLGRAPH / HCOMM 三模式统一入口，流程如下：
  * 1. 获取并导出Host侧保序流（hostOrderThread），写入param.exportHostOrderThread；
- * 2. 仅ACLGRAPH模式：在unfoldStream上record event，hostOrderStream等待该event，建立流间依赖；
+ * 2. 仅ACLGRAPH模式：hostOrderStream经rtStreamAddToModel显式加入capture模型；
  * 3. 获取Device侧保序流（deviceOrderThread），写入param.deviceOrderThread；
  * 4. hostOrderThread在unfoldThread上record notify(idx)，unfoldThread等待该notify，完成第一阶段同步。
  * @param comm          通信域
@@ -230,9 +201,9 @@ OrderLaunch::HcclOrderLaunchToOrderStream(HcclComm comm, OpParam& param, ThreadH
         "[%s]. %s After HcclThreadExportToCommEngine hostOrderThread [0x%llx], exportHostOrderThread[0x%llx]", __func__,
         modeName, hostOrderThread, exportHostOrderThread);
 
-    // 2、仅 ACLGRAPH 模式需要在 unfoldStream 上 record event，hostOrderStream 等待 event
+    // 2、仅 ACLGRAPH 模式：hostOrderStream 经 rtStreamAddToModel 显式加入 capture 模型
     if (launchMode_ == OrderLaunchMode::ORDER_LAUNCH_ACLGRAPH) {
-        CHK_RET(AclgraphOrderLaunchEventToOrderStream(comm, hostOrderThread, unfoldThread, event0Guard_.Get()));
+        CHK_RET(AclgraphOrderLaunchAddHostOrderStreamToModel(param.stream, hostOrderThread));
     }
 
     // 3、获取Device侧保序流
@@ -263,14 +234,12 @@ OrderLaunch::HcclOrderLaunchToOrderStream(HcclComm comm, OpParam& param, ThreadH
  * @brief 按序launch第二阶段：将通信算子按序launch到KernelStream。
  * OPBASE / ACLGRAPH / HCOMM 三模式统一入口，流程如下：
  * 1. 复用Phase1缓存的Host侧保序线程句柄（hostOrderThread），不再二次acquire；
- * 2. hostOrderThread等待第一阶段record的notify(idx)，完成第二阶段同步；
- * 3. 仅ACLGRAPH模式：在hostOrderStream上record event，unfoldStream等待该event，建立流间依赖。
+ * 2. hostOrderThread等待第一阶段record的notify(idx)，完成第二阶段同步。
  * @param comm          通信域
- * @param unfoldThread  展开线程句柄（仅ACLGRAPH模式使用）
  * @param notifyIdx     notify索引
  * @return HcclResult
  */
-HcclResult OrderLaunch::HcclOrderLaunchToKernelStream(HcclComm comm, ThreadHandle unfoldThread, u32 notifyIdx)
+HcclResult OrderLaunch::HcclOrderLaunchToKernelStream(HcclComm comm, u32 notifyIdx)
 {
     const char* modeName = GetOrderLaunchModeName(launchMode_);
     HCCL_INFO("[%s]. %s OrderLaunch Phase2 Start, Comm[%p], timeout[%u].", __func__, modeName, comm, execTimeout_);
@@ -294,11 +263,6 @@ HcclResult OrderLaunch::HcclOrderLaunchToKernelStream(HcclComm comm, ThreadHandl
 
     // 2、wait notify1
     CHK_RET(static_cast<HcclResult>(HcommThreadNotifyWaitOnThread(hostOrderThread, notifyIdx, execTimeout_)));
-
-    // 3、仅 ACLGRAPH 模式需要在 hostOrderStream 上 record event，unfoldStream 等待 event
-    if (launchMode_ == OrderLaunchMode::ORDER_LAUNCH_ACLGRAPH) {
-        CHK_RET(AclgraphOrderLaunchEventToKernelStream(comm, hostOrderThread, unfoldThread, event1Guard_.Get()));
-    }
 
     HCCL_INFO("[%s]. %s OrderLaunch Phase2 Success.timeout[%u].", __func__, modeName, execTimeout_);
     return HCCL_SUCCESS;

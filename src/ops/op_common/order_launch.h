@@ -19,9 +19,6 @@
 #include "executor_v2_base.h"
 #include "alg_type.h"
 #include "execute_selector.h"
-#include "acl/acl_rt.h"
-
-using HcclRtEvent = void*;
 
 namespace ops_hccl {
 
@@ -29,31 +26,6 @@ enum class OrderLaunchMode {
     ORDER_LAUNCH_OPBASE,
     ORDER_LAUNCH_ACLGRAPH,
     ORDER_LAUNCH_GE,
-};
-
-class HcclRtEventGuard {
-public:
-    HcclRtEventGuard() = default;
-    ~HcclRtEventGuard()
-    {
-        if (event_ != nullptr) {
-            (void)aclrtDestroyEvent(event_);
-        }
-    }
-    HcclRtEventGuard(const HcclRtEventGuard&) = delete;
-    HcclRtEventGuard& operator=(const HcclRtEventGuard&) = delete;
-    HcclResult Create()
-    {
-        aclError ret = aclrtCreateEventExWithFlag(&event_, ACL_EVENT_SYNC);
-        CHK_PRT_RET(
-            ret != ACL_SUCCESS, HCCL_ERROR("aclrtCreateEventExWithFlag failed, ret[%d] event[%p].", ret, event_),
-            HCCL_E_RUNTIME);
-        return HCCL_SUCCESS;
-    }
-    HcclRtEvent Get() const { return event_; }
-
-private:
-    HcclRtEvent event_ = nullptr;
 };
 
 class OrderLaunch {
@@ -65,13 +37,11 @@ public:
 
     HcclResult HcclOrderLaunchPrepare(HcclComm comm, const OpParam& param, ThreadHandle& unfoldThread);
     HcclResult HcclOrderLaunchToOrderStream(HcclComm comm, OpParam& param, ThreadHandle unfoldThread, u32 notifyIdx);
-    HcclResult HcclOrderLaunchToKernelStream(HcclComm comm, ThreadHandle unfoldThread, u32 notifyIdx);
+    HcclResult HcclOrderLaunchToKernelStream(HcclComm comm, u32 notifyIdx);
 
 private:
     u32 execTimeout_{CUSTOM_TIMEOUT};
     OrderLaunchMode launchMode_{OrderLaunchMode::ORDER_LAUNCH_OPBASE};
-    HcclRtEventGuard event0Guard_;
-    HcclRtEventGuard event1Guard_;
     bool orderLaunchRequired_{true};
     // Phase1获取并缓存的Host侧保序线程句柄，Phase2直接复用，避免二次acquire结果漂移
     ThreadHandle hostOrderThread_{0};

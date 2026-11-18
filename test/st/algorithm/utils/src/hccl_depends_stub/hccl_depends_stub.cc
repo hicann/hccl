@@ -11,6 +11,9 @@
 // 打桩HCCL依赖so所需空文件
 
 #include <cstdint>
+#include <cstdlib>
+#include <cstring>
+#include <hccl/hccl_types.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,6 +46,22 @@ int HcommEndpointCheckFeature(int featureType, void* endpoint, bool* isSupport)
 uint32_t AicpuGetIdleCpuCnt() { return 8; }
 
 uint32_t AicpuGetReservedCpuCnt() { return 0; }
+
+// HcclThreadResGetInfo 桩：仅 HCCL_STUB_CAPTURE_ACTIVE=1 时回填占位流（判值对齐 aclrt_stub.cc），
+// 否则返回 HCCL_E_NOT_SUPPORT——GetUnfoldStream 回退 param.stream，存量 ST 语义不变
+static char g_simPlaceholderStream = 0;
+int HcclThreadResGetInfo(void* comm, uint64_t thread, void* key, uint32_t size, void** out)
+{
+    if (out == nullptr || thread == 0 || size != sizeof(void*)) {
+        return 1;
+    }
+    const char* captureActive = getenv("HCCL_STUB_CAPTURE_ACTIVE");
+    if ((captureActive != nullptr) && (std::strcmp(captureActive, "1") == 0)) {
+        *out = &g_simPlaceholderStream;
+        return 0;
+    }
+    return static_cast<int>(HCCL_E_NOT_SUPPORT);
+}
 
 #ifdef __cplusplus
 }

@@ -1446,11 +1446,15 @@ static HcclResult GetUnfoldStream(HcclComm comm, OpParam& param, ThreadHandle un
     auto& HcclThreadResGetInfoFunc = ops_hccl::DlHcommFunction::GetInstance();
     if (!HcclThreadResGetInfoFunc.dlHcclThreadResGetInfo || unfoldThread == 0) { // 不走提前展开
         resolvedStream = param.stream;
+        HCCL_INFO("[%s] use param.stream[%p] as unfoldStream.", __func__, param.stream);
     } else {
         HcclResult ret
             = HcclThreadResGetInfoFunc.dlHcclThreadResGetInfo(comm, unfoldThread, 0, sizeof(void*), &unfoldStream);
         if (ret == HCCL_E_NOT_SUPPORT) {
             resolvedStream = param.stream;
+            HCCL_INFO(
+                "[%s] dlHcclThreadResGetInfo not support, use param.stream[%p] as unfoldStream.", __func__,
+                param.stream);
         } else if (ret != HCCL_SUCCESS) {
             return ret;
         } else {
@@ -1543,7 +1547,7 @@ HcclResult HcclAicpuKernelEntranceLaunch(
         CHK_RET(HcclAicpuKernelLaunch(comm, &opInfo, &funcInfo, aicpuThreadHandle, param.stream, &kernelLaunchCfg));
 
         // OrderLaunch第二阶段
-        CHK_RET(orderLaunch.HcclOrderLaunchToKernelStream(comm, unfoldThread, HOST_ORDER_THREAD_NOTIFY_IDX));
+        CHK_RET(orderLaunch.HcclOrderLaunchToKernelStream(comm, HOST_ORDER_THREAD_NOTIFY_IDX));
 
         HCCL_INFO("[HcclAicpuKernelEntranceLaunch] P2P launch success, algTag[%s]", param.algTag);
         return HCCL_SUCCESS;
@@ -1574,7 +1578,7 @@ HcclResult HcclAicpuKernelEntranceLaunch(
     }
 
     // OrderLaunch第二阶段
-    CHK_RET(orderLaunch.HcclOrderLaunchToKernelStream(comm, unfoldThread, HOST_ORDER_THREAD_NOTIFY_IDX));
+    CHK_RET(orderLaunch.HcclOrderLaunchToKernelStream(comm, HOST_ORDER_THREAD_NOTIFY_IDX));
 
     // Host stream等待Device的通知
     AicpuTimeout timeout = DeriveAicpuTimeout(param.opConfig.execTimeout);

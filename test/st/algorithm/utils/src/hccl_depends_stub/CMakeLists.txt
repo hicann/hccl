@@ -34,3 +34,10 @@ target_compile_options(acl_rt PRIVATE
     -g
     -O0
 )
+
+# 门控返回 HCCL_E_NOT_SUPPORT 需 CANN 头文件（三桩目标编译同一源文件，路径随 ASCEND_HOME_PATH 与依赖成对）
+if (ASCEND_HOME_PATH)
+    target_include_directories(hcomm PRIVATE ${ASCEND_HOME_PATH}/include)
+    target_include_directories(unified_dlog PRIVATE ${ASCEND_HOME_PATH}/include)
+    target_include_directories(acl_rt PRIVATE ${ASCEND_HOME_PATH}/include)
+endif()
