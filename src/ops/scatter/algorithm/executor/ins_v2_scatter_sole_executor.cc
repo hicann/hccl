@@ -131,6 +131,10 @@ HcclResult InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate(
     myRank_ = resCtx.topoInfo.userRank;
     // 给channels_和threads_赋值
     threads_ = resCtx.threads;
+    supportSymmetricMemory_ = param.supportSymmetricMemory;
+    if (supportSymmetricMemory_) {
+        SetSymmetricMemoryInfo(param);
+    }
     if (param.engine != CommEngine::COMM_ENGINE_AIV && param.engine != CommEngine::COMM_ENGINE_CCU) {
         CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));
     }
@@ -211,6 +215,14 @@ HcclResult InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::OrchestrateLo
     // 计算loopTimes
     u64 loopTimes = dataCount_ / maxCountPerLoop + static_cast<u64>(dataCount_ % maxCountPerLoop != 0);
     u64 processedDataCount = 0;
+    if (param.supportSymmetricMemory) {
+        tempAlgParams.enableRemoteMemAccess = true;
+        HCCL_INFO("[InsV2ScatterSoleExecutor][OrchestrateLoop] %s: symmetric memory enabled", param.algName);
+        if (std::string(param.algName) == "AicpuScatterSoleMesh") {
+            loopTimes = 1;
+        }
+    }
+
     for (u64 loop = 0; loop < loopTimes; loop++) {
         u64 currDataCount = (loop == loopTimes - 1) ? dataCount_ - processedDataCount : maxCountPerLoop;
         tempAlgParams.count = currDataCount;

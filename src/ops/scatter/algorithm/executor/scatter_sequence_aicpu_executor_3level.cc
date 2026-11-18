@@ -182,6 +182,11 @@ ScatterSequenceAicpu3LevelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
     dataType_ = param.DataDes.dataType;
     algHierarchyInfo_ = resCtx.algHierarchyInfo;
     threads_ = resCtx.threads;
+    supportSymmetricMemory_ = param.supportSymmetricMemory;
+    if (supportSymmetricMemory_) {
+        SetSymmetricMemoryInfo(param);
+        HCCL_INFO("[ScatterSequenceAicpu3LevelExecutor][Orchestrate] %s: symmetric memory enabled", param.algName);
+    }
 
     if (algHierarchyInfo_.infos.size() < TOPO_LEVEL_NUM_2 || algHierarchyInfo_.infos[0].empty()
         || algHierarchyInfo_.infos[1].empty() || algHierarchyInfo_.infos[0][0].empty()
@@ -347,6 +352,7 @@ ScatterSequenceAicpu3LevelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
     tempAlgParamsLevel0.buffInfo.inBuffType = BufferType::INPUT;
     tempAlgParamsLevel0.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
     tempAlgParamsLevel0.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParamsLevel0.enableRemoteMemAccess = param.supportSymmetricMemory;
     tempAlgParamsLevel0.buffInfo.inputPtr = param.inputPtr;
     tempAlgParamsLevel0.buffInfo.outputPtr = resCtx.cclMem.addr;
     tempAlgParamsLevel0.buffInfo.hcclBuff = resCtx.cclMem;
@@ -364,6 +370,7 @@ ScatterSequenceAicpu3LevelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
     TemplateDataParams tempAlgParamsLevel1;
     tempAlgParamsLevel1.buffInfo.inBuffType = BufferType::HCCL_BUFFER;
     tempAlgParamsLevel1.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParamsLevel1.enableRemoteMemAccess = param.supportSymmetricMemory;
     tempAlgParamsLevel1.buffInfo.inputPtr = resCtx.cclMem.addr;
     tempAlgParamsLevel1.buffInfo.hcclBuff = resCtx.cclMem;
     if (skipLevel2_) {
@@ -385,6 +392,7 @@ ScatterSequenceAicpu3LevelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
     tempAlgParamsLevel2.buffInfo.inBuffType = BufferType::HCCL_BUFFER;
     tempAlgParamsLevel2.buffInfo.outBuffType = BufferType::OUTPUT;
     tempAlgParamsLevel2.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParamsLevel2.enableRemoteMemAccess = param.supportSymmetricMemory;
     tempAlgParamsLevel2.buffInfo.inputPtr = resCtx.cclMem.addr;
     tempAlgParamsLevel2.buffInfo.outputPtr = param.outputPtr;
     tempAlgParamsLevel2.buffInfo.hcclBuff = resCtx.cclMem;

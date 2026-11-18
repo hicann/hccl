@@ -167,6 +167,7 @@ add_library(hccl_aicpu_kernel SHARED
 
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce_scatter_v/algorithm/executor/ins_v2_reduce_scatter_v_sole_executor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce_scatter_v/algorithm/template/aicpu/ins_temp_reduce_scatter_v_mesh_1D.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce_scatter_v/algorithm/template/aicpu/ins_temp_reduce_scatter_v_mesh_1D_meshchunk.cc
 
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/algorithm/template/registry/alg_v2_template_register.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/batch_send_recv/algorithm/executor/ins_v2_batch_send_recv_executor.cc

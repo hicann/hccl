@@ -120,6 +120,17 @@ HcclResult HcclReduceScatterV(void *sendBuf, const void *sendCounts, const void 
 - 多个通信域下的所有通信算子在每个Device上需要保证串行下发，不允许乱序、多线程并发下发，也不支持线程重入。
 - 在同一Device上，同一通信域内的所有通信算子的下发线程需要使用相同的Context。
 
+<!-- npu="950" id20 -->
+### 对称内存（零拷贝）
+
+针对Ascend 950PR&950DT系列产品，ReduceScatterV支持对称内存（零拷贝）路径：总输入数据量大于128MB时选择MeshChunk（环形在途归约）算法，各rank在自身recvBuf原位累加、不经CCL Buffer中转。
+
+- 仅一级MESH_1D拓扑、非PCIe（含混合）组网、单算子（OPBASE）+ AICPU引擎、非in-place且所有rank的sendCounts均大于0时启用。
+- 全rank的sendBuf与recvBuf均需注册对称窗口。
+- int64等64位类型与PROD归约将自动回退至CCL Buffer中转路径。
+- MeshChunk（环形N-1步在途归约）与既有SoleMesh（fullmesh分轮）归约结构不同，超过128MB切换后浮点SUM结果可能与原有路径存在预期内的最低位差异（结构性差异，非精度回归）；固定环序重复执行结果逐位一致。
+<!-- end id20 -->
+
 ## 调用示例
 
 针对Atlas推理系列产品，通信域初始化须在其他涉及Device内存申请的操作之前，参见《[系统约束与限制](../../user_guide/constraints.md#atlas推理系列产品)》。

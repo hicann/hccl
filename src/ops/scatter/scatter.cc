@@ -178,6 +178,13 @@ HcclResult ScatterExecOp(
         std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
         CHK_RET(Selector(comm, param, topoInfo, algName));
 
+        if (GetHcommVersion() >= CANN_VERSION(9, 1, 0) && param.opMode == OpMode::OPBASE
+            && param.engine == CommEngine::COMM_ENGINE_AICPU_TS && topoInfo->level0Topo == Level0Shape::MESH_1D
+            && !topoInfo->level0PcieMix) {
+            // PCIe 混合组网下各 rank read/write 谓词可能不一致，排除
+            CheckAndSetSymmetricMemory(param);
+        }
+
         CHK_RET(HcclExecOp(comm, param, topoInfo, algName));
     } else {
         CHK_RET(ExecOp(comm, param)); // 保留原有A3流程

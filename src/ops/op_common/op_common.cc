@@ -4920,10 +4920,10 @@ bool IsBarrierHostDpu(HcclComm comm)
 // 与算子入口Selector后的限制条件保持一致
 static bool IsReduceOpSymMemAllowed(const OpParam& param)
 {
-    return param.DataDes.dataType != HcclDataType::HCCL_DATA_TYPE_INT64
-           && param.DataDes.dataType != HcclDataType::HCCL_DATA_TYPE_UINT64
-           && param.DataDes.dataType != HcclDataType::HCCL_DATA_TYPE_FP64
-           && param.reduceType != HcclReduceOp::HCCL_REDUCE_PROD;
+    HcclDataType dataType
+        = param.opType == HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V ? param.vDataDes.dataType : param.DataDes.dataType;
+    return dataType != HcclDataType::HCCL_DATA_TYPE_INT64 && dataType != HcclDataType::HCCL_DATA_TYPE_UINT64
+           && dataType != HcclDataType::HCCL_DATA_TYPE_FP64 && param.reduceType != HcclReduceOp::HCCL_REDUCE_PROD;
 }
 
 // 对称内存规约确定性门禁：SoleNHR 为单模板单棵全 rank 蝶形树，多级仅改变链路层、规约顺序仍固定，
@@ -4940,35 +4940,48 @@ bool IsReduceOpSymMemDeterministic(const std::string& algName, const TopoInfoWit
     }
     return algName == "AicpuReduceScatterPipeLineMeshNHR" || algName == "AicpuAllReducePipeLineMeshNHR"
            || algName == "AicpuAllReduceSoleMeshChunkTwoShot" || algName == "AicpuReduceScatterSoleMeshChunk"
-           || algName == "AicpuReduceScatterConcurMeshNHR" || algName == "AicpuAllReduceConcurMeshTwoShotNHR";
+           || algName == "AicpuReduceScatterConcurMeshNHR" || algName == "AicpuAllReduceConcurMeshTwoShotNHR"
+           || algName == "AicpuReduceScatterVSoleMeshChunk";
 }
+
+// 仅 Scatter 跳过 input 侧探测（API 结构原因：非 root sendBuf 可空/虚值）。
+// 其余算子（含 RSV）双侧照常探测：只要输入输出有数据即要求两侧均注册对称窗口，
+// 保持通用注册契约（当前模板未消费 input 窗口不等于后续新增算法不需要）。
+static bool NeedSymMemInputSide(HcclCMDType opType) { return opType != HcclCMDType::HCCL_CMD_SCATTER; }
 
 // 与CheckAndSetSymmetricMemory的探测范围一致：每一侧需要探测的buffer都拿到了对称窗口才算有效
 static bool IsSymMemWindowValid(const OpParam& param)
 {
-    bool inputValid = param.inputPtr == nullptr || param.inputSize == 0 || param.inputSymWindow != nullptr;
+    bool inputValid = !NeedSymMemInputSide(param.opType) || param.inputPtr == nullptr || param.inputSize == 0
+                      || param.inputSymWindow != nullptr;
     bool outputValid = param.outputPtr == nullptr || param.outputSize == 0 || param.outputSymWindow != nullptr;
     return inputValid && outputValid;
 }
 
 HcclResult RefreshSymmetricMemory(OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo)
 {
-    // 基础门禁与算子入口一致：版本、单算子模式、AICPU_TS引擎、MESH_1D一级拓扑
+    // 基础门禁与算子入口一致：版本、单算子模式、AICPU_TS引擎、MESH_1D一级拓扑、非 PCIe（含混合）组网。
+    // level0PcieMix 覆盖"L0 存在任何 PCIe 链路"（混合与纯 PCIe 均为 true）：此处与 scatter.cc /
+    // reduce_scatter_v.cc 两个入口的 !level0PcieMix 对齐，作为公共层统一兜底——尤其覆盖 CCU→AICPU
+    // 回退路径的补探测（入口条件不满足未探测、symMemChecked=false 时由本函数补测，若缺此检查
+    // 会在 PCIe 组网下绕过入口排除而开启对称，模板侧 read 模式回退 CCL 后单轮全量有越界风险）
     bool symMemAllowed = GetHcommVersion() >= CANN_VERSION(9, 1, 0) && param.opMode == OpMode::OPBASE
                          && param.engine == CommEngine::COMM_ENGINE_AICPU_TS
-                         && topoInfo->level0Topo == Level0Shape::MESH_1D;
+                         && topoInfo->level0Topo == Level0Shape::MESH_1D && !topoInfo->level0PcieMix;
     if (symMemAllowed) {
         switch (param.opType) {
             case HcclCMDType::HCCL_CMD_ALLGATHER:
             case HcclCMDType::HCCL_CMD_BROADCAST:
             case HcclCMDType::HCCL_CMD_ALLTOALL:
             case HcclCMDType::HCCL_CMD_ALLTOALLVC:
+            case HcclCMDType::HCCL_CMD_SCATTER:
                 break;
             case HcclCMDType::HCCL_CMD_ALLREDUCE:
                 symMemAllowed
                     = IsReduceOpSymMemAllowed(param) && IsReduceOpSymMemDeterministic(param.algName, topoInfo);
                 break;
             case HcclCMDType::HCCL_CMD_REDUCE_SCATTER:
+            case HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V:
                 symMemAllowed = IsReduceOpSymMemAllowed(param) && param.inputPtr != param.outputPtr
                                 && IsReduceOpSymMemDeterministic(param.algName, topoInfo);
                 break;
@@ -4998,7 +5011,9 @@ void CheckAndSetSymmetricMemory(OpParam& param)
     size_t inputOffset = 0;
     size_t outputOffset = 0;
 
-    if (param.inputPtr != nullptr && param.inputSize > 0) {
+    // 仅 Scatter 跳过 input 侧探测（API 结构原因，见 NeedSymMemInputSide）；其余算子（含 RSV）
+    // 双侧照常探测，对称窗口注册不区分读/写语义，input 窗口由使用它的模板消费
+    if (NeedSymMemInputSide(param.opType) && param.inputPtr != nullptr && param.inputSize > 0) {
         HcclResult ret
             = HcclCommSymWinGet(param.hcclComm, param.inputPtr, param.inputSize, &param.inputSymWindow, &inputOffset);
         if (ret != HCCL_SUCCESS || param.inputSymWindow == nullptr) {

@@ -139,6 +139,10 @@ HcclResult InsTempScatterMesh1D::KernelRun(
     u32 myAlgRank = 0;
     CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], myAlgRank));
     enableRemoteMemAccess_ = tempAlgParams.enableRemoteMemAccess;
+    // PCIe read 模式与对称直写互斥：read 模式数据由接收方从对端 CCL 槽拉取、
+    // remoteOutputGraphMode 直写落点不生效（与 InsTempScatterNHR 的 !isDmaRead_ 守卫一致）
+    isDmaRead_ = IsPcieProtocol(templateResource.channels);
+    HCCL_DEBUG("[InsTempScatterMesh1D] Use Dma Read[%d]", isDmaRead_);
     threadNum_ = templateResource.threads.size();
     processSize_ = tempAlgParams.sliceSize;
     dataType_ = param.DataDes.dataType;
@@ -175,11 +179,10 @@ HcclResult InsTempScatterMesh1D::KernelRun(
 HcclResult
 InsTempScatterMesh1D::PreCopy(const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads) const
 {
-    // 非根节点 或 in/outBuffType均为CCL BUFFER 或 零拷贝 则跳过前拷贝
+    // 非根节点 或 in/outBuffType均为CCL BUFFER 则跳过前拷贝
     if (u32(myRank_) != root_
         || (tempAlgParams.buffInfo.inBuffType == BufferType::HCCL_BUFFER
-            && tempAlgParams.buffInfo.outBuffType == BufferType::HCCL_BUFFER)
-        || enableRemoteMemAccess_) {
+            && tempAlgParams.buffInfo.outBuffType == BufferType::HCCL_BUFFER)) {
         HCCL_INFO("[InsTempScatterMesh1D][PreCopy] skip precopy, myRank = %u, root = %u", myRank_, root_);
         return HCCL_SUCCESS;
     }
@@ -218,8 +221,12 @@ InsTempScatterMesh1D::PostCopy(const TemplateDataParams& tempAlgParams, const st
 {
     bool isInplaceRootRank
         = u32(myRank_) == root_ && tempAlgParams.buffInfo.inputPtr == tempAlgParams.buffInfo.outputPtr;
-    // 通信结束之后，非root rank数据都在 cclBuffer 上，需要搬运到对应的输出位置。
-    if (tempAlgParams.buffInfo.outBuffType == BufferType::HCCL_BUFFER || enableRemoteMemAccess_) {
+    // 通信结束之后，数据需要搬运到对应的输出位置。
+    // 跳过谓词与 RunMesh 的 symDirectWrite 统一（对称直写仅 write 模式 + OUTPUT 层生效），
+    // 避免「数据落 CCL（如 PCIe read 模式）而 PostCopy 被跳过」的数据滞留
+    if (tempAlgParams.buffInfo.outBuffType == BufferType::HCCL_BUFFER
+        || (enableRemoteMemAccess_ && !isDmaRead_ && tempAlgParams.buffInfo.outBuffType == BufferType::OUTPUT
+            && !isInplaceRootRank)) {
         HCCL_INFO("[InsTempScatterMesh1D][PostCopy] skip postcopy, myRank = %u, root = %u", myRank_, root_);
         return HCCL_SUCCESS;
     }
@@ -258,10 +265,13 @@ HcclResult InsTempScatterMesh1D::RunMesh(
     const TemplateDataParams& tempAlgParams)
 {
     u32 myAlgRank = 0;
+    // 对称 SoleMesh 路径 loopTimes=1 无 256MB 上限，切片长度用 u64 防 >4GB 截断
     u64 curSliceSize = 0;
     u64 curCount = 0;
     const u32 dataTypeSize = DATATYPE_SIZE_TABLE[dataType_];
     CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], myAlgRank));
+    const bool symDirectWrite
+        = enableRemoteMemAccess_ && !isDmaRead_ && tempAlgParams.buffInfo.outBuffType == BufferType::OUTPUT;
     HCCL_DEBUG(
         "[InsTempScatterMesh1D][RunMesh] myRank[%d], myAlgRank[%d], channels size[%zu]", myRank_, myAlgRank,
         channels.size());
@@ -299,13 +309,14 @@ HcclResult InsTempScatterMesh1D::RunMesh(
                                         r * tempAlgParams.inputRepeatStride + algRank * tempAlgParams.inputSliceStride
                                             + tempAlgParams.buffInfo.inBuffBaseOff + elemOffset_[channelIdx];
                     u64 dstOffset
-                        = (!enableRemoteMemAccess_) ?
+                        = (!symDirectWrite) ?
                               tempAlgParams.buffInfo.hcclBuffBaseOff + algRank * tempAlgParams.outputSliceStride
                                   + r * tempAlgParams.outputRepeatStride + elemOffset_[channelIdx] :
                               tempAlgParams.buffInfo.outBuffBaseOff + algRank * tempAlgParams.outputSliceStride
                                   + r * tempAlgParams.outputRepeatStride + elemOffset_[channelIdx];
                     void* txDstPtr
-                        = (!enableRemoteMemAccess_) ? linkSend.remoteCclMem.addr : linkSend.remoteOutputGraphMode.addr;
+                        = (!symDirectWrite) ? linkSend.remoteCclMem.addr : linkSend.remoteOutputGraphMode.addr;
+                    CHK_PTR_NULL(txDstPtr);
                     HCCL_DEBUG("[InsTempScatterMesh1D][RunMesh] txDstPtr[%d]", txDstPtr);
                     HCCL_DEBUG(
                         "[InsTempScatterMesh1D][RunMesh] srcOffset[%d], tempAlgParams.buffInfo.inputPtr[%d]", srcOffset,
@@ -372,14 +383,15 @@ HcclResult InsTempScatterMesh1D::RunMesh(
                                         + myAlgRank * tempAlgParams.inputSliceStride + elemOffset_[channelIdx] :
                                     r * tempAlgParams.inputRepeatStride + myAlgRank * tempAlgParams.inputSliceStride
                                         + tempAlgParams.buffInfo.inBuffBaseOff + elemOffset_[channelIdx];
-                u64 dstOffset = (!enableRemoteMemAccess_) ?
+                u64 dstOffset = (!symDirectWrite) ?
                                     tempAlgParams.buffInfo.hcclBuffBaseOff + myAlgRank * tempAlgParams.outputSliceStride
                                         + r * tempAlgParams.outputRepeatStride + elemOffset_[channelIdx] :
                                     tempAlgParams.buffInfo.outBuffBaseOff + myAlgRank * tempAlgParams.outputSliceStride
                                         + r * tempAlgParams.outputRepeatStride + elemOffset_[channelIdx];
                 // write模式使用tx, rx地址不生效，仅使用对端link做Post/Wait
-                void* rxDstPtr = (!enableRemoteMemAccess_) ? tempAlgParams.buffInfo.hcclBuff.addr :
-                                                             tempAlgParams.buffInfo.outputPtr;
+                void* rxDstPtr
+                    = (!symDirectWrite) ? tempAlgParams.buffInfo.hcclBuff.addr : tempAlgParams.buffInfo.outputPtr;
+                CHK_PTR_NULL(rxDstPtr);
                 DataSlice srcSlice = DataSlice(tempAlgParams.buffInfo.inputPtr, srcOffset, curSliceSize, curCount);
                 DataSlice dstSlice = DataSlice(rxDstPtr, dstOffset, curSliceSize, curCount);
                 rxSrcSlices.push_back(srcSlice);

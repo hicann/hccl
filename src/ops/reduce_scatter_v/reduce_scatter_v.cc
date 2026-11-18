@@ -170,6 +170,9 @@ HcclResult HcclReduceScatterVGraphMode(
 }
 
 namespace ops_hccl {
+// 实机分界点调优结论：64~128MB 未实测区间保守维持已验证的 SoleMesh，>128MB MeshChunk 实测更优
+constexpr u64 RSV_MESHCHUNK_MIN_DATA_SIZE = 128 * 1024 * 1024;
+
 HcclResult CheckReduceScatterVInputParam(
     const HcclComm comm, const void* sendBuf, const void* recvBuf, uint64_t recvCount, const void* sendCounts,
     const void* sendDispls, const aclrtStream stream)
@@ -375,6 +378,43 @@ HcclResult ReduceScatterVOutPlaceCommon(
     }
 
     CHK_RET(Selector(comm, param, topoInfo, algName));
+
+    if (GetHcommVersion() >= CANN_VERSION(9, 1, 0) && param.opMode == OpMode::OPBASE
+        && param.engine == CommEngine::COMM_ENGINE_AICPU_TS && topoInfo->level0Topo == Level0Shape::MESH_1D
+        && !topoInfo->level0PcieMix && topoInfo->topoLevelNums == TOPO_LEVEL_NUM_1
+        && algName == "AicpuReduceScatterVSoleMesh" && param.inputPtr != nullptr && param.inputPtr != param.outputPtr
+        && param.outputPtr != nullptr && param.outputSize > 0
+        && param.vDataDes.dataType != HcclDataType::HCCL_DATA_TYPE_INT64
+        && param.vDataDes.dataType != HcclDataType::HCCL_DATA_TYPE_UINT64
+        && param.vDataDes.dataType != HcclDataType::HCCL_DATA_TYPE_FP64
+        && param.reduceType != HcclReduceOp::HCCL_REDUCE_PROD) {
+        const u64* countsAddr = reinterpret_cast<const u64*>(param.varData);
+        bool allRanksRecvPositive = true;
+        for (u32 i = 0; i < userRankSize; i++) {
+            if (countsAddr[i] == 0) {
+                allRanksRecvPositive = false;
+                break;
+            }
+        }
+        if (param.inputSize > RSV_MESHCHUNK_MIN_DATA_SIZE) {
+            CheckAndSetSymmetricMemory(param);
+            if (param.supportSymmetricMemory && allRanksRecvPositive) {
+                algName = "AicpuReduceScatterVSoleMeshChunk";
+                // algTag 是资源上下文的 key，切换 algName 后必须同步更新
+                CHK_RET(SetOpParamAlgTag(param, algName));
+                HCCL_INFO(
+                    "[ReduceScatterVOutPlaceCommon] switch to symmetric AicpuReduceScatterVSoleMeshChunk, "
+                    "inputSize[%llu], algName[%s]",
+                    param.inputSize, algName.c_str());
+            } else {
+                param.supportSymmetricMemory = false;
+            }
+        } else {
+            // 小数据量维持既有 SoleMesh；标记已查过避免 RefreshSymmetricMemory 补探测
+            param.symMemChecked = true;
+            param.supportSymmetricMemory = false;
+        }
+    }
 
     CHK_RET(HcclExecOp(comm, param, topoInfo, algName, resPack));
     return HCCL_SUCCESS;

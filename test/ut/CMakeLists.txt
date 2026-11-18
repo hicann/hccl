@@ -24,6 +24,8 @@ add_subdirectory(common/channel_process_link)
 add_subdirectory(common/ccu_resource_expansion)
 # white_box_guards: 序列化反序列化边界校验、图模式资源计算零值守卫的防御性 UT。
 add_subdirectory(common/white_box_guards)
+# sym_mem_gate: 对称内存公共层门禁矩阵（opType/算法白名单/类型门禁/input侧探测策略/探测失败回退）
+add_subdirectory(common/sym_mem_gate)
 add_subdirectory(common/template_utils)
 add_subdirectory(common/alg_rank)
 add_subdirectory(selector_engine)

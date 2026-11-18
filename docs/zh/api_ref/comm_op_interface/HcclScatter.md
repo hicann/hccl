@@ -83,6 +83,16 @@ HcclResult HcclScatter(void *sendBuf, void *recvBuf, uint64_t recvCount, HcclDat
 - 多个通信域下的所有通信算子在每个Device上需要保证串行下发，不允许乱序、多线程并发下发，也不支持线程重入。
 - 在同一Device上，同一通信域内的所有通信算子的下发线程需要使用相同的Context。
 
+<!-- npu="950" id14 -->
+### 对称内存（零拷贝）
+
+针对Ascend 950PR&950DT系列产品，Scatter支持对称内存（零拷贝）路径：root直写对端recvBuf、非root免本地拷贝。
+
+- 全rank的recvBuf均需要注册对称窗口。
+- 跨卡写仅落对端recvBuf、不污染输入。
+- 一级拓扑（level0）为MESH_1D时启用（单级SoleMesh与多级NHR系组合均支持，直写/中转由算法模板按层分派）；非PCIe（含混合）组网、单算子（OPBASE）+ AICPU引擎、对称窗口未注册或探测失败时自动回退原有CCL中转路径。
+<!-- end id14 -->
+
 ## 调用示例
 
 ```c

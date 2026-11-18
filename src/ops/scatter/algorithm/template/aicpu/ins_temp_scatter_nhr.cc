@@ -281,33 +281,70 @@ HcclResult InsTempScatterNHR::KernelRun(
 HcclResult
 InsTempScatterNHR::PreCopy(const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads) const
 {
-    if (u32(myRank_) != root_ || tempAlgParams.buffInfo.inBuffType == BufferType::HCCL_BUFFER
-        || enableRemoteMemAccess_) {
+    if (u32(myRank_) != root_) {
         HCCL_INFO("[InsTempScatterNHR][Precopy] skip precopy, myRank = %u, root = %u", myRank_, root_);
         return HCCL_SUCCESS;
     }
-
-    u64 curSliceSize = 0;
-    u64 curCount = 0;
     const u32 dataTypeSize = DATATYPE_SIZE_TABLE[dataType_];
+    if (enableRemoteMemAccess_ && !isDmaRead_) {
+        const bool toOutput = tempAlgParams.buffInfo.outBuffType == BufferType::OUTPUT;
+        const bool inIsInput = tempAlgParams.buffInfo.inBuffType == BufferType::INPUT;
+        if (!toOutput && !inIsInput) {
+            // in/out 均为 CCL 中转层：root 自槽已在 CCL 正确位置，无需拷贝
+            HCCL_INFO("[InsTempScatterNHR][Precopy] skip self-slot copy, transit layer, myRank = %u", myRank_);
+            return HCCL_SUCCESS;
+        }
+        if (toOutput && inIsInput && tempAlgParams.buffInfo.inputPtr == tempAlgParams.buffInfo.outputPtr) {
+            // 对称 in-place root（单级 INPUT→OUTPUT 层）：自槽搬运延后到 PostCopy 补做。
+            // 此处先写 userOut 起始区（outputSliceStride=0 的自槽落点）会覆盖 userIn 的 0 号
+            // 分片，而 BatchSend 的 root 源直读（rootDirectRead）尚需读取该分片发送给 0 号 rank
+            HCCL_INFO("[InsTempScatterNHR][Precopy] skip self-slot copy due to inplace, myRank = %u", myRank_);
+            return HCCL_SUCCESS;
+        }
+        u32 myAlgRank = 0;
+        CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], myAlgRank));
+        for (u32 r = 0; r < tempAlgParams.repeatNum; r++) {
+            void* srcPtr = inIsInput ? tempAlgParams.buffInfo.inputPtr : tempAlgParams.buffInfo.hcclBuff.addr;
+            u64 srcOffset = inIsInput ?
+                                (r * tempAlgParams.inputRepeatStride + tempAlgParams.inputSliceStride * myAlgRank
+                                 + tempAlgParams.buffInfo.inBuffBaseOff) :
+                                (r * templateRankSize_ * tempAlgParams.sliceSize
+                                 + tempAlgParams.buffInfo.hcclBuffBaseOff + myAlgRank * tempAlgParams.sliceSize);
+            u64 dstOffset = toOutput ? (tempAlgParams.buffInfo.outBuffBaseOff
+                                        + myAlgRank * tempAlgParams.outputSliceStride + r * tempAlgParams.sliceSize) :
+                                       (r * templateRankSize_ * tempAlgParams.sliceSize
+                                        + tempAlgParams.buffInfo.hcclBuffBaseOff + myAlgRank * tempAlgParams.sliceSize);
+            void* dstPtr = toOutput ? tempAlgParams.buffInfo.outputPtr : tempAlgParams.buffInfo.hcclBuff.addr;
+            u64 curSliceSize = tempAlgParams.tailSize != 0 && myAlgRank == templateRankSize_ - 1 ?
+                                   tempAlgParams.tailSize :
+                                   processSize_;
+            DataSlice srcSlice = DataSlice(srcPtr, srcOffset, curSliceSize, curSliceSize / dataTypeSize);
+            DataSlice dstSlice = DataSlice(dstPtr, dstOffset, curSliceSize, curSliceSize / dataTypeSize);
+            CHK_RET(static_cast<HcclResult>(LocalCopy(threads.at(0), srcSlice, dstSlice)));
+        }
+        return HCCL_SUCCESS;
+    }
 
+    if (tempAlgParams.buffInfo.inBuffType == BufferType::HCCL_BUFFER) {
+        HCCL_INFO("[InsTempScatterNHR][Precopy] skip precopy, in is CCL buffer, myRank = %u", myRank_);
+        return HCCL_SUCCESS;
+    }
     for (u32 r = 0; r < tempAlgParams.repeatNum; r++) {
         for (u32 algRank = 0; algRank < templateRankSize_; algRank++) {
             u64 srcOffset = r * tempAlgParams.inputRepeatStride + tempAlgParams.inputSliceStride * algRank
                             + tempAlgParams.buffInfo.inBuffBaseOff;
             u64 dstOffset = r * templateRankSize_ * tempAlgParams.sliceSize + tempAlgParams.buffInfo.hcclBuffBaseOff
                             + algRank * tempAlgParams.sliceSize;
-
-            curSliceSize = tempAlgParams.tailSize != 0 && algRank == templateRankSize_ - 1 ? tempAlgParams.tailSize :
-                                                                                             processSize_;
-            curCount = curSliceSize / dataTypeSize;
+            u64 curSliceSize = tempAlgParams.tailSize != 0 && algRank == templateRankSize_ - 1 ?
+                                   tempAlgParams.tailSize :
+                                   processSize_;
+            u64 curCount = curSliceSize / dataTypeSize;
             DataSlice srcSlice = DataSlice(tempAlgParams.buffInfo.inputPtr, srcOffset, curSliceSize, curCount);
             DataSlice dstSlice = DataSlice(tempAlgParams.buffInfo.hcclBuff.addr, dstOffset, curSliceSize, curCount);
             CHK_RET(static_cast<HcclResult>(LocalCopy(threads.at(0), srcSlice, dstSlice)));
         }
     }
-
-    return HcclResult::HCCL_SUCCESS;
+    return HCCL_SUCCESS;
 }
 
 HcclResult
@@ -319,15 +356,29 @@ InsTempScatterNHR::PostCopy(const TemplateDataParams& tempAlgParams, const std::
     u64 curSliceSize
         = tempAlgParams.tailSize != 0 && myAlgRank == templateRankSize_ - 1 ? tempAlgParams.tailSize : processSize_;
     u64 curCount = curSliceSize / dataTypeSize;
+    // 对称 in-place root（单级 INPUT→OUTPUT 层）：自槽搬运由本函数补做（源=userIn 自身分片），
+    // PreCopy 阶段先写会污染 root 直读发送源；通信完成后（RunNHR 已结束）读写安全
+    const bool isInplaceRootRank = enableRemoteMemAccess_ && !isDmaRead_ && u32(myRank_) == root_
+                                   && tempAlgParams.buffInfo.inBuffType == BufferType::INPUT
+                                   && tempAlgParams.buffInfo.outBuffType == BufferType::OUTPUT
+                                   && tempAlgParams.buffInfo.inputPtr == tempAlgParams.buffInfo.outputPtr;
+    // 对称内存：OUTPUT 落点层各 rank 的最终 chunk 已由末跳直写落 userOut（②），跳过 PostCopy；
+    // in-place root 例外（自槽延后至此）；中转层（outBuffType==HCCL_BUFFER）维持既有拷贝行为
+    const bool skipSymPostCopy = enableRemoteMemAccess_ && !isDmaRead_
+                                 && tempAlgParams.buffInfo.outBuffType == BufferType::OUTPUT && !isInplaceRootRank;
     for (u32 r = 0; r < tempAlgParams.repeatNum; r++) {
-        u64 srcOffset = r * templateRankSize_ * tempAlgParams.sliceSize + tempAlgParams.buffInfo.hcclBuffBaseOff
-                        + myAlgRank * tempAlgParams.sliceSize;
+        void* srcPtr = isInplaceRootRank ? tempAlgParams.buffInfo.inputPtr : tempAlgParams.buffInfo.hcclBuff.addr;
+        u64 srcOffset = isInplaceRootRank ?
+                            (tempAlgParams.buffInfo.inBuffBaseOff + tempAlgParams.inputSliceStride * myAlgRank
+                             + r * tempAlgParams.inputRepeatStride) :
+                            (r * templateRankSize_ * tempAlgParams.sliceSize + tempAlgParams.buffInfo.hcclBuffBaseOff
+                             + myAlgRank * tempAlgParams.sliceSize);
         u64 dstOffset = tempAlgParams.buffInfo.outBuffBaseOff + myAlgRank * tempAlgParams.outputSliceStride
                         + r * tempAlgParams.sliceSize;
-        DataSlice srcSlice = DataSlice(tempAlgParams.buffInfo.hcclBuff.addr, srcOffset, curSliceSize, curCount);
+        DataSlice srcSlice = DataSlice(srcPtr, srcOffset, curSliceSize, curCount);
         DataSlice dstSlice = DataSlice(tempAlgParams.buffInfo.outputPtr, dstOffset, curSliceSize, curCount);
         if ((tempAlgParams.buffInfo.outBuffType == BufferType::HCCL_BUFFER && srcOffset == dstOffset)
-            || enableRemoteMemAccess_) {
+            || skipSymPostCopy) {
             continue;
         }
         CHK_RET(static_cast<HcclResult>(LocalCopy(threads.at(0), srcSlice, dstSlice)));
@@ -374,9 +425,15 @@ HcclResult InsTempScatterNHR::BatchSend(
     const ChannelInfo& linkSend = channels.at(stepInfo.toRank)[channelIdx];
     CHK_PTR_NULL(linkSend.remoteCclMem.addr);
     HCCL_INFO("[InsTempScatterNHR][BatchSend] myRank[%d], toRank[%d]", myRank_, stepInfo.toRank);
-    void* remoteBuff = (!enableRemoteMemAccess_) ? linkSend.remoteCclMem.addr : linkSend.remoteOutputGraphMode.addr;
-    void* localBuff
-        = (!enableRemoteMemAccess_) ? tempAlgParams.buffInfo.hcclBuff.addr : tempAlgParams.buffInfo.outputPtr;
+    const bool rootDirectRead = enableRemoteMemAccess_ && !isDmaRead_ && u32(myRank_) == root_
+                                && tempAlgParams.buffInfo.inBuffType == BufferType::INPUT;
+    const bool outputLayer
+        = enableRemoteMemAccess_ && !isDmaRead_ && tempAlgParams.buffInfo.outBuffType == BufferType::OUTPUT;
+    // toAlgRank 仅末跳直写（finalHopDirectWrite）使用，非 outputLayer 路径不执行 GetAlgRank
+    u32 toAlgRank = 0;
+    if (outputLayer) {
+        CHK_RET(GetAlgRank(stepInfo.toRank, subCommRanks_[0], toAlgRank));
+    }
     std::vector<DataSlice> srcSlices;
     std::vector<DataSlice> dstSlices;
     u64 curSliceSize = 0;
@@ -388,17 +445,26 @@ HcclResult InsTempScatterNHR::BatchSend(
             const u64 txPartialOffset = (txId == templateRankSize_ - 1 && tempAlgParams.tailSize != 0) ?
                                             dataOffsetTail_[channelIdx] :
                                             dataOffset_[channelIdx];
-            u64 srcDstOffset
-                = (!enableRemoteMemAccess_) ?
+            u64 srcOffset
+                = rootDirectRead ?
+                      (tempAlgParams.buffInfo.inBuffBaseOff + txId * tempAlgParams.inputSliceStride
+                       + repeat * tempAlgParams.inputRepeatStride + txPartialOffset) :
                       (repeat * templateRankSize_ * tempAlgParams.sliceSize + tempAlgParams.buffInfo.hcclBuffBaseOff
-                       + txId * tempAlgParams.sliceSize + txPartialOffset) :
-                      (tempAlgParams.buffInfo.outBuffBaseOff + txId * tempAlgParams.outputSliceStride
-                       + repeat * tempAlgParams.sliceSize + txPartialOffset);
+                       + txId * tempAlgParams.sliceSize + txPartialOffset);
+            void* srcPtr = rootDirectRead ? tempAlgParams.buffInfo.inputPtr : tempAlgParams.buffInfo.hcclBuff.addr;
+            const bool finalHopDirectWrite = outputLayer && txId == toAlgRank;
+            u64 dstOffset = finalHopDirectWrite ?
+                                (tempAlgParams.buffInfo.outBuffBaseOff + txId * tempAlgParams.outputSliceStride
+                                 + repeat * tempAlgParams.sliceSize + txPartialOffset) :
+                                (tempAlgParams.buffInfo.hcclBuffBaseOff + txId * tempAlgParams.sliceSize
+                                 + repeat * templateRankSize_ * tempAlgParams.sliceSize + txPartialOffset);
+            void* dstPtr = finalHopDirectWrite ? linkSend.remoteOutputGraphMode.addr : linkSend.remoteCclMem.addr;
+            CHK_PTR_NULL(dstPtr);
             curSliceSize = (tempAlgParams.tailSize != 0 && txId == templateRankSize_ - 1) ? dataSplitTail_[channelIdx] :
                                                                                             dataSplit_[channelIdx];
             curCount = curSliceSize / dataTypeSize;
-            DataSlice srcSlice = DataSlice(localBuff, srcDstOffset, curSliceSize, curCount);
-            DataSlice dstSlice = DataSlice(remoteBuff, srcDstOffset, curSliceSize, curCount);
+            DataSlice srcSlice = DataSlice(srcPtr, srcOffset, curSliceSize, curCount);
+            DataSlice dstSlice = DataSlice(dstPtr, dstOffset, curSliceSize, curCount);
             srcSlices.push_back(srcSlice);
             dstSlices.push_back(dstSlice);
         }
@@ -427,9 +493,10 @@ HcclResult InsTempScatterNHR::BatchRecv(
         HCCL_E_INTERNAL);
     const ChannelInfo& linkRecv = channels.at(stepInfo.fromRank)[channelIdx];
     CHK_PTR_NULL(linkRecv.remoteCclMem.addr);
-    void* remoteBuff = (!enableRemoteMemAccess_) ? linkRecv.remoteCclMem.addr : linkRecv.remoteOutputGraphMode.addr;
-    void* localBuff
-        = (!enableRemoteMemAccess_) ? tempAlgParams.buffInfo.hcclBuff.addr : tempAlgParams.buffInfo.outputPtr;
+    // 对称内存为 write 模式：rx 地址不生效（数据由发送方按末跳直写/中转规则落对端 buffer，
+    // 仅使用对端 link 做 Post/Wait），统一按 CCL 槽位编址，与非对称路径布局一致
+    void* remoteBuff = linkRecv.remoteCclMem.addr;
+    void* localBuff = tempAlgParams.buffInfo.hcclBuff.addr;
     std::vector<DataSlice> srcSlices;
     std::vector<DataSlice> dstSlices;
     u64 curSliceSize = 0;
@@ -441,12 +508,9 @@ HcclResult InsTempScatterNHR::BatchRecv(
             const u64 rxPartialOffset = (rxId == templateRankSize_ - 1 && tempAlgParams.tailSize != 0) ?
                                             dataOffsetTail_[channelIdx] :
                                             dataOffset_[channelIdx];
-            u64 srcDstOffset
-                = (!enableRemoteMemAccess_) ?
-                      (repeat * templateRankSize_ * tempAlgParams.sliceSize + tempAlgParams.buffInfo.hcclBuffBaseOff
-                       + rxId * tempAlgParams.sliceSize + rxPartialOffset) :
-                      (tempAlgParams.buffInfo.outBuffBaseOff + rxId * tempAlgParams.outputSliceStride
-                       + repeat * tempAlgParams.sliceSize + rxPartialOffset);
+            u64 srcDstOffset = repeat * templateRankSize_ * tempAlgParams.sliceSize
+                               + tempAlgParams.buffInfo.hcclBuffBaseOff + rxId * tempAlgParams.sliceSize
+                               + rxPartialOffset;
             curSliceSize = (tempAlgParams.tailSize != 0 && rxId == templateRankSize_ - 1) ? dataSplitTail_[channelIdx] :
                                                                                             dataSplit_[channelIdx];
             curCount = curSliceSize / dataTypeSize;
@@ -486,10 +550,17 @@ HcclResult InsTempScatterNHR::BatchSR(
     const ChannelInfo& linkRecv = channels.at(stepInfo.fromRank)[channelIdx];
     CHK_PTR_NULL(linkSend.remoteCclMem.addr);
     CHK_PTR_NULL(linkRecv.remoteCclMem.addr);
-    void* sendRemoteBuff = (!enableRemoteMemAccess_) ? linkSend.remoteCclMem.addr : linkSend.remoteOutputGraphMode.addr;
-    void* recvRemoteBuff = (!enableRemoteMemAccess_) ? linkRecv.remoteCclMem.addr : linkRecv.remoteOutputGraphMode.addr;
-    void* localBuff
-        = (!enableRemoteMemAccess_) ? tempAlgParams.buffInfo.hcclBuff.addr : tempAlgParams.buffInfo.outputPtr;
+    // 对称内存统一规则（同 BatchSend）：root 源直读 userIn（①）；本层 OUTPUT 落点且接收方 ==
+    // 槽位最终目的 rank 时直写对端 userOut（②）；rx 侧为 write 模式，统一按 CCL 槽位编址
+    const bool rootDirectRead = enableRemoteMemAccess_ && !isDmaRead_ && u32(myRank_) == root_
+                                && tempAlgParams.buffInfo.inBuffType == BufferType::INPUT;
+    const bool outputLayer
+        = enableRemoteMemAccess_ && !isDmaRead_ && tempAlgParams.buffInfo.outBuffType == BufferType::OUTPUT;
+    // toAlgRank 仅末跳直写（finalHopDirectWrite）使用，非 outputLayer 路径不执行 GetAlgRank
+    u32 toAlgRank = 0;
+    if (outputLayer) {
+        CHK_RET(GetAlgRank(stepInfo.toRank, subCommRanks_[0], toAlgRank));
+    }
 
     u64 curSliceSize = 0;
     u64 curCount = 0;
@@ -505,17 +576,26 @@ HcclResult InsTempScatterNHR::BatchSR(
             const u64 txPartialOffset = (txId == templateRankSize_ - 1 && tempAlgParams.tailSize != 0) ?
                                             dataOffsetTail_[channelIdx] :
                                             dataOffset_[channelIdx];
-            u64 srcDstOffset
-                = (!enableRemoteMemAccess_) ?
+            u64 srcOffset
+                = rootDirectRead ?
+                      (tempAlgParams.buffInfo.inBuffBaseOff + txId * tempAlgParams.inputSliceStride
+                       + repeat * tempAlgParams.inputRepeatStride + txPartialOffset) :
                       (repeat * templateRankSize_ * tempAlgParams.sliceSize + tempAlgParams.buffInfo.hcclBuffBaseOff
-                       + txId * tempAlgParams.sliceSize + txPartialOffset) :
-                      (tempAlgParams.buffInfo.outBuffBaseOff + txId * tempAlgParams.outputSliceStride
-                       + repeat * tempAlgParams.sliceSize + txPartialOffset);
+                       + txId * tempAlgParams.sliceSize + txPartialOffset);
+            void* srcPtr = rootDirectRead ? tempAlgParams.buffInfo.inputPtr : tempAlgParams.buffInfo.hcclBuff.addr;
+            const bool finalHopDirectWrite = outputLayer && txId == toAlgRank;
+            u64 dstOffset = finalHopDirectWrite ?
+                                (tempAlgParams.buffInfo.outBuffBaseOff + txId * tempAlgParams.outputSliceStride
+                                 + repeat * tempAlgParams.sliceSize + txPartialOffset) :
+                                (tempAlgParams.buffInfo.hcclBuffBaseOff + txId * tempAlgParams.sliceSize
+                                 + repeat * templateRankSize_ * tempAlgParams.sliceSize + txPartialOffset);
+            void* dstPtr = finalHopDirectWrite ? linkSend.remoteOutputGraphMode.addr : linkSend.remoteCclMem.addr;
+            CHK_PTR_NULL(dstPtr);
             curSliceSize = (tempAlgParams.tailSize != 0 && txId == templateRankSize_ - 1) ? dataSplitTail_[channelIdx] :
                                                                                             dataSplit_[channelIdx];
             curCount = curSliceSize / dataTypeSize;
-            DataSlice srcSlice(localBuff, srcDstOffset, curSliceSize, curCount);
-            DataSlice dstSlice(sendRemoteBuff, srcDstOffset, curSliceSize, curCount);
+            DataSlice srcSlice = DataSlice(srcPtr, srcOffset, curSliceSize, curCount);
+            DataSlice dstSlice = DataSlice(dstPtr, dstOffset, curSliceSize, curCount);
             txSrcSlices.push_back(srcSlice);
             txDstSlices.push_back(dstSlice);
         }
@@ -524,17 +604,14 @@ HcclResult InsTempScatterNHR::BatchSR(
             const u64 rxPartialOffset = (rxId == templateRankSize_ - 1 && tempAlgParams.tailSize != 0) ?
                                             dataOffsetTail_[channelIdx] :
                                             dataOffset_[channelIdx];
-            u64 srcDstOffset
-                = (!enableRemoteMemAccess_) ?
-                      (repeat * templateRankSize_ * tempAlgParams.sliceSize + tempAlgParams.buffInfo.hcclBuffBaseOff
-                       + rxId * tempAlgParams.sliceSize + rxPartialOffset) :
-                      (tempAlgParams.buffInfo.outBuffBaseOff + rxId * tempAlgParams.outputSliceStride
-                       + repeat * tempAlgParams.sliceSize + rxPartialOffset);
+            u64 srcDstOffset = repeat * templateRankSize_ * tempAlgParams.sliceSize
+                               + tempAlgParams.buffInfo.hcclBuffBaseOff + rxId * tempAlgParams.sliceSize
+                               + rxPartialOffset;
             curSliceSize = (tempAlgParams.tailSize != 0 && rxId == templateRankSize_ - 1) ? dataSplitTail_[channelIdx] :
                                                                                             dataSplit_[channelIdx];
             curCount = curSliceSize / dataTypeSize;
-            DataSlice srcSlice = DataSlice(recvRemoteBuff, srcDstOffset, curSliceSize, curCount);
-            DataSlice dstSlice = DataSlice(localBuff, srcDstOffset, curSliceSize, curCount);
+            DataSlice srcSlice = DataSlice(linkRecv.remoteCclMem.addr, srcDstOffset, curSliceSize, curCount);
+            DataSlice dstSlice = DataSlice(tempAlgParams.buffInfo.hcclBuff.addr, srcDstOffset, curSliceSize, curCount);
             rxSrcSlices.push_back(srcSlice);
             rxDstSlices.push_back(dstSlice);
         }

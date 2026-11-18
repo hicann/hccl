@@ -13,6 +13,7 @@
 #include "topo_match_one_level.h"
 #include "ins_temp_reduce_scatter_v_mesh_1D.h"
 #include "ins_temp_dpu_reduce_scatter_v_mesh.h"
+#include "ins_temp_reduce_scatter_v_mesh_1D_meshchunk.h"
 #include "alg_attrs_registry.h"
 #include "auto_selector_base.h"
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
@@ -55,6 +56,10 @@ HcclResult InsV2ReduceScatterVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orches
     maxTmpMemSize_ = resCtx.cclMem.size;
     // 给channels_和threads_赋值
     threads_ = resCtx.threads;
+    supportSymmetricMemory_ = param.supportSymmetricMemory;
+    if (supportSymmetricMemory_) {
+        SetSymmetricMemoryInfo(param);
+    }
     if (param.engine != CommEngine::COMM_ENGINE_AIV && param.engine != CommEngine::COMM_ENGINE_CCU) {
         CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));
     }
@@ -150,6 +155,24 @@ HcclResult InsV2ReduceScatterVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orches
     }
     // 全0 sendCounts时无数据需要搬运, loopTimes为0直接空过, 防止u64下溢
     u64 loopTimes = (maxRecvDataCount == 0) ? 0 : (1 + ((maxRecvDataCount - 1) / maxDataCountPerLoop)); // 向上取整
+
+    // MeshChunk 须单轮：多轮会向对端同一 CCL 槽重复 WriteReduce
+    if (std::string(param.algName) == "AicpuReduceScatterVSoleMeshChunk" && maxRecvDataCount > 0) {
+        // 非对称单轮全量须受 scratch 容量约束
+        CHK_PRT_RET(
+            !param.supportSymmetricMemory && maxRecvDataCount > maxDataCountPerLoop,
+            HCCL_ERROR(
+                "[InsV2ReduceScatterVSoleExecutor][OrchestrateOpbase] non-symmetric MeshChunk requires single loop, "
+                "maxRecvDataCount[%llu] exceeds scratch bound[%llu]",
+                maxRecvDataCount, maxDataCountPerLoop),
+            HCCL_E_NOT_SUPPORT);
+        maxDataCountPerLoop = maxRecvDataCount;
+        loopTimes = 1;
+    }
+    if (param.supportSymmetricMemory && std::string(param.algName) == "AicpuReduceScatterVSoleMeshChunk") {
+        tempAlgParams.enableRemoteMemAccess = true;
+        HCCL_INFO("[InsV2ReduceScatterVSoleExecutor][OrchestrateLoop] %s: symmetric memory enabled", param.algName);
+    }
 
     u64 processedDataCount = 0;
     tempAlgParams.allRankSliceSize.resize(rankSize_);
@@ -256,7 +279,7 @@ REGISTER_ALG_ATTRS(
             return AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
         }
         return true;
-    };);
+    });
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V, DpuReduceScatterVSoleMesh, InsV2ReduceScatterVSoleExecutor,
@@ -267,6 +290,12 @@ REGISTER_ALG_ATTRS(DpuReduceScatterVSoleMesh, topo.isSupportLevel0PcieMix = true
                    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
                    op.unsupportedDataTypes = UNSUPPORTED_UINT64_FP64;);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
+REGISTER_EXEC_V2(
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V, AicpuReduceScatterVSoleMeshChunk, InsV2ReduceScatterVSoleExecutor,
+    TopoMatchOneLevel, InsTempReduceScatterVMesh1DMeshChunk);
+REGISTER_ALG_ATTRS(AicpuReduceScatterVSoleMeshChunk, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
+                   topo.isSupportLevel0PcieMix = false; op.isSupportProd = false; op.isSupportInplace = false;
+                   op.unsupportedDataTypes = UNSUPPORTED_64BIT;);
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(

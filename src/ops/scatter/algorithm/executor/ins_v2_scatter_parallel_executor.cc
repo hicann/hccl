@@ -337,6 +337,11 @@ HcclResult InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     root_ = param.root;
     // 给channels_和threads_赋值
     threads_ = resCtx.threads;
+    supportSymmetricMemory_ = param.supportSymmetricMemory;
+    if (supportSymmetricMemory_) {
+        SetSymmetricMemoryInfo(param);
+        HCCL_INFO("[InsV2ScatterParallelExecutor][Orchestrate] %s: symmetric memory enabled", param.algName);
+    }
     HCCL_INFO(
         "[InsV2ScatterParallelExecutor][Orchestrate] resCtx.threads.size()[%zu], resCtx.cclMem.size[%u]",
         resCtx.threads.size(), resCtx.cclMem.size);
@@ -710,6 +715,7 @@ void InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1
     tempAlgParamsIntra0.buffInfo.inBuffType = BufferType::INPUT;
     tempAlgParamsIntra0.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
     tempAlgParamsIntra0.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParamsIntra0.enableRemoteMemAccess = param.supportSymmetricMemory;
     tempAlgParamsIntra0.buffInfo.inBuffBaseOff = dataOffset;
     tempAlgParamsIntra0.buffInfo.outBuffBaseOff = scratchOffset;
     tempAlgParamsIntra0.buffInfo.hcclBuffBaseOff = scratchOffset;
@@ -740,6 +746,7 @@ void InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1
     tempAlgParamsInter0.buffInfo.inBuffType = BufferType::HCCL_BUFFER;
     tempAlgParamsInter0.buffInfo.outBuffType = BufferType::OUTPUT;
     tempAlgParamsInter0.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParamsInter0.enableRemoteMemAccess = param.supportSymmetricMemory;
     tempAlgParamsInter0.buffInfo.inBuffBaseOff = scratchOffset;
     tempAlgParamsInter0.buffInfo.outBuffBaseOff = dataOffset;
     tempAlgParamsInter0.buffInfo.hcclBuffBaseOff = scratchOffset;
@@ -770,6 +777,7 @@ void InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1
     tempAlgParamsInter1.buffInfo.inBuffType = BufferType::INPUT;
     tempAlgParamsInter1.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
     tempAlgParamsInter1.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParamsInter1.enableRemoteMemAccess = param.supportSymmetricMemory;
     tempAlgParamsInter1.buffInfo.inBuffBaseOff = dataOffset;
     tempAlgParamsInter1.buffInfo.outBuffBaseOff = scratchOffset;
     tempAlgParamsInter1.buffInfo.hcclBuffBaseOff = scratchOffset;
@@ -800,6 +808,7 @@ void InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1
     tempAlgParamsIntra1.buffInfo.inBuffType = BufferType::HCCL_BUFFER;
     tempAlgParamsIntra1.buffInfo.outBuffType = BufferType::OUTPUT;
     tempAlgParamsIntra1.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParamsIntra1.enableRemoteMemAccess = param.supportSymmetricMemory;
     tempAlgParamsIntra1.buffInfo.inBuffBaseOff = scratchOffset;
     tempAlgParamsIntra1.buffInfo.outBuffBaseOff = dataOffset;
     tempAlgParamsIntra1.buffInfo.hcclBuffBaseOff = scratchOffset;
