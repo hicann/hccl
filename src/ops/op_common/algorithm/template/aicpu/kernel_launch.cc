@@ -352,7 +352,86 @@ static HcclResult HcclOrderLaunchNotifyRecord(const OpParam* param)
     return HCCL_SUCCESS;
 }
 
+// AICPU 控核：空闲 CPU 数不大于预留数+1（+1 补偿调用算子自身占核）时判定为资源紧张，
+// 推迟保序记录，避免下一个算子被放行；无保序线程或框架接口缺失时降级为不控核
+static bool HcclAicpuCpuLimitReached(const OpParam* param)
+{
+    if (param->exportHostOrderThread == 0 || param->deviceOrderThread == 0) {
+        HCCL_INFO(
+            "[%s] exportHostOrderThread[0x%llx] or deviceOrderThread[0x%llx] is 0, skip cpu core control", __func__,
+            param->exportHostOrderThread, param->deviceOrderThread);
+        return false;
+    }
+    if (AicpuGetIdleCpuCnt == nullptr || AicpuGetReservedCpuCnt == nullptr) {
+        static std::atomic<bool> hasWarned{false};
+        if (!hasWarned.exchange(true)) {
+            HCCL_WARNING("[%s] core control symbols are nullptr, core control is disabled", __func__);
+        }
+        return false;
+    }
+    u32 idleCpuCount = AicpuGetIdleCpuCnt();
+    u32 reservedCpuCount = AicpuGetReservedCpuCnt();
+    // 接口合法取值域为[0, 64]（AICPU 框架约定）；超界视为信息不可用，fail-open 不限流，
+    // 避免异常值被误判为资源紧张导致全局静默串行化。注意 idle=0/reserved=0 在域内属合法状态（核满+无预留）
+    constexpr u32 AICPU_CPU_CNT_MAX = 64;
+    if (idleCpuCount > AICPU_CPU_CNT_MAX || reservedCpuCount > AICPU_CPU_CNT_MAX) {
+        static std::atomic<bool> hasInvalidWarned{false};
+        if (!hasInvalidWarned.exchange(true)) {
+            HCCL_WARNING(
+                "[%s] invalid cpu cnt, idleCpuCount[%u], reservedCpuCount[%u], core control is disabled", __func__,
+                idleCpuCount, reservedCpuCount);
+        }
+        return false;
+    }
+    bool limitReached = idleCpuCount <= reservedCpuCount + 1;
+    HCCL_INFO(
+        "[%s] idleCpuCount[%u], reservedCpuCount[%u], limitReached[%d]", __func__, idleCpuCount, reservedCpuCount,
+        limitReached);
+    return limitReached;
+}
+
+// AICPU 控核延迟守卫（RAII）：延迟模式下由析构器兜底记录，正常路径须在释放通信域前显式 Commit，且 Commit 幂等。
+// 语义说明：Commit 失败在成功路径经 CHK_RET 上抛（保序链断意味着通信域不可用，须让调用方感知）；
+// 在错误路径仅告警（op 已因根因错误返回，Commit 失败为次要错误，不应覆盖根因错误码）；
+// 析构路径仅告警（RAII 无法返回值，为兜底清理的固有局限）。
 namespace {
+class HcclOrderLaunchDelayGuard {
+public:
+    HcclOrderLaunchDelayGuard(const OpParam* param, bool delayRecord) : param_(param), delayRecord_(delayRecord) {}
+
+    HcclOrderLaunchDelayGuard(const HcclOrderLaunchDelayGuard&) = delete;
+    HcclOrderLaunchDelayGuard& operator=(const HcclOrderLaunchDelayGuard&) = delete;
+
+    ~HcclOrderLaunchDelayGuard()
+    {
+        if (!delayRecord_ || committed_) {
+            return;
+        }
+        HcclResult ret = HcclOrderLaunchNotifyRecord(param_);
+        if (ret != HCCL_SUCCESS) {
+            HCCL_ERROR("[HcclOrderLaunchDelayGuard] HcclOrderLaunchNotifyRecord fail, ret[%d]", ret);
+        }
+    }
+
+    HcclResult Commit()
+    {
+        if (!delayRecord_ || committed_) {
+            return HCCL_SUCCESS;
+        }
+        committed_ = true;
+        HcclResult ret = HcclOrderLaunchNotifyRecord(param_);
+        if (ret != HCCL_SUCCESS) {
+            HCCL_ERROR("[HcclOrderLaunchDelayGuard] Commit HcclOrderLaunchNotifyRecord fail, ret[%d]", ret);
+        }
+        return ret;
+    }
+
+private:
+    const OpParam* param_;
+    bool delayRecord_;
+    bool committed_ = false;
+};
+
 class CommRefGuard {
 public:
     explicit CommRefGuard(const char* commName) : commName_(commName) {}
@@ -414,7 +493,8 @@ static u32 RegLegacyScatterOpInfoIfNotV2(OpParam* param)
 }
 
 // V2路径通信域状态检查: 0正常放行, 1失败, 301U通信域挂起(挂起路径已释放引用, 调用方原样透传)
-static u32 CheckCommStatus(OpParam* param, CommRefGuard& commGuard)
+static u32
+CheckCommStatus(OpParam* param, CommRefGuard& commGuard, HcclOrderLaunchDelayGuard* orderRecordGuard = nullptr)
 {
     // 判断通信域状态
     HcclCommStatus commStatus = HCCL_COMM_STATUS_INVALID;
@@ -425,6 +505,9 @@ static u32 CheckCommStatus(OpParam* param, CommRefGuard& commGuard)
             return 1;
         }
         if (commStatus == HCCL_COMM_STATUS_SUSPENDING) {
+            if (orderRecordGuard != nullptr) {
+                (void)orderRecordGuard->Commit();
+            }
             if (HcommReleaseComm(param->commName) == HCCL_SUCCESS) {
                 HCCL_WARNING("%s commStatus is suspending, release commName[%s]", __func__, param->commName);
             } else {
@@ -684,8 +767,12 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam* param)
     }
     CommRefGuard commGuard(param->commName);
 
-    // AICPU 按序下发
-    CHK_RET(HcclOrderLaunchNotifyRecord(param));
+    bool delayOrderRecord = HcclAicpuCpuLimitReached(param);
+    if (!delayOrderRecord) {
+        // AICPU 按序下发
+        CHK_RET(HcclOrderLaunchNotifyRecord(param));
+    }
+    HcclOrderLaunchDelayGuard orderRecordGuard(param, delayOrderRecord);
 
     std::string algName = std::string(param->algName);
     if (RegLegacyScatterOpInfoIfNotV2(param) != 0) {
@@ -693,7 +780,7 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam* param)
     }
 
     if (ops_hccl::IsOpsV2(param->algName, param->deviceType)) {
-        u32 statusRet = CheckCommStatus(param, commGuard);
+        u32 statusRet = CheckCommStatus(param, commGuard, &orderRecordGuard);
         if (statusRet != 0) {
             return statusRet;
         }
@@ -892,6 +979,8 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam* param)
         }
     }
 
+    CHK_RET(orderRecordGuard.Commit());
+
     return ReleaseCommAndLogSuccess(param, commGuard, __func__);
 }
 
@@ -926,13 +1015,17 @@ extern "C" unsigned int HcclLaunchP2pAicpuKernel(void* args)
     }
     CommRefGuard commGuard(param->commName);
 
-    // AICPU 按序下发
-    CHK_RET(HcclOrderLaunchNotifyRecord(param));
+    bool delayOrderRecord = HcclAicpuCpuLimitReached(param);
+    if (!delayOrderRecord) {
+        // AICPU 按序下发
+        CHK_RET(HcclOrderLaunchNotifyRecord(param));
+    }
+    HcclOrderLaunchDelayGuard orderRecordGuard(param, delayOrderRecord);
 
     std::string algName = std::string(param->algName);
     // 根据算法名字获取executor
     if (ops_hccl::IsOpsV2(param->algName, param->deviceType)) {
-        u32 statusRet = CheckCommStatus(param, commGuard);
+        u32 statusRet = CheckCommStatus(param, commGuard, &orderRecordGuard);
         if (statusRet != 0) {
             return statusRet;
         }
@@ -978,6 +1071,7 @@ extern "C" unsigned int HcclLaunchP2pAicpuKernel(void* args)
         if (executor.get() == nullptr) {
             HCCL_ERROR(
                 "Fail to find executor for algName[%s], opType[%d]", algName.c_str(), static_cast<int>(param->opType));
+            (void)orderRecordGuard.Commit();
             commGuard.MarkReleased();
             HcommReleaseComm(param->commName);
             return 1;
@@ -988,6 +1082,7 @@ extern "C" unsigned int HcclLaunchP2pAicpuKernel(void* args)
         ret = executor->OrchestrateWithThread(*param, *resCtxPtr, sendRecvThread);
         if (ret != HCCL_SUCCESS) {
             HCCL_ERROR("orchestrate failed for alg:%s, opType[%d]", param->algName, static_cast<int>(param->opType));
+            (void)orderRecordGuard.Commit();
             commGuard.MarkReleased();
             HcommReleaseComm(param->commName);
             return 1;
@@ -1011,10 +1106,13 @@ extern "C" unsigned int HcclLaunchP2pAicpuKernel(void* args)
         HCCL_ERROR(
             "%s P2P only support OpsV2, algName[%s], deviceType[%d]", __func__, param->algName,
             static_cast<int>(param->deviceType));
+        (void)orderRecordGuard.Commit();
         commGuard.MarkReleased();
         HcommReleaseComm(param->commName);
         return 1;
     }
+
+    CHK_RET(orderRecordGuard.Commit());
 
     return ReleaseCommAndLogSuccess(param, commGuard);
 }

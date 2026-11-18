@@ -13,6 +13,11 @@
 
 #include "alg_param.h"
 
+extern "C" {
+uint32_t __attribute__((weak)) AicpuGetIdleCpuCnt();
+uint32_t __attribute__((weak)) AicpuGetReservedCpuCnt();
+}
+
 namespace ops_hccl {
 
 HcclResult RestoreVarDataBatchSendRecv(OpParam& param);

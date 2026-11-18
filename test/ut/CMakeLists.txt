@@ -43,6 +43,8 @@ add_subdirectory(alltoall_nda)
 # alltoall_nda_selector: AlltoAllAutoSelector::SelectNdaAlgo 生产实现 UT（空拓扑/层级边界/
 # 输入输出重叠/level0Topo 形状守卫），复用 selector_engine 的 auto_selector_base 桩。
 add_subdirectory(alltoall_nda_selector)
+# kernel_launch_gate: AICPU 控核门控（判定边界/fail-open/降级）与延迟守卫（Commit/析构恰好一次）UT，双目标
+add_subdirectory(kernel_launch_gate)
 # alg_attrs: AllToAllV/VC Pairwise 选路修复的生产注册直连 UT。wrap 编译单元以 #include
 # 生产源文件的方式执行 REGISTER_ALG_ATTRS 注册（屏蔽 REGISTER_EXEC_V2，避免实例化
 # executor/模板代码），断言 AlgAttrsRegistry 中 topoCustomCheck/topoPriorityCheck 的

@@ -34,6 +34,16 @@ int HcommEndpointCheckFeature(int featureType, void* endpoint, bool* isSupport)
     return 0;
 }
 
+// AICPU 控核查询接口桩（kernel_launch.h 弱符号）：默认取值永不触发门控（idle 远大于 reserved+1）。
+// 注意：当前 ST 保序线程被上面的桩置零，门控在"无保序线程"条件即短路，本桩不会被咨询；
+// 定义它保证 ST 二进制内符号已解析（而非 null 降级），为 ST 未来开启保序仿真预留。
+// 如需 ST 级"开启控核完整下发"用例，需另行评估：HcclDedicatedThreadAcquire 桩返回非零、
+// 链接 order_launch.cc、补 HcclThreadExportToCommEngine / HcommThreadNotifyRecord / Wait 桩 —— 涉及
+// ST 保序仿真语义，建议与 ST 维护者对齐后单独交付。
+uint32_t AicpuGetIdleCpuCnt() { return 8; }
+
+uint32_t AicpuGetReservedCpuCnt() { return 0; }
+
 #ifdef __cplusplus
 }
 #endif
