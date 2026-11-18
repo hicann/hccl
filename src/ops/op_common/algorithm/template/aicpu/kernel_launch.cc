@@ -728,6 +728,18 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam* param)
             CHK_RET(AicpuTaskCachePolicy::IsAicpuTaskCacheEnable(*param, *resCtxPtr, enableCache));
         }
 
+        std::vector<void*> remoteAddrs;
+        std::vector<uint64_t> remoteSizes;
+        if (enableCache && (param->opMode == OpMode::OFFLOAD || param->supportSymmetricMemory)) {
+            bool complete = false;
+            CHK_RET(
+                AicpuTaskCacheUtils::GetRemoteMemInfoForCache(*param, *resCtxPtr, remoteAddrs, remoteSizes, complete));
+            if (!complete) {
+                enableCache = false;
+                HCCL_INFO("[HcclLaunchAicpuKernel] remote memory info incomplete, fallback to normal unfold");
+            }
+        }
+
         // 打印算子信息用于调试
         static std::atomic<uint64_t> opUnfoldIdx{0};
         HCCL_INFO(
@@ -751,6 +763,13 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam* param)
             CHK_RET(static_cast<HcclResult>(AicpuTaskCacheUtils::GetInputOutputInfoForCache(
                 *param, resCtxPtr->topoInfo.userRankSize, inputSize, outputSize)));
             uint64_t localSizes[ADDRS_COUNT] = {inputSize, outputSize};
+
+            // 计算 inplace 重叠特征(重叠位置 + 重叠宽度), 供 tag 拼接
+            // 注意: V 类 inplace 已在准入处拦截, V 格式路径不会出现重叠特征非零的情况
+            int64_t inplaceDiff = 0;
+            uint64_t inplaceOverlap = 0;
+            AicpuTaskCacheUtils::CalcInplaceDiff(*param, inputSize, outputSize, inplaceDiff, inplaceOverlap);
+
             void** addrs = localAddrs;
             uint64_t* sizes = localSizes;
             std::vector<void*> vAddrs;
@@ -766,12 +785,17 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam* param)
                 // count最高位区分V数组格式，低位为实际数组长度。
                 constexpr uint64_t V_FORMAT_FLAG = uint64_t{1} << 63;
                 cacheMemCount = V_FORMAT_FLAG | static_cast<uint64_t>(vAddrs.size());
+            } else if (!remoteAddrs.empty()) {
+                // 非V格式count>2表示按rank传入远端user mem，图模式与对称内存共用。
+                addrs = remoteAddrs.data();
+                sizes = remoteSizes.data();
+                cacheMemCount = static_cast<uint64_t>(remoteAddrs.size());
             }
 
             std::string cacheTag;
             bool isCacheHit = false;
             // 组装aicpu task cache tag
-            CHK_RET(AicpuTaskCacheKey::GetAicpuTaskCacheTag(*param, inputSize, cacheTag));
+            CHK_RET(AicpuTaskCacheKey::GetAicpuTaskCacheTag(*param, inputSize, inplaceDiff, inplaceOverlap, cacheTag));
 
             // 查询aicpu task cache
             if (HcommIsSupportHcommAicpuTsTaskCacheLookup()) {

@@ -8,8 +8,132 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#include <algorithm>
+#include <cstdint>
 #include "aicpu_task_cache_utils.h"
+#include "hccl_sym_win_dl.h"
 namespace ops_hccl {
+
+namespace {
+    bool FillSymmetricMemForCache(
+        const OpParam& param, uint32_t rankSize, uint32_t userRank, std::vector<void*>& addrs,
+        std::vector<uint64_t>& sizes)
+    {
+        if (param.inputSymWindow == nullptr || param.outputSymWindow == nullptr
+            || (!HcommIsSupportHcclSymWinGetRemoteAddr() && !HcommIsSupportHcclSymWinGetPeerPointer())) {
+            HCCL_INFO("[%s] symmetric windows or peer address query are unavailable", __func__);
+            return false;
+        }
+        for (uint32_t rank = 0; rank < rankSize; ++rank) {
+            if (rank == userRank) {
+                continue;
+            }
+            const uint32_t index = 2 + 2 * rank;
+            const HcclResult inputRet
+                = GetSymWinRemoteMem(param.inputSymWindow, param.inputOffset, rank, &addrs[index]);
+            const HcclResult outputRet
+                = GetSymWinRemoteMem(param.outputSymWindow, param.outputOffset, rank, &addrs[index + 1]);
+            if (inputRet != HCCL_SUCCESS || outputRet != HCCL_SUCCESS) {
+                HCCL_INFO(
+                    "[%s] peer query failed, rank[%u] inputRet[%d] outputRet[%d]", __func__, rank, inputRet, outputRet);
+                return false;
+            }
+            // 非V对称内存按相同窗口偏移访问各rank，同侧使用相同的算子字节范围。
+            sizes[index] = sizes[0];
+            sizes[index + 1] = sizes[1];
+        }
+        return true;
+    }
+
+    bool FillGraphMemForCache(
+        const AlgResourceCtxSerializable& resCtx, std::vector<void*>& addrs, std::vector<uint64_t>& sizes,
+        std::vector<bool>& rankSeen)
+    {
+        const uint32_t rankSize = resCtx.topoInfo.userRankSize;
+        const uint32_t userRank = resCtx.topoInfo.userRank;
+        // 图模式两层均遍历：外层是拓扑层级，同一个rank可能出现在多个channel中。
+        for (const auto& levelChannels : resCtx.channels) {
+            for (const auto& channel : levelChannels) {
+                if (!channel.isValid || channel.remoteRank == userRank) {
+                    continue;
+                }
+                const uint32_t rank = channel.remoteRank;
+                CHK_PRT_RET(rank >= rankSize, HCCL_INFO("[%s] invalid remoteRank[%u]", __func__, rank), false);
+                const HcclMem mems[] = {channel.remoteInputGraphMode, channel.remoteOutputGraphMode};
+                for (uint32_t side = 0; side < 2; ++side) {
+                    const uint32_t index = 2 + 2 * rank + side;
+                    CHK_PRT_RET(
+                        rankSeen[rank] && (addrs[index] != mems[side].addr || sizes[index] != mems[side].size),
+                        HCCL_INFO("[%s] conflicting graph memory, rank[%u] side[%u]", __func__, rank, side), false);
+                    addrs[index] = mems[side].addr;
+                    sizes[index] = mems[side].size;
+                }
+                rankSeen[rank] = true;
+            }
+        }
+        return true;
+    }
+} // namespace
+
+HcclResult AicpuTaskCacheUtils::GetRemoteMemInfoForCache(
+    const OpParam& param, const AlgResourceCtxSerializable& resCtx, std::vector<void*>& addrs,
+    std::vector<uint64_t>& sizes, bool& complete)
+{
+    complete = false;
+    addrs.clear();
+    sizes.clear();
+    const uint32_t rankSize = resCtx.topoInfo.userRankSize;
+    const uint32_t userRank = resCtx.topoInfo.userRank;
+    const uint64_t arrayCount = 2 + uint64_t{2} * rankSize;
+    CHK_PRT_RET(
+        rankSize == 0 || userRank >= rankSize || arrayCount > UINT32_MAX,
+        HCCL_INFO("[%s] invalid rank memory layout", __func__), HCCL_SUCCESS);
+    CHK_PRT_RET(
+        (param.opMode != OpMode::OFFLOAD && !param.supportSymmetricMemory) || IsAlltoallvType(param.opType),
+        HCCL_INFO("[%s] unsupported remote memory cache mode", __func__), HCCL_SUCCESS);
+
+    addrs.resize(arrayCount, nullptr);
+    sizes.resize(arrayCount, 0);
+    const HcclResult sizeRet = GetInputOutputInfoForCache(param, rankSize, sizes[0], sizes[1]);
+    if (sizeRet != HCCL_SUCCESS) {
+        // Do not expose partial arrays or turn a cache preparation failure into an operation failure.
+        addrs.clear();
+        sizes.clear();
+        HCCL_WARNING(
+            "[AicpuTaskCacheUtils] cannot collect local memory sizes, fallback to normal unfold, comm[%s] "
+            "opType[%u] ret[%d].",
+            param.commName, static_cast<uint32_t>(param.opType), sizeRet);
+        return HCCL_SUCCESS;
+    }
+    addrs[0] = param.inputPtr;
+    addrs[1] = param.outputPtr;
+    std::vector<bool> rankSeen(rankSize, false);
+    rankSeen[userRank] = true;
+    for (uint32_t side = 0; side < 2; ++side) {
+        addrs[2 + 2 * userRank + side] = addrs[side];
+        sizes[2 + 2 * userRank + side] = sizes[side];
+    }
+    if (param.supportSymmetricMemory) {
+        // 命中会跳过executor；必须在Start/Execute之前按本次窗口和偏移重新取得远端地址。
+        if (!FillSymmetricMemForCache(param, rankSize, userRank, addrs, sizes)) {
+            return HCCL_SUCCESS;
+        }
+        std::fill(rankSeen.begin(), rankSeen.end(), true);
+    } else if (!FillGraphMemForCache(resCtx, addrs, sizes, rankSeen)) {
+        return HCCL_SUCCESS;
+    }
+    for (uint32_t rank = 0; rank < rankSize; ++rank) {
+        CHK_PRT_RET(!rankSeen[rank], HCCL_INFO("[%s] missing remote memory, rank[%u]", __func__, rank), HCCL_SUCCESS);
+    }
+    for (size_t i = 0; i < addrs.size(); ++i) {
+        const uint64_t base = reinterpret_cast<uint64_t>(addrs[i]);
+        CHK_PRT_RET(
+            base == 0 || sizes[i] == 0 || sizes[i] > UINT64_MAX - base,
+            HCCL_INFO("[%s] unavailable user memory, index[%zu]", __func__, i), HCCL_SUCCESS);
+    }
+    complete = true;
+    return HCCL_SUCCESS;
+}
 
 bool AicpuTaskCacheUtils::IsNonVariableOpType(HcclCMDType opType)
 {
@@ -125,6 +249,43 @@ HcclResult AicpuTaskCacheUtils::GetInputOutputInfoForCache(
     }
 
     return HCCL_SUCCESS;
+}
+
+void AicpuTaskCacheUtils::CalcInplaceDiff(
+    const OpParam& param, const uint64_t inputSize, const uint64_t outputSize, int64_t& diff, uint64_t& overlapBytes)
+{
+    diff = 0;
+    overlapBytes = 0;
+    // 为tag计算实际重叠布局，不应用准入策略的Broadcast豁免；Broadcast记录完全重叠。
+    // 空指针或任一长度为0时不计算重叠。
+    if (param.inputPtr == nullptr || param.outputPtr == nullptr || inputSize == 0 || outputSize == 0) {
+        return;
+    }
+
+    const uint64_t inputStart = reinterpret_cast<uint64_t>(param.inputPtr);
+    const uint64_t outputStart = reinterpret_cast<uint64_t>(param.outputPtr);
+    // 地址加法溢出防护(与HCOMM侧ParseTaskCacheArgs的校验对齐): 顶格地址视为无重叠
+    if (inputSize > UINT64_MAX - inputStart || outputSize > UINT64_MAX - outputStart) {
+        return;
+    }
+    const uint64_t inputEnd = inputStart + inputSize - 1;
+    const uint64_t outputEnd = outputStart + outputSize - 1;
+
+    // 区间不相交: input 在前 或 output 在前
+    if (inputEnd < outputStart || outputEnd < inputStart) {
+        return;
+    }
+
+    // 有符号差值用同向相减, 避免uint64到int64的超范围回绕转换(implementation-defined):
+    // output 在后(含相同起点)为正, 在前为负
+    diff = (outputStart >= inputStart) ? static_cast<int64_t>(outputStart - inputStart) :
+                                         -static_cast<int64_t>(inputStart - outputStart);
+    overlapBytes = std::min(inputEnd, outputEnd) - std::max(inputStart, outputStart) + 1;
+
+    HCCL_INFO(
+        "[AicpuTaskCacheUtils][%s] inputPtr[0x%016llx] inputSize[%llu] outputPtr[0x%016llx] "
+        "outputSize[%llu] diff[%lld] overlapBytes[%llu]",
+        __func__, inputStart, inputSize, outputStart, outputSize, diff, overlapBytes);
 }
 
 } // namespace ops_hccl

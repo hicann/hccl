@@ -12,6 +12,7 @@ set(_repo_root ${CMAKE_CURRENT_SOURCE_DIR}/../../..)
 set(_cache_src ${_repo_root}/src/ops/op_common/algorithm/template/aicpu/task_cache)
 
 add_executable(aicpu_task_cache_test
+    # 窗口能力与地址查询由测试桩提供, 不加载真实HCOMM动态库。
     aicpu_task_cache_test.cc
     stub/securec_stub.cc
     ${_cache_src}/aicpu_task_cache_key.cc

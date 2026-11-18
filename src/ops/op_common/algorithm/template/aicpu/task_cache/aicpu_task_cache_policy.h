@@ -22,7 +22,10 @@ public:
 
 private:
     static bool IsTopoSupported(const AlgResourceCtxSerializable& resCtx);
-    static HcclResult IsInplaceForCache(const OpParam& param, const uint32_t rankSize, bool& isInplace);
+    // isInplace: input/output 地址区间是否重叠(Broadcast 的 input==output 豁免场景返回 false)
+    // isEmptyInOut: inputSize 与 outputSize 同时为 0(A3 场景), 地址类型无法区分, 维持屏蔽
+    static HcclResult
+    IsInplaceForCache(const OpParam& param, const uint32_t rankSize, bool& isInplace, bool& isEmptyInOut);
     static bool IsOpTypeSupported(const OpParam& param);
     static HcclResult
     IsAlltoallvCacheSupported(const OpParam& param, const AlgResourceCtxSerializable& resCtx, bool& isSupported);

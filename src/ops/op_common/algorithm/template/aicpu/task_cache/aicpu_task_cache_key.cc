@@ -37,9 +37,23 @@ namespace {
         }
         return ptr;
     }
+
+    // 将有符号整数转为十进制字符串(支持负数), 写入ptr; 其余语义同 UIntToChars
+    inline char* Int64ToChars(char* ptr, int64_t val)
+    {
+        uint64_t absVal = 0;
+        if (val < 0) {
+            *ptr++ = '-';
+            absVal = (val == INT64_MIN) ? (static_cast<uint64_t>(INT64_MAX) + 1U) : static_cast<uint64_t>(-val);
+        } else {
+            absVal = static_cast<uint64_t>(val);
+        }
+        return UIntToChars(ptr, absVal);
+    }
 } // namespace
 
-HcclResult AicpuTaskCacheKey::GetAicpuTaskCacheTag(const OpParam& param, uint64_t inputSize, std::string& cacheTag)
+HcclResult AicpuTaskCacheKey::GetAicpuTaskCacheTag(
+    const OpParam& param, uint64_t inputSize, int64_t diff, uint64_t overlapBytes, std::string& cacheTag)
 {
     const HcclCMDType opType = param.opType;
     HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_RESERVED;
@@ -68,13 +82,13 @@ HcclResult AicpuTaskCacheKey::GetAicpuTaskCacheTag(const OpParam& param, uint64_
     const bool isZeroCopy = param.isZeroCopy;
     const OpMode opMode = param.opMode;
     const bool supportSymmetricMemory = param.supportSymmetricMemory;
+    const bool isCapture = param.isCapture;
 
     // 使用'-'作为间隔符, 拼接cacheTag
-    // 注意: 把input size放在前面, 如果需要解析, 可以减少解析开销
-    // 注意: commId放在最后, 如果需要解析, 无需考虑commId中含有delimiter的情况
+    // tag作为不透明key整体比较; diff负号和commId都可能包含'-', 不得按间隔符拆分解析
     // 注意: enum class不能转为uint8_t, 否则会作为char输出; 需显式转为uint32_t后再用to_chars, 否则编译失败
     const char* commId = param.commName;  // 最大长度COMM_INDENTIFIER_MAX_LENGTH (128)
-    constexpr size_t RESERVED_SIZE = 256; // commId+8个整数, 最多128+90+8个字符, 预留256足够
+    constexpr size_t RESERVED_SIZE = 384; // commId+11个整数, 最多128+11*(20+1)+1(负号)个字符, 预留384足够
     char buf[RESERVED_SIZE];
     char* ptr = buf;
     const char delimiter = '-';
@@ -109,6 +123,22 @@ HcclResult AicpuTaskCacheKey::GetAicpuTaskCacheTag(const OpParam& param, uint64_
     ptr = UIntToChars(ptr, static_cast<uint32_t>(supportSymmetricMemory));
     *ptr++ = delimiter;
 
+    // 捕获态与非捕获态的任务下发模式不同, 不得共享缓存; isCapture独立于opMode
+    ptr = UIntToChars(ptr, static_cast<uint32_t>(isCapture));
+    *ptr++ = delimiter;
+
+    // inplace 重叠特征(两段): 重叠位置 + 重叠宽度
+    //   非 inplace: "0-0"; 完全相同: "0-<inputSize>"; 部分重叠/嵌套: "±diff-<overlap>"
+    // 注意: diff 保证重放正确性 -- tag 相同 ⟹ 两次调用的位置差一致 ⟹ 现有"先命中先得"的地址
+    // 匹配在重叠区刷出的结果一致(含嵌套场景, 不同嵌位 diff 不同, 天然不命中而走 miss 重录);
+    // overlap 兼任形态判别(宽度 0 与完全相同的 inputSize 天然区分, 无需额外标志位)
+    ptr = Int64ToChars(ptr, diff);
+    *ptr++ = delimiter;
+
+    // overlapBytes (uint64最多20个字符)
+    ptr = UIntToChars(ptr, static_cast<unsigned long long>(overlapBytes));
+    *ptr++ = delimiter;
+
     // rootRank (uint32最多10个字符)
     ptr = UIntToChars(ptr, rootRank);
     *ptr++ = delimiter;
@@ -123,9 +153,10 @@ HcclResult AicpuTaskCacheKey::GetAicpuTaskCacheTag(const OpParam& param, uint64_
 
     HCCL_INFO(
         "[AicpuTaskCacheKey][GetAicpuTaskCacheTag] cacheTag[%s] from commId[%s] opType[%d] dataType[%d] "
-        "reduceType[%d] isZeroCopy[%d] inputSize[%llu] opMode[%d] supportSymmetricMemory[%d] rootRank[%d]",
+        "reduceType[%d] isZeroCopy[%d] inputSize[%llu] opMode[%d] supportSymmetricMemory[%d] isCapture[%d] diff[%lld] "
+        "overlapBytes[%llu] rootRank[%d]",
         cacheTag.c_str(), commId, opType, dataType, reduceType, isZeroCopy, cacheInputSize, opMode,
-        supportSymmetricMemory, rootRank);
+        supportSymmetricMemory, isCapture, diff, overlapBytes, rootRank);
 
     return HCCL_SUCCESS;
 }

@@ -46,29 +46,16 @@ HcclResult AicpuTaskCachePolicy::IsAicpuTaskCacheEnable(
         return HCCL_SUCCESS;
     }
 
-    // 图模式不支持
-    if (param.opMode == OpMode::OFFLOAD) {
-        HCCL_INFO("[AicpuTaskCachePolicy][IsAicpuTaskCacheEnable] OpMode::OFFLOAD is not supported");
-        return HCCL_SUCCESS;
-    }
-
-    // aclgraph 不支持
-    if (param.isCapture) {
-        HCCL_INFO("[AicpuTaskCachePolicy][IsAicpuTaskCacheEnable] aclgraph is not supported");
-        return HCCL_SUCCESS;
-    }
-
-    // 零拷贝不支持
+    // isZeroCopy表示的独立零拷贝路径尚未验证task cache，维持屏蔽。
+    // 图模式和对称内存分别由opMode、supportSymmetricMemory识别，不依赖此标志。
     if (param.isZeroCopy) {
         HCCL_INFO("[AicpuTaskCachePolicy][IsAicpuTaskCacheEnable] zero copy is not supported");
         return HCCL_SUCCESS;
     }
 
-    // 对称内存不支持
-    if (param.supportSymmetricMemory) {
-        HCCL_INFO("[AicpuTaskCachePolicy][IsAicpuTaskCacheEnable] symmetric memory is not supported");
-        return HCCL_SUCCESS;
-    }
+    // 普通ACLGraph仍走OPBASE流程：捕获AICPU kernel启动任务，图回放时在kernel内执行
+    // cache miss的Start/End或cache hit的Execute，由HCOMM刷新并下发任务，无需再次捕获SQE/WQE。
+    // 因此不因isCapture单独禁用cache；tag已包含isCapture，隔离捕获与非捕获调用。
 
     // 校验算子类型
     if (!IsOpTypeSupported(param)) {
@@ -81,12 +68,38 @@ HcclResult AicpuTaskCachePolicy::IsAicpuTaskCacheEnable(
         return HCCL_SUCCESS;
     }
 
-    // 屏蔽inplace场景
+    // inplace 场景放行(task cache 支持 inplace 准入): 重叠特征(位置+宽度)由 tag 区分(见 GetAicpuTaskCacheTag)
     bool isInplace = false;
-    CHK_RET(IsInplaceForCache(param, resCtx.topoInfo.userRankSize, isInplace));
-    if (isInplace) {
-        HCCL_INFO("[AicpuTaskCachePolicy][IsAicpuTaskCacheEnable] inplace case is not supported for operator unfolding "
-                  "cache");
+    bool isEmptyInOut = false;
+    const HcclResult inplaceRet = IsInplaceForCache(param, resCtx.topoInfo.userRankSize, isInplace, isEmptyInOut);
+    if (inplaceRet != HCCL_SUCCESS) {
+        // Cache admission is optional. Leave validation of the actual operation to normal unfolding.
+        HCCL_WARNING(
+            "[AicpuTaskCachePolicy] cannot determine input/output layout, disable cache and fallback to normal "
+            "unfold, comm[%s] opType[%u] ret[%d].",
+            param.commName, static_cast<uint32_t>(param.opType), inplaceRet);
+        return HCCL_SUCCESS;
+    }
+    // A3 场景: tinySendRecvMem 顶替建链, cache 无法区分地址类型, 维持屏蔽
+    if (isEmptyInOut) {
+        HCCL_INFO("[AicpuTaskCachePolicy][IsAicpuTaskCacheEnable] empty input/output case is not supported for "
+                  "operator unfolding cache.");
+        return HCCL_SUCCESS;
+    }
+    // V 类算子(变长)不支持 inplace 重叠。V 类已支持非 inplace 进 cache, 此处拦截其 inplace 场景
+    // (V 格式按对端子区间追加 addrs, 重叠特征判定与刷新均未适配)
+    if (isInplace && AicpuTaskCacheUtils::IsAlltoallvType(param.opType)) {
+        HCCL_INFO(
+            "[AicpuTaskCachePolicy][IsAicpuTaskCacheEnable] inplace is not supported for variable ops, "
+            "opType[%u].",
+            static_cast<uint32_t>(param.opType));
+        return HCCL_SUCCESS;
+    }
+    // 图模式下的 inplace 要求所有 rank 的重叠情况一致才可放行。
+    // 当前无跨 rank 协商机制, 保守屏蔽; 图模式准入放开时需扩展为全局一致性判断
+    if (isInplace && param.opMode == OpMode::OFFLOAD) {
+        HCCL_INFO("[AicpuTaskCachePolicy][IsAicpuTaskCacheEnable] inplace with graph mode requires consistent "
+                  "overlap across all ranks, not supported yet.");
         return HCCL_SUCCESS;
     }
 
@@ -99,8 +112,12 @@ HcclResult AicpuTaskCachePolicy::IsAicpuTaskCacheEnable(
     return HCCL_SUCCESS;
 }
 
-HcclResult AicpuTaskCachePolicy::IsInplaceForCache(const OpParam& param, const uint32_t rankSize, bool& isInplace)
+HcclResult AicpuTaskCachePolicy::IsInplaceForCache(
+    const OpParam& param, const uint32_t rankSize, bool& isInplace, bool& isEmptyInOut)
 {
+    isInplace = false;
+    isEmptyInOut = false;
+
     // 准备input/output size
     uint64_t inputSize = 0;
     uint64_t outputSize = 0;
@@ -113,6 +130,7 @@ HcclResult AicpuTaskCachePolicy::IsInplaceForCache(const OpParam& param, const u
     // 注意: 这里继承A3, 不支持同时为0的场景
     if (inputSize == 0 && outputSize == 0) {
         isInplace = true;
+        isEmptyInOut = true; // A3 场景: 标记由调用方维持屏蔽
         HCCL_INFO(
             "[AicpuTaskCachePolicy][IsInplace] inputSize[%llu] is overlapping with outputSize[%llu] -> isInplace[%d]",
             inputSize, outputSize, isInplace);
@@ -134,7 +152,9 @@ HcclResult AicpuTaskCachePolicy::IsInplaceForCache(const OpParam& param, const u
     const uint64_t outputStart = reinterpret_cast<uint64_t>(param.outputPtr);
     const uint64_t outputEnd = outputStart + outputSize - 1;
 
-    // 对于broadcast算子, UserInput与UserOutput完全重叠, 需要按照outplace场景特殊处理, 正常使能cache
+    // Broadcast按接口语义共用同一块input/output buffer，布局固定，豁免通用inplace准入限制。
+    // 此处isInplace=false仅表示准入豁免，并非内存无重叠；CalcInplaceDiff仍为tag记录真实布局
+    // (diff=0, overlapBytes=inputSize)。不能直接按overlapBytes>0判定，否则会拦截图模式Broadcast。
     if (param.opType == HcclCMDType::HCCL_CMD_BROADCAST) {
         CHK_PRT_RET(
             !(inputStart == outputStart && inputSize == outputSize),
@@ -238,8 +258,9 @@ HcclResult AicpuTaskCachePolicy::IsAlltoallvCacheSupported(
     const OpParam& param, const AlgResourceCtxSerializable& resCtx, bool& isSupported)
 {
     isSupported = false;
-    if (param.supportSymmetricMemory) {
-        HCCL_INFO("[AicpuTaskCachePolicy][IsAlltoallvCacheSupported] symmetric memory is not supported");
+    // V类算子的图模式和对称内存暂不支持cache。
+    if (param.opMode == OpMode::OFFLOAD || param.supportSymmetricMemory) {
+        HCCL_INFO("[AicpuTaskCachePolicy][IsAlltoallvCacheSupported] graph or symmetric memory is not supported");
         return HCCL_SUCCESS;
     }
     if (param.isZeroCopy) {
