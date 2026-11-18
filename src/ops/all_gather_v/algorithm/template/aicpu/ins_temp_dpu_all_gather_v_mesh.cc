@@ -102,10 +102,9 @@ u64 InsTempDpuAllGatherVMesh::CalcScratchMultiple(BufferType inBuffType, BufferT
 {
     (void)inBuffType;
     (void)outBuffType;
-    // CCL布局：1块发送暂存块 + rankSize块接收块。AGV广播内容恒同，发送侧只暂存1份、
-    // 全部对端的tx切片共享该暂存块，相比逐对端分块（2*rankSize）单轮容量提升近一倍，
-    // 且每轮省去rankSize-2次冗余本地拷贝
-    u64 scratchMultiple = templateRankSize_ + 1;
+    // CCL布局：rankSize个按来源rank索引的槽位，slot[myRank]兼任发送暂存
+    // AGV广播内容恒同，全部对端的tx切片共享slot[myRank]
+    u64 scratchMultiple = templateRankSize_;
     HCCL_INFO("[InsTempDpuAllGatherVMesh] scratchMultiple[%llu]", scratchMultiple);
     return scratchMultiple;
 }
@@ -113,9 +112,7 @@ u64 InsTempDpuAllGatherVMesh::CalcScratchMultiple(BufferType inBuffType, BufferT
 HcclResult InsTempDpuAllGatherVMesh::KernelRun(
     const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource)
 {
-    // CCL布局：CCL_IN发送暂存块[0, block) + CCL_OUT接收区[block, block + rankSize*block)，按来源rank索引
     hcclbuffBlockMemSize_ = tempAlgParams.inputSliceStride;
-    cclOutBaseOff_ = hcclbuffBlockMemSize_;
     threads_ = templateResource.threads;
     threadNum_ = threads_.size();
     dataType_ = param.vDataDes.dataType;
@@ -138,8 +135,8 @@ HcclResult InsTempDpuAllGatherVMesh::KernelRun(
     // 阶段1：本rank自留块直拷 sendBuf -> recvBuf 本rank槽位
     CHK_RET(LocalCopyForMyRank(subCommRanks_[0], tempAlgParams, threads_));
 
-    // 阶段2：本rank块拷贝到CCL_IN暂存块（allgatherv广播内容恒同，只暂存1份，全部对端tx共享）
-    CHK_RET(PreCopyDataToCclInBuf(subCommRanks_[0], tempAlgParams, threads_));
+    // 阶段2：本rank块拷贝到slot[myRank]（兼任发送暂存，allgatherv广播内容恒同，全部对端tx共享）
+    CHK_RET(PreCopyDataToMySlot(subCommRanks_[0], tempAlgParams, threads_));
 
     if (!templateResource.isDpuThreadEnabled) {
         // 转换成eager-mode，保障AICPU指令下发执行完成
@@ -207,7 +204,7 @@ HcclResult InsTempDpuAllGatherVMesh::LocalCopyForMyRank(
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult InsTempDpuAllGatherVMesh::PreCopyDataToCclInBuf(
+HcclResult InsTempDpuAllGatherVMesh::PreCopyDataToMySlot(
     const std::vector<u32>& commRanks, const TemplateDataParams& tempAlgParams, std::vector<ThreadHandle>& threads)
 {
     u64 sendSliceSize = tempAlgParams.allRankSliceSize[myRank_];
@@ -227,13 +224,13 @@ HcclResult InsTempDpuAllGatherVMesh::PreCopyDataToCclInBuf(
     if (!hasRemoteRank) {
         return HcclResult::HCCL_SUCCESS;
     }
-    // 广播内容恒同：只暂存1份到CCL_IN暂存块，阶段3全部对端的tx切片共享该源块。
-    // 暂存块唯一读者是本rank自己的tx引擎（rx侧为纯notify同步、不读地址），均在本轮同步窗口内完成，
-    // 下一轮重写无跨轮竞态
+    // 广播内容恒同：只暂存1份到slot[myRank]，阶段3全部对端的tx切片共享该源槽。
+    // 源槽唯一读者是本rank自己的tx引擎（rx侧为纯notify同步、不读地址），均在本轮同步窗口内完成，
     DataSlice srcSlice
         = DataSlice(tempAlgParams.buffInfo.inputPtr, tempAlgParams.buffInfo.inBuffBaseOff, sendSliceSize, sendCount);
     DataSlice dstSlice = DataSlice(
-        tempAlgParams.buffInfo.hcclBuff.addr, tempAlgParams.buffInfo.hcclBuffBaseOff, sendSliceSize, sendCount);
+        tempAlgParams.buffInfo.hcclBuff.addr, tempAlgParams.buffInfo.hcclBuffBaseOff + myRank_ * hcclbuffBlockMemSize_,
+        sendSliceSize, sendCount);
     CHK_RET(static_cast<HcclResult>(LocalCopy(threads[0], srcSlice, dstSlice)));
     return HcclResult::HCCL_SUCCESS;
 }
@@ -365,37 +362,34 @@ HcclResult InsTempDpuAllGatherVMesh::RunAicpuTransfer(
             return HCCL_E_INTERNAL;
         }
         if (sendSliceSize > 0 && recvSliceSize > 0) {
-            // 待发和待收数据量不为0的情况；send源为共享CCL_IN暂存块（广播内容恒同，全部对端共用）
+            // 待发和待收数据量不为0的情况；send源为slot[myRank]暂存槽（广播内容恒同，全部对端共用）
             DataSlice sendSrcSlice = DataSlice(
-                tempAlgParams.buffInfo.hcclBuff.addr, tempAlgParams.buffInfo.hcclBuffBaseOff, sendSliceSize, sendCount);
+                tempAlgParams.buffInfo.hcclBuff.addr,
+                tempAlgParams.buffInfo.hcclBuffBaseOff + myRank_ * hcclbuffBlockMemSize_, sendSliceSize, sendCount);
             DataSlice sendDstSlice = DataSlice(
-                remoteCclBuffAddr,
-                tempAlgParams.buffInfo.hcclBuffBaseOff + cclOutBaseOff_ + myRank_ * hcclbuffBlockMemSize_,
+                remoteCclBuffAddr, tempAlgParams.buffInfo.hcclBuffBaseOff + myRank_ * hcclbuffBlockMemSize_,
                 sendSliceSize, sendCount);
 
-            // rx切片不作为读写地址（SendRecvWrite只消费tx切片，rx侧为notify握手），按共享暂存块布局填对端约定地址
+            // rx切片不作为读写地址（SendRecvWrite只消费tx切片，rx侧为notify握手），按槽位布局填对端约定地址
             DataSlice recvSrcSlice = DataSlice(
                 tempAlgParams.buffInfo.hcclBuff.addr, tempAlgParams.buffInfo.hcclBuffBaseOff, recvSliceSize, recvCount);
             DataSlice recvDstSlice = DataSlice(
                 tempAlgParams.buffInfo.hcclBuff.addr,
-                tempAlgParams.buffInfo.hcclBuffBaseOff + cclOutBaseOff_ + remoteRank * hcclbuffBlockMemSize_,
-                recvSliceSize, recvCount);
+                tempAlgParams.buffInfo.hcclBuffBaseOff + remoteRank * hcclbuffBlockMemSize_, recvSliceSize, recvCount);
             std::vector<DataSlice> txSrcSlices{sendSrcSlice};
             std::vector<DataSlice> txDstSlices{sendDstSlice};
             std::vector<DataSlice> rxSrcSlices{recvSrcSlice};
             std::vector<DataSlice> rxDstSlices{recvDstSlice};
             HCCL_INFO(
                 "[InsTempDpuAllGatherVMesh] [RunAicpuTransfer] myRank[%u] send data to remoteRank[%u], myRank's "
-                "CCLIN startAddr[%llu] to remoteRank's CCLOUT startAddr[%llu] and Size is [%llu]",
-                myRank_, remoteRank, tempAlgParams.buffInfo.hcclBuffBaseOff,
-                tempAlgParams.buffInfo.hcclBuffBaseOff + cclOutBaseOff_ + myRank_ * hcclbuffBlockMemSize_,
-                sendSliceSize);
+                "slot startAddr[%llu] to remoteRank's slot startAddr[%llu] and Size is [%llu]",
+                myRank_, remoteRank, tempAlgParams.buffInfo.hcclBuffBaseOff + myRank_ * hcclbuffBlockMemSize_,
+                tempAlgParams.buffInfo.hcclBuffBaseOff + myRank_ * hcclbuffBlockMemSize_, sendSliceSize);
             HCCL_INFO(
                 "[InsTempDpuAllGatherVMesh] [RunAicpuTransfer] myRank[%u] recv data from remoteRank[%u], remoteRank's "
-                "CCLIN startAddr[%llu] to myRank's CCLOUT startAddr[%llu] and Size is [%llu]",
-                myRank_, remoteRank, tempAlgParams.buffInfo.hcclBuffBaseOff,
-                tempAlgParams.buffInfo.hcclBuffBaseOff + cclOutBaseOff_ + remoteRank * hcclbuffBlockMemSize_,
-                recvSliceSize);
+                "slot startAddr[%llu] to myRank's slot startAddr[%llu] and Size is [%llu]",
+                myRank_, remoteRank, tempAlgParams.buffInfo.hcclBuffBaseOff + remoteRank * hcclbuffBlockMemSize_,
+                tempAlgParams.buffInfo.hcclBuffBaseOff + remoteRank * hcclbuffBlockMemSize_, recvSliceSize);
             SendRecvInfo sendRecvInfo{
                 {link, link}, {{txSrcSlices, txDstSlices}, {rxSrcSlices, rxDstSlices}}, tempAlgParams.dataType};
             CHK_PRT_RET(
@@ -405,19 +399,18 @@ HcclResult InsTempDpuAllGatherVMesh::RunAicpuTransfer(
         } else if (sendSliceSize > 0) {
             // 待发数据量不为0,待收数据为0的情况
             DataSlice sendSrcSlice = DataSlice(
-                tempAlgParams.buffInfo.hcclBuff.addr, tempAlgParams.buffInfo.hcclBuffBaseOff, sendSliceSize, sendCount);
+                tempAlgParams.buffInfo.hcclBuff.addr,
+                tempAlgParams.buffInfo.hcclBuffBaseOff + myRank_ * hcclbuffBlockMemSize_, sendSliceSize, sendCount);
             DataSlice sendDstSlice = DataSlice(
-                remoteCclBuffAddr,
-                tempAlgParams.buffInfo.hcclBuffBaseOff + cclOutBaseOff_ + myRank_ * hcclbuffBlockMemSize_,
+                remoteCclBuffAddr, tempAlgParams.buffInfo.hcclBuffBaseOff + myRank_ * hcclbuffBlockMemSize_,
                 sendSliceSize, sendCount);
             std::vector<DataSlice> txSrcSlices{sendSrcSlice};
             std::vector<DataSlice> txDstSlices{sendDstSlice};
             HCCL_INFO(
                 "[InsTempDpuAllGatherVMesh] [RunAicpuTransfer] myRank[%u] send data to remoteRank[%u], myRank's "
-                "CCLIN startAddr[%llu] to remoteRank's CCLOUT startAddr[%llu] and Size is [%llu]",
-                myRank_, remoteRank, tempAlgParams.buffInfo.hcclBuffBaseOff,
-                tempAlgParams.buffInfo.hcclBuffBaseOff + cclOutBaseOff_ + myRank_ * hcclbuffBlockMemSize_,
-                sendSliceSize);
+                "slot startAddr[%llu] to remoteRank's slot startAddr[%llu] and Size is [%llu]",
+                myRank_, remoteRank, tempAlgParams.buffInfo.hcclBuffBaseOff + myRank_ * hcclbuffBlockMemSize_,
+                tempAlgParams.buffInfo.hcclBuffBaseOff + myRank_ * hcclbuffBlockMemSize_, sendSliceSize);
             DataInfo sendDataInfo{link, {txSrcSlices, txDstSlices}, tempAlgParams.dataType};
             CHK_PRT_RET(
                 SendWrite(sendDataInfo, threads[threadIdx]),
@@ -429,16 +422,14 @@ HcclResult InsTempDpuAllGatherVMesh::RunAicpuTransfer(
                 tempAlgParams.buffInfo.hcclBuff.addr, tempAlgParams.buffInfo.hcclBuffBaseOff, recvSliceSize, recvCount);
             DataSlice recvDstSlice = DataSlice(
                 tempAlgParams.buffInfo.hcclBuff.addr,
-                tempAlgParams.buffInfo.hcclBuffBaseOff + cclOutBaseOff_ + remoteRank * hcclbuffBlockMemSize_,
-                recvSliceSize, recvCount);
+                tempAlgParams.buffInfo.hcclBuffBaseOff + remoteRank * hcclbuffBlockMemSize_, recvSliceSize, recvCount);
             std::vector<DataSlice> rxSrcSlices{recvSrcSlice};
             std::vector<DataSlice> rxDstSlices{recvDstSlice};
             HCCL_INFO(
                 "[InsTempDpuAllGatherVMesh] [RunAicpuTransfer] myRank[%u] recv data from remoteRank[%u], remoteRank's "
-                "CCLIN startAddr[%llu] to myRank's CCLOUT startAddr[%llu] and Size is [%llu]",
-                myRank_, remoteRank, tempAlgParams.buffInfo.hcclBuffBaseOff,
-                tempAlgParams.buffInfo.hcclBuffBaseOff + cclOutBaseOff_ + remoteRank * hcclbuffBlockMemSize_,
-                recvSliceSize);
+                "slot startAddr[%llu] to myRank's slot startAddr[%llu] and Size is [%llu]",
+                myRank_, remoteRank, tempAlgParams.buffInfo.hcclBuffBaseOff + remoteRank * hcclbuffBlockMemSize_,
+                tempAlgParams.buffInfo.hcclBuffBaseOff + remoteRank * hcclbuffBlockMemSize_, recvSliceSize);
             DataInfo recvDataInfo{link, {rxSrcSlices, rxDstSlices}, tempAlgParams.dataType};
             CHK_PRT_RET(
                 RecvWrite(recvDataInfo, threads[threadIdx]),
@@ -459,9 +450,8 @@ HcclResult InsTempDpuAllGatherVMesh::RunDpuTransfer(
     const std::vector<u32>& commRanks = subCommRanks_[0];
     const u32 templateRankSize = static_cast<u32>(commRanks.size());
 
-    // CCL布局与AICPU侧一致：CCL_IN暂存块[0, block) + CCL_OUT接收区[block, block + rankSize*block)
+    // CCL布局与AICPU侧一致：rankSize个槽位[slot r = r*block)，slot[myRank]兼任发送暂存
     u64 hcclbuffBlockMemSize = tempAlgParams.inputSliceStride;
-    u64 cclOutBaseOff = hcclbuffBlockMemSize;
     u64 dataTypeSize = DATATYPE_SIZE_TABLE[tempAlgParams.dataType];
     // 阶段0：收集所有有效rank-pair信息
     std::vector<DpuTransferCtx> pairs;
@@ -513,14 +503,13 @@ HcclResult InsTempDpuAllGatherVMesh::RunDpuTransfer(
                     myRank_, remoteRank);
                 return HCCL_E_INTERNAL;
             }
-            // send源为共享CCL_IN暂存块（广播内容恒同，全部对端tx共用同一源块）
+            // send源为slot[myRank]暂存槽（广播内容恒同，全部对端tx共用同一源槽）
             ctx.txSrcSlices.push_back(DataSlice(
-                tempAlgParams.buffInfo.hcclBuff.addr, tempAlgParams.buffInfo.hcclBuffBaseOff, sendSliceSize,
-                sendCount));
+                tempAlgParams.buffInfo.hcclBuff.addr,
+                tempAlgParams.buffInfo.hcclBuffBaseOff + myRank_ * hcclbuffBlockMemSize, sendSliceSize, sendCount));
             ctx.txDstSlices.push_back(DataSlice(
-                remoteCclBuffAddr,
-                tempAlgParams.buffInfo.hcclBuffBaseOff + cclOutBaseOff + myRank_ * hcclbuffBlockMemSize, sendSliceSize,
-                sendCount));
+                remoteCclBuffAddr, tempAlgParams.buffInfo.hcclBuffBaseOff + myRank_ * hcclbuffBlockMemSize,
+                sendSliceSize, sendCount));
         }
         if (recvSliceSize > 0) {
             // rx切片仅作计数（决定批量接口前/后同步次数），不作为读写地址
@@ -529,8 +518,7 @@ HcclResult InsTempDpuAllGatherVMesh::RunDpuTransfer(
                 recvCount));
             ctx.rxDstSlices.push_back(DataSlice(
                 tempAlgParams.buffInfo.hcclBuff.addr,
-                tempAlgParams.buffInfo.hcclBuffBaseOff + cclOutBaseOff + remoteRank * hcclbuffBlockMemSize,
-                recvSliceSize, recvCount));
+                tempAlgParams.buffInfo.hcclBuffBaseOff + remoteRank * hcclbuffBlockMemSize, recvSliceSize, recvCount));
         }
         HCCL_INFO(
             "[InsTempDpuAllGatherVMesh][RunDpuTransfer] myRank[%u], remoteRank[%u], sendSliceSize[%llu], "
@@ -560,15 +548,13 @@ HcclResult InsTempDpuAllGatherVMesh::PostCopyDataToRecvBuf(
                              + tempAlgParams.allRankProcessedDataCount[remoteRank] * dataTypeSize_;
             DataSlice srcSlice = DataSlice(
                 tempAlgParams.buffInfo.hcclBuff.addr,
-                tempAlgParams.buffInfo.hcclBuffBaseOff + cclOutBaseOff_ + remoteRank * hcclbuffBlockMemSize_,
-                recvSliceSize, recvCount);
-            // 将CCL_OUT接收区上收到的对端数据，拷贝到recvBuf上
+                tempAlgParams.buffInfo.hcclBuffBaseOff + remoteRank * hcclbuffBlockMemSize_, recvSliceSize, recvCount);
+            // 将slot[remoteRank]上收到的对端数据，拷贝到recvBuf上
             DataSlice dstSlice = DataSlice(tempAlgParams.buffInfo.outputPtr, recvOffset, recvSliceSize, recvCount);
             HCCL_INFO(
                 "[InsTempDpuAllGatherVMesh] [PostCopyDataToRecvBuf] myRank[%u] localCopy remoteRank[%u]'s data "
-                "from CCLOUT startAddr[%llu] to recvBuf startAddr[%llu] and Size is [%llu]",
-                myRank_, remoteRank,
-                tempAlgParams.buffInfo.hcclBuffBaseOff + cclOutBaseOff_ + remoteRank * hcclbuffBlockMemSize_,
+                "from slot startAddr[%llu] to recvBuf startAddr[%llu] and Size is [%llu]",
+                myRank_, remoteRank, tempAlgParams.buffInfo.hcclBuffBaseOff + remoteRank * hcclbuffBlockMemSize_,
                 recvOffset, recvSliceSize);
             CHK_RET(static_cast<HcclResult>(LocalCopy(threads[0], srcSlice, dstSlice)));
         }

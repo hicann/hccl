@@ -34,7 +34,7 @@ constexpr u32 DATATYPE_SIZE_TABLE_AGV_DPU[HCCL_DATA_TYPE_RESERVED]
        1,
        1};
 
-// DPU模式(DpuAllGatherVSoleMesh)ST用例: 仿真CCL为200MB, 单轮容量=cclSize/(rankSize+1),
+// DPU模式(DpuAllGatherVSoleMesh)ST用例: 仿真CCL为200MB, 单轮容量=cclSize/rankSize(slot[myRank]兼任发送暂存),
 // 多轮loop阈值按此计算; ENABLE_HOSTDPU_FOR_LLT要求serverNum>=2, 拓扑均取2服务器
 class ST_ALL_GATHER_V_DPU_TEST : public ::testing::Test {
 protected:
@@ -114,14 +114,14 @@ TEST_F(ST_ALL_GATHER_V_DPU_TEST, host_dpu_all_gather_v_2srv_4rank_fp16_zero_coun
     RunAllGatherVDpu(topoMeta, vDataDes);
 }
 
-// 多轮loop: 4卡单轮容量200MB/(4+1)=40MB, 最大rank分片12M个FP32(48MB)超限触发2轮;
+// 多轮loop: 4卡单轮容量200MB/4=50MB, 最大rank分片18M个FP32(72MB)超限触发2轮;
 // counts不均使各rank进度不同, 覆盖按对端进度落位的场景
 TEST_F(ST_ALL_GATHER_V_DPU_TEST, host_dpu_all_gather_v_2srv_4rank_fp32_multiloop_uneven)
 {
     TopoMeta topoMeta{{{0, 1}, {2, 3}}};
     VDataDesTag vDataDes;
-    vDataDes.counts = {12582912, 3145728, 6291456, 1048576};
-    vDataDes.displs = {0, 12582912, 15728640, 22020096};
+    vDataDes.counts = {18874368, 4718592, 9437184, 1572864};
+    vDataDes.displs = {0, 18874368, 23592960, 33030144};
     vDataDes.dataType = HcclDataType::HCCL_DATA_TYPE_FP32;
 
     RunAllGatherVDpu(topoMeta, vDataDes);

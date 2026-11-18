@@ -53,7 +53,7 @@ private:
     HcclResult LocalCopyForMyRank(
         const std::vector<u32>& commRanks, const TemplateDataParams& tempAlgParams, std::vector<ThreadHandle>& threads);
 
-    HcclResult PreCopyDataToCclInBuf(
+    HcclResult PreCopyDataToMySlot(
         const std::vector<u32>& commRanks, const TemplateDataParams& tempAlgParams, std::vector<ThreadHandle>& threads);
 
     HcclResult SendRecvData(
@@ -73,7 +73,6 @@ private:
 
     HcclResult GetIntraRankNumFromPhysicalLevels(const TopoInfoWithNetLayerDetails* topoInfo, u32& intraRankNum);
 
-    u64 cclOutBaseOff_{0};
     u64 hcclbuffBlockMemSize_{0};
     u64 dataTypeSize_{0};
     std::vector<ThreadHandle> threads_;
