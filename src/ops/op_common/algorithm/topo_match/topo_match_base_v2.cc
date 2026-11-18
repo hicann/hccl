@@ -163,6 +163,44 @@ bool IsMeshAlgo(AlgoType algo) { return MESH_ALGO_TYPES.count(algo) > 0; }
 // 判断算法是否属于 MeshConcur 类（触发 CLOS 双层规则）
 bool IsMeshConcurAlgo(AlgoType algo) { return MESH_CONCUR_ALGO_TYPES.count(algo) > 0; }
 
+// 平行平面共享同一 netLayer、拓扑形态、位置和 rank 集；实例大小与协议也必须一致。
+// topoInstId 是平面自身的身份，不能参与相等判断。
+bool IsSameParallelPlane(const PhysicalLevelInfo& lhs, const PhysicalLevelInfo& rhs)
+{
+    return lhs.hasTopoInst && rhs.hasTopoInst && lhs.ref.netLayer == rhs.ref.netLayer && lhs.view == rhs.view
+           && lhs.topoType == rhs.topoType && lhs.locType == rhs.locType && lhs.localRanks == rhs.localRanks
+           && lhs.instSizeListByLayer == rhs.instSizeListByLayer && lhs.protocols == rhs.protocols;
+}
+
+std::vector<PhysicalLevelIndex> CollectParallelPlaneSources(
+    const std::vector<PhysicalLevelInfo>& physicalLevels, const std::vector<u32>& effIdx, u32 anchorPos)
+{
+    std::vector<PhysicalLevelIndex> sources;
+    if (anchorPos >= effIdx.size()) {
+        return sources;
+    }
+
+    u32 anchorIdx = effIdx[anchorPos];
+    if (anchorIdx >= physicalLevels.size()) {
+        return sources;
+    }
+    if (!physicalLevels[anchorIdx].hasTopoInst || physicalLevels[anchorIdx].topoType != CommTopo::COMM_TOPO_CLOS) {
+        return {static_cast<PhysicalLevelIndex>(anchorIdx)};
+    }
+
+    sources.push_back(static_cast<PhysicalLevelIndex>(anchorIdx));
+    for (u32 pos = 0; pos < static_cast<u32>(effIdx.size()); ++pos) {
+        if (pos == anchorPos) {
+            continue;
+        }
+        u32 candidateIdx = effIdx[pos];
+        if (IsSameParallelPlane(physicalLevels[anchorIdx], physicalLevels[candidateIdx])) {
+            sources.push_back(static_cast<PhysicalLevelIndex>(candidateIdx));
+        }
+    }
+    return sources;
+}
+
 // 段内匹配：算法 [algoLow..algoHigh] ↔ 物理 [physLow..physHigh]，低层一一 + 最高层压缩多余
 static void MatchLayerIdxBySegment(u32 algoLow, u32 algoHigh, u32 physLow, u32 physHigh, std::vector<u32>& pIndices)
 {
@@ -416,7 +454,8 @@ HcclResult ResolveMapping(
     return HcclResult::HCCL_SUCCESS;
 }
 
-// 填充 physicalIdxForAlgoLevels（二级）：MeshConcur 层记 {Mesh层, 上层超集层}，普通层记 {该层}
+// 填充 physicalIdxForAlgoLevels：MeshConcur 记双层来源，单层 NHRMultiLink 记同 netLayer 平行平面，
+// 其他算法层保持单锚点来源。
 HcclResult FillPhysicalIdxForAlgoLevels(
     const std::vector<PhysicalLevelInfo>& physicalLevels, const std::vector<u32>& effIdx,
     const std::vector<u32>& pIndices, const std::vector<AlgoType>& algoTypes,
@@ -434,6 +473,8 @@ HcclResult FillPhysicalIdxForAlgoLevels(
             }
             physicalIdxForAlgoLevels[i]
                 = {static_cast<PhysicalLevelIndex>(physIdx), static_cast<PhysicalLevelIndex>(effIdx[upperPos])};
+        } else if (algoTypes.size() == 1 && algoTypes[i] == AlgoType::NHR_MULTILINK) {
+            physicalIdxForAlgoLevels[i] = CollectParallelPlaneSources(physicalLevels, effIdx, pIndices[i]);
         } else {
             physicalIdxForAlgoLevels[i] = {static_cast<PhysicalLevelIndex>(physIdx)};
         }

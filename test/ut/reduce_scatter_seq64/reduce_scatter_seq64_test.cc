@@ -14,6 +14,7 @@
 #include "cost_model.h"
 #include "ins_temp_reduce_scatter_aicpu_reduce_nhr_pcie.h"
 #include "ins_temp_reduce_scatter_aicpu_reduce_nhr.h"
+#include "ins_temp_reduce_scatter_nhr.h"
 #include "ins_temp_all_reduce_aicpu_reduce_nhr.h"
 
 using namespace ops_hccl;
@@ -140,6 +141,55 @@ TEST(ReduceScatterMeshSeqCostTest, SoleTemplateRealModelWholeDomain)
     EXPECT_NEAR(r[0].D, 1e-6 * taskNum, 1e-9);
     // reduceCopies = (N-1)×dataRatio = 15（myIdx 轮规约 15 个 slice）
     EXPECT_FLOAT_EQ(r[0].reduceCopies, 15.0f);
+}
+
+TEST(ReduceScatterNhrCostTest, MultiLinkAggregatesPhysicalSources)
+{
+    CalcCostCoeffParam single;
+    single.rankSize = 8;
+    single.dataRatio = 1.0f;
+    single.netType = CommTopo::COMM_TOPO_CLOS;
+    single.portNum = {16};
+    single.algName = "AicpuReduceScatterSoleNHR";
+    single.inputBuffer = BufferType::INPUT;
+    single.outputBuffer = BufferType::HCCL_BUFFER;
+    single.scratchBuffer = BufferType::HCCL_BUFFER;
+
+    CalcCostCoeffParam multiLink = single;
+    multiLink.algName = "AicpuReduceScatterSoleNHRMultiLink";
+    multiLink.phyLevelPortNums = {{16}, {16}};
+
+    auto singleCost = InsTempReduceScatterNHR::CalcCostCoeff(single);
+    auto multiLinkCost = InsTempReduceScatterNHR::CalcCostCoeff(multiLink);
+
+    ASSERT_EQ(singleCost.size(), 1u);
+    ASSERT_EQ(multiLinkCost.size(), 1u);
+    EXPECT_FLOAT_EQ(multiLinkCost[0].A, singleCost[0].A / 2.0f);
+    EXPECT_FLOAT_EQ(multiLinkCost[0].B, singleCost[0].B);
+    EXPECT_FLOAT_EQ(multiLinkCost[0].C, singleCost[0].C);
+}
+
+TEST(ReduceScatterNhrCostTest, IncompleteSourcesFallBackToAnchor)
+{
+    CalcCostCoeffParam anchor;
+    anchor.rankSize = 8;
+    anchor.dataRatio = 1.0f;
+    anchor.netType = CommTopo::COMM_TOPO_CLOS;
+    anchor.portNum = {16};
+    anchor.algName = "AicpuReduceScatterSoleNHRMultiLink";
+    anchor.inputBuffer = BufferType::INPUT;
+    anchor.outputBuffer = BufferType::HCCL_BUFFER;
+    anchor.scratchBuffer = BufferType::HCCL_BUFFER;
+
+    CalcCostCoeffParam incomplete = anchor;
+    incomplete.phyLevelPortNums = {{16}, {}};
+
+    auto anchorCost = InsTempReduceScatterNHR::CalcCostCoeff(anchor);
+    auto incompleteCost = InsTempReduceScatterNHR::CalcCostCoeff(incomplete);
+
+    ASSERT_EQ(anchorCost.size(), 1u);
+    ASSERT_EQ(incompleteCost.size(), 1u);
+    EXPECT_FLOAT_EQ(incompleteCost[0].A, anchorCost[0].A);
 }
 
 // ============ AllReduce 模板（单轮整域 gather + 本地规约） ============

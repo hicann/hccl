@@ -10,6 +10,7 @@
 
 #include "ins_temp_all_reduce_nhr.h"
 #include <cstring>
+#include "template_utils.h"
 
 namespace ops_hccl {
 
@@ -30,6 +31,9 @@ std::vector<CostModelParam> InsTempAllReduceNHR::CalcCostCoeff(CalcCostCoeffPara
     int portNum = (param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2 && isMultiChannelNHR) ?
                       (param.portNum[0] + param.portNum[1]) :
                       param.portNum[0];
+    if (param.netType == CommTopo::COMM_TOPO_CLOS && isMultiChannelNHR) {
+        UpdateNhrMultiLinkPortNum(param.phyLevelPortNums, portNum);
+    }
     int kernelNum = 30;
     int log2R = 0;
     for (u32 r = param.rankSize; r > 1; r >>= 1) {

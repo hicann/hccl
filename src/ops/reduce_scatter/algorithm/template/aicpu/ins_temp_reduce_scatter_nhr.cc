@@ -9,6 +9,7 @@
  */
 
 #include "ins_temp_reduce_scatter_nhr.h"
+#include "template_utils.h"
 
 namespace ops_hccl {
 constexpr int TASK_NUM_EXTRA_OVERHEAD = 8;
@@ -23,6 +24,9 @@ std::vector<CostModelParam> InsTempReduceScatterNHR::CalcCostCoeff(CalcCostCoeff
     int portNum = (param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2 && !isSingleChannelNHR) ?
                       (param.portNum[0] + param.portNum[1]) :
                       param.portNum[0];
+    if (param.netType == CommTopo::COMM_TOPO_CLOS && !isSingleChannelNHR) {
+        UpdateNhrMultiLinkPortNum(param.phyLevelPortNums, portNum);
+    }
 
     int kernelNum = 21;
     int taskNum = CostModelManager::CalcTransTaskNum((log2(param.rankSize) + 1)) * 1.5

@@ -22,6 +22,9 @@ std::vector<CostModelParam> InsTempAllGatherNHR::CalcCostCoeff(CalcCostCoeffPara
     int portNum = (param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2 && !isSingleChannelNHR) ?
                       (param.portNum[0] + param.portNum[1]) :
                       param.portNum[0];
+    if (param.netType == CommTopo::COMM_TOPO_CLOS && !isSingleChannelNHR) {
+        UpdateNhrMultiLinkPortNum(param.phyLevelPortNums, portNum);
+    }
     int log2R = 0;
     for (u32 r = param.rankSize; r > 1; r >>= 1) {
         log2R++;

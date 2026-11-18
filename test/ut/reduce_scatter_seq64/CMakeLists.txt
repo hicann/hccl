@@ -9,7 +9,7 @@
 # -----------------------------------------------------------------------------------------------------------
 
 # reduce_scatter_seq64: RS/AR AicpuReduce 模板 cost 建模 UT（轻量目标，不链 executor/注册闭包）。
-# 仅编入 4 个被测模板 + cost 框架的静态方法链；HCOMM 原语以真实 dlsym 层闭合链接，
+# 仅编入被测模板 + cost 框架的静态方法链；HCOMM 原语以真实 dlsym 层闭合链接，
 # log/tuner/环境配置/securec 等以 ut_stub.cc 桩提供，残余未定义符号时按其注释追加桩定义。
 
 set(_repo_root ${CMAKE_CURRENT_SOURCE_DIR}/../../..)
@@ -30,6 +30,7 @@ set(_ut_include_dirs
     ${_repo_root}/src/ops/reduce_scatter/algorithm/template
     ${_repo_root}/src/ops/reduce_scatter/algorithm/template/aicpu
     ${_repo_root}/src/ops/all_reduce/algorithm/template/aicpu
+    ${_repo_root}/src/ops/all_gather/algorithm/template/aicpu
     ${_repo_root}/src/common
     ${_repo_root}/src/common/hcomm_dlsym
     ${_repo_root}/src/common/hcomm_dlsym/ccu
@@ -89,10 +90,13 @@ set(_ut_src
     ${_repo_root}/src/common/hcomm_dlsym/hcomm_primitives_dl.cc
     ${_repo_root}/src/common/hcomm_dlsym/hccl_sym_win_dl.cc
     ${_repo_root}/src/common/hcomm_dlsym/hccl_dl.cc
-    # 被测: 4 个模板 + cost 框架
+    # 被测: 模板 + cost 框架
     ${_repo_root}/src/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_aicpu_reduce_nhr.cc
     ${_repo_root}/src/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_aicpu_reduce_nhr_pcie.cc
+    ${_repo_root}/src/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_nhr.cc
     ${_repo_root}/src/ops/all_reduce/algorithm/template/aicpu/ins_temp_all_reduce_aicpu_reduce_nhr.cc
+    ${_repo_root}/src/ops/all_reduce/algorithm/template/aicpu/ins_temp_all_reduce_nhr.cc
+    ${_repo_root}/src/ops/all_gather/algorithm/template/aicpu/ins_temp_all_gather_nhr.cc
     ${_repo_root}/src/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_mesh_1D.cc
     ${_repo_root}/src/ops/op_common/algorithm/template/alg_v2_template_base.cc
     ${_repo_root}/src/ops/op_common/algorithm/template/template_utils.cc
@@ -109,6 +113,8 @@ set(_ut_src
 # ---------- reduce_scatter_seq64_test: 模板 cost 建模（A/B/C/D 期望值 + HostReduceSlope 门控） ----------
 add_executable(reduce_scatter_seq64_test
     ${CMAKE_CURRENT_SOURCE_DIR}/reduce_scatter_seq64_test.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/all_reduce_nhr_cost_test.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/all_gather_nhr_cost_test.cc
     ${_ut_src}
 )
 

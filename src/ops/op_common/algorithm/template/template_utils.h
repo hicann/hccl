@@ -568,6 +568,27 @@ HcclResult GetAlgRank(const u32 virtRank, const std::vector<u32>& rankIds, u32& 
 
 u32 GetNHRStepNum(u32 rankSize);
 
+// 多平面端口信息完整时更新NHR MultiLink有效端口数；任一平面为空时告警并保留锚点。
+inline void UpdateNhrMultiLinkPortNum(const std::vector<std::vector<u32>>& portNums, int& portNum)
+{
+    if (portNums.size() <= 1) {
+        return;
+    }
+
+    u32 aggregatedPortNum = 0;
+    for (const auto& planePortNums : portNums) {
+        if (planePortNums.empty()) {
+            HCCL_WARNING("[NHRMultiLink][CalcCostCoeff] incomplete parallel plane ports, use anchor.");
+            return;
+        }
+        for (u32 planePortNum : planePortNums) {
+            aggregatedPortNum += planePortNum;
+        }
+    }
+    portNum = static_cast<int>(aggregatedPortNum);
+    HCCL_INFO("[NHRMultiLink][CalcCostCoeff] planeCount=%zu effectivePortNum=%d", portNums.size(), portNum);
+}
+
 inline u32 CalcChannelsPerRank(const std::vector<HcclChannelDesc>& channels)
 {
     u32 channelsPerRank = 1;
