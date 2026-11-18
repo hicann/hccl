@@ -96,6 +96,24 @@ HcclResult AicpuTempScatterMesh1DZAxisDetour::CalcRes(
     CHK_RET(CalcChannelRequestMesh1DLevel0(comm, param, topoInfo, subCommRanks_, level0Channels));
     std::vector<HcclChannelDesc> level1Channels;
     CHK_RET(CalcChannelRequestMesh1DLevel1(comm, param, topoInfo, subCommRanks_, level1Channels));
+    // host-DPU 两级拓扑的 L1 detour 会匹配到 host 侧链路；设备内核不能解引用 host 侧通道句柄，
+    // CPU 系引擎下仅保留 device 侧 detour，无可用链路时按纯 L0 降级。
+    if (param.engine == CommEngine::COMM_ENGINE_CPU || param.engine == CommEngine::COMM_ENGINE_CPU_TS) {
+        std::vector<HcclChannelDesc> deviceLevel1Channels;
+        for (const auto& level1Channel : level1Channels) {
+            if (level1Channel.localEndpoint.loc.locType == ENDPOINT_LOC_TYPE_DEVICE) {
+                deviceLevel1Channels.push_back(level1Channel);
+            }
+        }
+        if (deviceLevel1Channels.size() != level1Channels.size()) {
+            HCCL_WARNING(
+                "[AicpuTempScatterMesh1DZAxisDetour][CalcRes] drop %zu host-side level1 detour channel(s), "
+                "%zu device-side kept, engine[%d]; degrade to level0-only transfer when none kept.",
+                level1Channels.size() - deviceLevel1Channels.size(), deviceLevel1Channels.size(),
+                static_cast<int>(param.engine));
+        }
+        level1Channels.swap(deviceLevel1Channels);
+    }
     std::vector<HcclChannelDesc> mergedChannels;
     mergedChannels.insert(mergedChannels.end(), level0Channels.begin(), level0Channels.end());
     mergedChannels.insert(mergedChannels.end(), level1Channels.begin(), level1Channels.end());

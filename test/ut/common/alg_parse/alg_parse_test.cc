@@ -508,3 +508,39 @@ TEST_F(HcclAlgoParserTest, ParseRhdAlgoCase3)
     EXPECT_EQ(parser.executorList[1].algoList[2].algoType, "rhd");
     EXPECT_FALSE(parser.executorList[1].enable);
 }
+
+// 测试：Broadcast RHD 算法词表解析与类型映射
+TEST_F(HcclAlgoParserTest, ParseRhdBroadcastCase)
+{
+    HcclAlgoParser parser;
+    std::string input = "broadcast:sequence{meshconcur,rhd}";
+
+    HcclResult ret = parser.Parser(input);
+    EXPECT_EQ(ret, HCCL_SUCCESS);
+    EXPECT_EQ(parser.executorList.size(), 1u);
+
+    EXPECT_EQ(parser.executorList[0].opType, "broadcast");
+    EXPECT_EQ(parser.executorList[0].executorType, "sequence");
+    EXPECT_EQ(parser.executorList[0].algoList.size(), 2u);
+    EXPECT_EQ(parser.executorList[0].algoList[0].algoType, "meshconcur");
+    EXPECT_EQ(parser.executorList[0].algoList[1].algoType, "rhd");
+    EXPECT_TRUE(parser.executorList[0].algoList[0].enable);
+
+    EXPECT_EQ(GetAlgoNameToTypeMap().at("RHD"), AlgoType::RHD);
+    EXPECT_EQ(GetAlgoTypeToNameMap().at(AlgoType::RHD), "RHD");
+}
+
+// 测试：Broadcast RHD DSL 配置可正确匹配注册名并参与选路
+TEST_F(HcclAlgoParserTest, UpdateCostModelWithAlgoRhdNameMatch)
+{
+    HcclAlgoParser parser;
+    ASSERT_EQ(parser.Parser("broadcast:sequence{meshconcur,rhd}"), HCCL_SUCCESS);
+
+    CostAlgoParams entries[1] = {};
+    entries[0].algName = "AicpuBroadcastSequenceMeshConcurRHD";
+    entries[0].count = 1;
+    CostModel model{entries, 1};
+
+    EXPECT_EQ(UpdateCostModelWithAlgo(parser, model, {"Aicpu"}), HCCL_SUCCESS);
+    EXPECT_EQ(entries[0].hcclAlgoPriority, 1);
+}

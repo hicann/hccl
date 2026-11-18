@@ -8,8 +8,8 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#ifndef INS_TEMP_ALL_GATHER_MESH_1D_H
-#define INS_TEMP_ALL_GATHER_MESH_1D_H
+#ifndef INS_TEMP_ALLGATHER_MESH_1D_INTRA_H
+#define INS_TEMP_ALLGATHER_MESH_1D_INTRA_H
 
 #include <cstring>
 #include "alg_v2_template_base.h"
@@ -56,4 +56,4 @@ private:
     u64 count_{0};
 };
 } // namespace ops_hccl
-#endif // INS_TEMP_ALL_GATHER_MESH_1D_H
+#endif // INS_TEMP_ALLGATHER_MESH_1D_INTRA_H

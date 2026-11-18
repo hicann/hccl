@@ -13,6 +13,15 @@
 
 namespace ops_hccl {
 
+namespace {
+    // 防御性保留：主线已导出 RhdUnitStartOfVirtual/EndOfVirtual，但部分独立构建目标可能未链接
+    // template_utils.cc。此处保持等价的本地实现，避免引入额外链接依赖；公式须与主线保持一致。
+    // algRank→unit 的 σ 映射仍经 RhdUnitStartOfRank 消费，不私有重写。
+    inline u32 VirtualSegUnitStart(u32 r, u32 a) { return (a < r) ? 2 * a : a + r; }
+
+    inline u32 VirtualSegUnitEnd(u32 r, u32 b) { return (b <= r) ? 2 * b : b + r; }
+} // namespace
+
 bool RhdScatterParamValid(u32 rankSize, u32 rootAlgRank) { return rankSize != 0 && rootAlgRank < rankSize; }
 
 bool RhdTailSizeValid(u64 tailSize, u32 dataTypeSize)
@@ -67,8 +76,8 @@ GenRhdScatterSteps(u32 rankSize, u32 rootAlgRank, u32 myAlgRank, std::vector<Rhd
             step.phase = RhdScatterStep::Phase::MAIN;
             step.step = k;
             step.isSend = isSend;
-            step.segStartUnit = RhdUnitStartOfVirtual(r, segStart);
-            step.segEndUnit = RhdUnitEndOfVirtual(r, segStart + dist);
+            step.segStartUnit = VirtualSegUnitStart(r, segStart);
+            step.segEndUnit = VirtualSegUnitEnd(r, segStart + dist);
             step.peerAlgRank = RhdAlgRankOfVirtual(rankSize, rootAlgRank, isSend ? peerV : holder);
             steps.push_back(step);
         }

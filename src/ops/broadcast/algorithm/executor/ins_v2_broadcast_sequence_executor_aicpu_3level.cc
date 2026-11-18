@@ -9,8 +9,13 @@
  */
 
 #include "ins_v2_broadcast_sequence_executor_aicpu_3level.h"
+#include "broadcast_sequence_executor_utils.h"
 #include "ins_temp_scatter_nhr.h"
 #include "ins_temp_all_gather_nhr.h"
+#include "ins_temp_scatter_rhd.h"
+#include "ins_temp_scatter_rhd_dpu_inter_node.h"
+#include "ins_temp_all_gather_rhd.h"
+#include "ins_temp_all_gather_rhd_dpu.h"
 #include "ins_temp_all_gather_mesh_1D_Z_axis_detour.h"
 #include "aicpu_temp_scatter_mesh_1D_Z_axis_detour.h"
 #include "alg_attrs_registry.h"
@@ -19,6 +24,7 @@
 #include "topo_match_two_level.h"
 #include "topo_match_three_level.h"
 namespace ops_hccl {
+
 // 当前sequence支持两级和三级组网
 
 template <
@@ -73,6 +79,9 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<
     }
     tempResource.channels = remoteRankToChannelInfo_[channelLevelIdx];
     tempResource.threads.assign(resCtx.threads.begin(), resCtx.threads.begin() + 1 + req.slaveThreadNum);
+    // host-DPU RHD 模板通过请求/响应共享内存下发任务；设备模板不读这两个指针。
+    tempResource.npu2DpuShmemPtr = resCtx.npu2DpuShmemPtr;
+    tempResource.dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
     return HCCL_SUCCESS;
 }
 
@@ -101,6 +110,8 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<
         HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest)
 {
+    CHK_PTR_NULL(topoInfo);
+    myRank_ = topoInfo->userRank;
     if (algHierarchyInfo.infos.size() < TOPO_LEVEL_NUM_2 || algHierarchyInfo.infos[0].empty()
         || algHierarchyInfo.infos[1].empty() || algHierarchyInfo.infos[0][0].empty()
         || algHierarchyInfo.infos[1][0].empty()) {
@@ -165,23 +176,21 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<
     }
 
     resourceRequest.notifyNumPerThread.clear();
-    resourceRequest.notifyNumPerThread.resize(resourceRequest.slaveThreadNum);
-
-    // 更新notify逻辑
-    auto UpdateNotify = [&](const AlgResourceRequest& req) {
-        for (u32 i = 0; i < req.notifyNumPerThread.size() && i < resourceRequest.notifyNumPerThread.size(); ++i) {
-            resourceRequest.notifyNumPerThread[i]
-                = std::max(resourceRequest.notifyNumPerThread[i], req.notifyNumPerThread[i]);
-        }
-    };
-    UpdateNotify(resReqScatterL0);
-    UpdateNotify(resReqScatterL1);
-    UpdateNotify(resReqAGL1);
-    UpdateNotify(resReqAGL0);
+    broadcast_sequence_executor::MergeNotifyNumPerThread(
+        resourceRequest.notifyNumPerThread, resReqScatterL0.notifyNumPerThread);
+    broadcast_sequence_executor::MergeNotifyNumPerThread(
+        resourceRequest.notifyNumPerThread, resReqScatterL1.notifyNumPerThread);
+    broadcast_sequence_executor::MergeNotifyNumPerThread(
+        resourceRequest.notifyNumPerThread, resReqAGL1.notifyNumPerThread);
+    broadcast_sequence_executor::MergeNotifyNumPerThread(
+        resourceRequest.notifyNumPerThread, resReqAGL0.notifyNumPerThread);
     if (!skipLevel2_) {
-        UpdateNotify(resReqScatterL2);
-        UpdateNotify(resReqAGL2);
+        broadcast_sequence_executor::MergeNotifyNumPerThread(
+            resourceRequest.notifyNumPerThread, resReqScatterL2.notifyNumPerThread);
+        broadcast_sequence_executor::MergeNotifyNumPerThread(
+            resourceRequest.notifyNumPerThread, resReqAGL2.notifyNumPerThread);
     }
+    resourceRequest.notifyNumPerThread.resize(resourceRequest.slaveThreadNum, 0);
 
     // notifyNumOnMainThread
     resourceRequest.notifyNumOnMainThread = std::max(
@@ -193,16 +202,56 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<
              resReqAGL2.notifyNumOnMainThread});
     }
 
-    // channels默认3个长度，两层拓扑复用L1通道填充channels[2]，实际用不到
-    u64 channelsSize = 3;
-    resourceRequest.channels.resize(channelsSize);
-    resourceRequest.channels[0] = resReqScatterL0.channels[0];
-    resourceRequest.channels[1] = resReqScatterL1.channels[0];
-    if (!skipLevel2_) {
-        resourceRequest.channels[2] = resReqScatterL2.channels[0];
+    // RHD 需要 Scatter/AllGather 复用同层通道；既有 NHR/NDA 只使用 Scatter 通道，保持原行为。
+    constexpr bool isRhd = InsAlgTemplate1::props.algoType == AlgoType::RHD;
+    resourceRequest.channels.resize(3);
+    if constexpr (isRhd) {
+        CHK_PRT_RET(
+            broadcast_sequence_executor::ValidateChannelRequestCompatible(
+                resReqScatterL0.channels[0], resReqAGL0.channels[0])
+                != HCCL_SUCCESS,
+            HCCL_ERROR(
+                "[BroadcastSequenceMesh1dNHRNHRExecutor][CalcRes] mode[RHD] L0 Scatter/AllGather channel requests "
+                "conflict."),
+            HCCL_E_PARA);
+        CHK_PRT_RET(
+            broadcast_sequence_executor::ValidateChannelRequestCompatible(
+                resReqScatterL1.channels[0], resReqAGL1.channels[0])
+                != HCCL_SUCCESS,
+            HCCL_ERROR(
+                "[BroadcastSequenceMesh1dNHRNHRExecutor][CalcRes] mode[RHD] L1 Scatter/AllGather channel requests "
+                "conflict."),
+            HCCL_E_PARA);
+        if (!skipLevel2_) {
+            CHK_PRT_RET(
+                broadcast_sequence_executor::ValidateChannelRequestCompatible(
+                    resReqScatterL2.channels[0], resReqAGL2.channels[0])
+                    != HCCL_SUCCESS,
+                HCCL_ERROR(
+                    "[BroadcastSequenceMesh1dNHRNHRExecutor][CalcRes] mode[RHD] L2 Scatter/AllGather channel requests "
+                    "conflict."),
+                HCCL_E_PARA);
+        }
+        CHK_RET(broadcast_sequence_executor::MergeChannelRequest(
+            resReqScatterL0.channels[0], resReqAGL0.channels[0], resourceRequest.channels[0]));
+        CHK_RET(broadcast_sequence_executor::MergeChannelRequest(
+            resReqScatterL1.channels[0], resReqAGL1.channels[0], resourceRequest.channels[1]));
+        if (!skipLevel2_) {
+            CHK_RET(broadcast_sequence_executor::MergeChannelRequest(
+                resReqScatterL2.channels[0], resReqAGL2.channels[0], resourceRequest.channels[2]));
+        } else {
+            // 两层拓扑复用 L1 通道填充 channels[2]，实际不执行 L2。
+            resourceRequest.channels[2] = resourceRequest.channels[1];
+        }
     } else {
-        resourceRequest.channels[2] = resReqScatterL1.channels[0];
+        resourceRequest.channels[0] = resReqScatterL0.channels[0];
+        resourceRequest.channels[1] = resReqScatterL1.channels[0];
+        resourceRequest.channels[2] = skipLevel2_ ? resReqScatterL1.channels[0] : resReqScatterL2.channels[0];
     }
+    HCCL_INFO(
+        "[BroadcastSequenceMesh1dNHRNHRExecutor][CalcRes] mode[%s] channelPolicy[%s] L0[%zu] L1[%zu] L2[%zu]",
+        isRhd ? "RHD" : "LEGACY", isRhd ? "merge-scatter-allgather" : "scatter-only",
+        resourceRequest.channels[0].size(), resourceRequest.channels[1].size(), resourceRequest.channels[2].size());
     return HCCL_SUCCESS;
 }
 
@@ -273,10 +322,11 @@ void BroadcastSequenceMesh1dNHRNHRExecutor<
     InsAlgTemplate5>::GenTempAlgParamsScatterL0(u64 currDataCount, u64 processedDataCount, TemplateDataParams& params)
     const
 {
-    u64 sliceCnt = currDataCount / rankSizeLevel0_;
-    u64 remCnt = currDataCount % rankSizeLevel0_;
+    u64 sliceCnt = 0;
+    u64 tailCnt = 0;
+    broadcast_sequence_executor::SplitFloorTail(currDataCount, rankSizeLevel0_, sliceCnt, tailCnt);
     params.sliceSize = sliceCnt * dataTypeSize_;
-    params.tailSize = (sliceCnt + remCnt) * dataTypeSize_;
+    params.tailSize = tailCnt * dataTypeSize_;
 
     params.count = currDataCount;
     params.buffInfo.inBuffBaseOff = processedDataCount * dataTypeSize_;
@@ -293,10 +343,11 @@ void BroadcastSequenceMesh1dNHRNHRExecutor<
     AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3, InsAlgTemplate4,
     InsAlgTemplate5>::GenTempAlgParamsScatterL1(u64 level1TotalCnt, u64 l0SliceByte, TemplateDataParams& params) const
 {
-    u64 sliceCnt = level1TotalCnt / rankSizeLevel1_;
-    u64 remCnt = level1TotalCnt % rankSizeLevel1_;
+    u64 sliceCnt = 0;
+    u64 tailCnt = 0;
+    broadcast_sequence_executor::SplitFloorTail(level1TotalCnt, rankSizeLevel1_, sliceCnt, tailCnt);
     params.sliceSize = sliceCnt * dataTypeSize_;
-    params.tailSize = (sliceCnt + remCnt) * dataTypeSize_;
+    params.tailSize = tailCnt * dataTypeSize_;
 
     params.count = level1TotalCnt;
     params.buffInfo.inBuffBaseOff = 0;
@@ -314,10 +365,7 @@ void BroadcastSequenceMesh1dNHRNHRExecutor<
     InsAlgTemplate5>::
     GenTempAlgParamsScatterL2(u64 level2TotalCnt, u64 l0SliceByte, u64 l1SliceByte, TemplateDataParams& params) const
 {
-    u64 sliceCnt = level2TotalCnt / rankSizeLevel2_;
-    u64 remCnt = level2TotalCnt % rankSizeLevel2_;
-    params.sliceSize = sliceCnt * dataTypeSize_;
-    params.tailSize = (sliceCnt + remCnt) * dataTypeSize_;
+    broadcast_sequence_executor::FillFloorTailSlices(level2TotalCnt, dataTypeSize_, rankSizeLevel2_, params);
 
     params.count = level2TotalCnt;
     params.buffInfo.inBuffBaseOff = 0;
@@ -435,8 +483,6 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<
 {
     HCCL_INFO("[BroadcastSequenceMesh1dNHRNHRExecutor][OrchestrateLoop] Start");
     u32 podSize = rankSizeLevel0_ * rankSizeLevel1_;
-    u32 rootPodStartRank = param.root / podSize * podSize;
-    u32 rootPodEndRank = rootPodStartRank + podSize - 1;
     // scatter L0
     TemplateDataParams tempAlgParamsScatterL0;
     tempAlgParamsScatterL0.buffInfo.inputPtr = param.inputPtr;
@@ -445,10 +491,12 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<
     tempAlgParamsScatterL0.buffInfo.inBuffType = BufferType::INPUT;
     tempAlgParamsScatterL0.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
     tempAlgParamsScatterL0.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParamsScatterL0.dataType = param.DataDes.dataType;
 
     std::shared_ptr<InsAlgTemplate0> algTemplateScatterL0
         = std::make_shared<InsAlgTemplate0>(param, myRank_, algHierarchyInfo_.infos[0]);
-    CHK_RET(algTemplateScatterL0->SetchannelsPerRank(remoteRankToChannelInfo_[0]));
+    CHK_RET(
+        broadcast_sequence_executor::SetChannelsPerRankIfNotEmpty(algTemplateScatterL0, remoteRankToChannelInfo_[0]));
 
     // scatter L1
     TemplateDataParams tempAlgParamsScatterL1;
@@ -458,10 +506,12 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<
     tempAlgParamsScatterL1.buffInfo.inBuffType = BufferType::HCCL_BUFFER;
     tempAlgParamsScatterL1.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
     tempAlgParamsScatterL1.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParamsScatterL1.dataType = param.DataDes.dataType;
     std::shared_ptr<InsAlgTemplate1> algTemplateScatterL1
         = std::make_shared<InsAlgTemplate1>(param, myRank_, algHierarchyInfo_.infos[1]);
     if (!skipLevel1_) {
-        CHK_RET(algTemplateScatterL1->SetchannelsPerRank(remoteRankToChannelInfo_[1]));
+        CHK_RET(broadcast_sequence_executor::SetChannelsPerRankIfNotEmpty(
+            algTemplateScatterL1, remoteRankToChannelInfo_[1]));
     }
     std::shared_ptr<InsAlgTemplate2> algTemplateScatterL2;
     std::shared_ptr<InsAlgTemplate3> algTemplateAllGatherL2;
@@ -475,8 +525,10 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<
         tempAlgParamsScatterL2.buffInfo.inBuffType = BufferType::HCCL_BUFFER;
         tempAlgParamsScatterL2.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
         tempAlgParamsScatterL2.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
+        tempAlgParamsScatterL2.dataType = param.DataDes.dataType;
         algTemplateScatterL2 = std::make_shared<InsAlgTemplate2>(param, myRank_, algHierarchyInfo_.infos[2]);
-        CHK_RET(algTemplateScatterL2->SetchannelsPerRank(remoteRankToChannelInfo_[2]));
+        CHK_RET(broadcast_sequence_executor::SetChannelsPerRankIfNotEmpty(
+            algTemplateScatterL2, remoteRankToChannelInfo_[2]));
         // AG L2
         tempAlgParamsAllGatherL2.buffInfo.inputPtr = resCtx.cclMem.addr;
         tempAlgParamsAllGatherL2.buffInfo.outputPtr = resCtx.cclMem.addr;
@@ -484,8 +536,10 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<
         tempAlgParamsAllGatherL2.buffInfo.inBuffType = BufferType::HCCL_BUFFER;
         tempAlgParamsAllGatherL2.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
         tempAlgParamsAllGatherL2.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
+        tempAlgParamsAllGatherL2.dataType = param.DataDes.dataType;
         algTemplateAllGatherL2 = std::make_shared<InsAlgTemplate3>(param, myRank_, algHierarchyInfo_.infos[2]);
-        CHK_RET(algTemplateAllGatherL2->SetchannelsPerRank(remoteRankToChannelInfo_[2]));
+        CHK_RET(broadcast_sequence_executor::SetChannelsPerRankIfNotEmpty(
+            algTemplateAllGatherL2, remoteRankToChannelInfo_[2]));
     }
     // AG L1
     TemplateDataParams tempAlgParamsAllGatherL1;
@@ -495,11 +549,13 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<
     tempAlgParamsAllGatherL1.buffInfo.inBuffType = BufferType::HCCL_BUFFER;
     tempAlgParamsAllGatherL1.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
     tempAlgParamsAllGatherL1.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParamsAllGatherL1.dataType = param.DataDes.dataType;
 
     std::shared_ptr<InsAlgTemplate4> algTemplateAllGatherL1
         = std::make_shared<InsAlgTemplate4>(param, myRank_, algHierarchyInfo_.infos[1]);
     if (!skipLevel1_) {
-        CHK_RET(algTemplateAllGatherL1->SetchannelsPerRank(remoteRankToChannelInfo_[1]));
+        CHK_RET(broadcast_sequence_executor::SetChannelsPerRankIfNotEmpty(
+            algTemplateAllGatherL1, remoteRankToChannelInfo_[1]));
     }
     // AG L0
     TemplateDataParams tempAlgParamsAllGatherL0;
@@ -509,9 +565,11 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<
     tempAlgParamsAllGatherL0.buffInfo.inBuffType = BufferType::HCCL_BUFFER;
     tempAlgParamsAllGatherL0.buffInfo.outBuffType = BufferType::OUTPUT;
     tempAlgParamsAllGatherL0.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParamsAllGatherL0.dataType = param.DataDes.dataType;
     std::shared_ptr<InsAlgTemplate5> algTemplateAllGatherL0
         = std::make_shared<InsAlgTemplate5>(param, myRank_, algHierarchyInfo_.infos[0]);
-    CHK_RET(algTemplateAllGatherL0->SetchannelsPerRank(remoteRankToChannelInfo_[0]));
+    CHK_RET(
+        broadcast_sequence_executor::SetChannelsPerRankIfNotEmpty(algTemplateAllGatherL0, remoteRankToChannelInfo_[0]));
 
     // 构造Scatter L0 template资源
     TemplateResource templateScatterResourceL0;
@@ -616,13 +674,14 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<
         }
         // ---------------------- Scatter L1 标量分片 ----------------------
         u64 l1SliceByte = tempAlgParamsScatterL0.sliceSize;
-        u64 l1TotalCnt = currDataCount / rankSizeLevel0_;
+        // L1 Scatter 的每个 L1 rank 输入块来自 L0 Scatter 的本 rank 切片：
+        // 非尾块长度取 sliceSize，尾块长度取 tailSize，不能用 currDataCount / rankSizeLevel0_
+        // （floor/tail 切片时两者不相等，会丢余数）。
+        u64 l1TotalCnt = l1SliceByte / dataTypeSize_;
         u64 l1TailCnt = tempAlgParamsScatterL0.tailSize / dataTypeSize_;
         root = param.root - rootIdx0 + rankIdxLevel0_;
-        bool layer1IsTail = false;
         if ((root % rankSizeLevel0_) == (algHierarchyInfo_.infos[0][0].back() % rankSizeLevel0_)) {
             GenTempAlgParamsScatterL1(l1TailCnt, l1SliceByte, tempAlgParamsScatterL1);
-            layer1IsTail = true;
         } else {
             GenTempAlgParamsScatterL1(l1TotalCnt, l1SliceByte, tempAlgParamsScatterL1);
         }
@@ -651,16 +710,15 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<
                     tempAlgParamsScatterL1.sliceSize / dataTypeSize_, l1SliceByte, l2SliceByte, tempAlgParamsScatterL2);
             }
             algTemplateScatterL2->SetRoot(root);
-            if (tempAlgParamsScatterL1.tailSize != 0 || tempAlgParamsScatterL1.sliceSize != 0) {
-                CHK_RET(algTemplateScatterL2->KernelRun(param, tempAlgParamsScatterL2, templateScatterResourceL2));
-            }
+            tempAlgParamsScatterL2.root = root;
+            CHK_RET(algTemplateScatterL2->KernelRun(param, tempAlgParamsScatterL2, templateScatterResourceL2));
         }
         // ---------------------- AllGather L2 ----------------------
         if (!skipLevel2_) {
             GenTempAlgParamsAGL2(
                 tempAlgParamsScatterL2.sliceSize, tempAlgParamsScatterL2.tailSize, tempAlgParamsAllGatherL2,
                 tempAlgParamsScatterL0.sliceSize, tempAlgParamsScatterL1.sliceSize);
-
+            tempAlgParamsAllGatherL2.root = root;
             CHK_RET(algTemplateAllGatherL2->KernelRun(param, tempAlgParamsAllGatherL2, templateAllgatherResourceL2));
         }
         // ---------------------- AllGather L1 ----------------------
@@ -831,6 +889,11 @@ AlgNetMeta BroadcastSequenceMesh1dNHRNHRExecutor<
     return meta;
 }
 
+// DPU 三级 RHD 在二级执行器源文件中注册，成员定义在本翻译单元，需显式实例化。
+template class BroadcastSequenceMesh1dNHRNHRExecutor<
+    TopoMatchThreeLevel, AicpuTempScatterMesh1DZAxisDetour, InsTempScatterRHD, InsTempScatterRhdDpuInterNode,
+    InsTempAllGatherRHDDPU, InsTempAllGatherRHD, InsTempAllGatherMesh1D1DZAxisDetour>;
+
 REGISTER_ALG_ATTRS(AicpuBroadcastSequenceMeshConcurNHRNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
                    topo.minTopoLevelNum = TOPO_LEVEL_NUM_3; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3;
                    topo.isSupportLevel1Nhr = false;);
@@ -858,5 +921,37 @@ REGISTER_EXEC_V2_MULTI(
     InsTempScatterNHR,                    // Scatter L2 (跨超节点)
     InsTempAllGatherNHR,                  // AllGather L2 (跨超节点)
     InsTempAllGatherNHR,                  // AllGather L1 (框间)
+    InsTempAllGatherMesh1D1DZAxisDetour); // AllGather L0 (框内, Z轴绕路)
+
+REGISTER_ALG_ATTRS(
+    AicpuBroadcastSequenceMeshConcurRHD, topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
+    topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; topo.isHostDpuOnly = false; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
+    topo.isSupportLevel1Nhr = false; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails*) -> bool {
+        return false;
+    };);
+REGISTER_EXEC_V2_MULTI(
+    HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastSequenceMeshConcurRHD, BroadcastSequenceMesh1dNHRNHRExecutor,
+    TopoMatchTwoLevel,
+    AicpuTempScatterMesh1DZAxisDetour,    // Scatter L0 (框内, Z轴绕路)
+    InsTempScatterRHD,                    // Scatter L1 (框间)
+    InsTempScatterRHD,                    // Scatter L2 (二级拓扑未使用)
+    InsTempAllGatherRHD,                  // AllGather L2 (二级拓扑未使用)
+    InsTempAllGatherRHD,                  // AllGather L1 (框间)
+    InsTempAllGatherMesh1D1DZAxisDetour); // AllGather L0 (框内, Z轴绕路)
+
+REGISTER_ALG_ATTRS(
+    AicpuBroadcastSequenceMeshConcurRHDRHD, topo.minTopoLevelNum = TOPO_LEVEL_NUM_3;
+    topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3; topo.isHostDpuOnly = false; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
+    topo.isSupportLevel1Nhr = false; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails*) -> bool {
+        return false;
+    };);
+REGISTER_EXEC_V2_MULTI(
+    HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastSequenceMeshConcurRHDRHD, BroadcastSequenceMesh1dNHRNHRExecutor,
+    TopoMatchThreeLevel,
+    AicpuTempScatterMesh1DZAxisDetour,    // Scatter L0 (框内, Z轴绕路)
+    InsTempScatterRHD,                    // Scatter L1 (框间)
+    InsTempScatterRHD,                    // Scatter L2 (跨超节点)
+    InsTempAllGatherRHD,                  // AllGather L2 (跨超节点)
+    InsTempAllGatherRHD,                  // AllGather L1 (框间)
     InsTempAllGatherMesh1D1DZAxisDetour); // AllGather L0 (框内, Z轴绕路)
 } // namespace ops_hccl

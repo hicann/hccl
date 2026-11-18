@@ -17,28 +17,48 @@
 #include "check_utils.h"
 #include <thread>
 #include "alg_env_config.h"
+#include "selected_algo_log_stub.h"
 
 using namespace HcclSim;
 using namespace ops_hccl;
 
+namespace {
+constexpr uint64_t SIM_CCL_BUFFER_SIZE = 200ULL * 1024 * 1024;
+constexpr uint64_t MultiLoopCount(uint64_t dataTypeSize) { return SIM_CCL_BUFFER_SIZE / dataTypeSize + 1; }
+static_assert(
+    MultiLoopCount(sizeof(int8_t)) * sizeof(int8_t) > SIM_CCL_BUFFER_SIZE,
+    "multi-loop ST count must exceed one simulated CCL buffer");
+} // namespace
+
 class ST_BROADCAST_TEST : public ::testing::Test {
 protected:
-    void SetUp() override { ResetAlgEnvConfigInitState(); }
+    void SetUp() override
+    {
+        ResetAlgEnvConfigInitState();
+        ResetSelectedAlgoLog();
+    }
     void TearDown() override
     {
         unsetenv("HCCL_OP_EXPANSION_MODE");
         unsetenv("HCCL_ENABLE_OPEN_AICPU");
+        unsetenv("HCCL_ALGO");
     }
     static void SetUpTestCase() {}
     static void TearDownTestCase() {}
-    void
-    RunBroadcastTest(TopoMeta topoMeta, u32 rankSize, uint64_t count, HcclDataType dataType, u32 root, u32 dataTypeSize)
+    void RunBroadcastTest(
+        TopoMeta topoMeta, u32 rankSize, uint64_t count, HcclDataType dataType, u32 root, u32 dataTypeSize,
+        const char* hcclAlgo = nullptr)
     {
         // 仿真模型初始化
         // TopoMeta topoMeta {{{0, 1, 2, 3}}};  // 三维数组指定超节点-Server-Device信息
         SimWorld::Global()->Init(topoMeta, HcclDevType::DEV_TYPE_950);
 
-        // 设置展开模式为HOST_TS
+        // 显式 HCCL_ALGO 只提供优先级；执行后断言 RHD 真实命中，防止静默回退导致假绿。
+        if (hcclAlgo != nullptr) {
+            setenv("HCCL_ALGO", hcclAlgo, 1);
+        } else {
+            unsetenv("HCCL_ALGO");
+        }
         setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
         setenv("HCCL_INDEPENDENT_OP", "1", 1);
 
@@ -48,7 +68,7 @@ protected:
         // auto dataType = HcclDataType::HCCL_DATA_TYPE_INT32;  // 数据类型
         // auto root = 0;  // root节点
 
-        // 多线程运行SCATTER算子
+        // 多线程运行Broadcast算子
         std::vector<std::thread> threads;
         for (auto rankId = 0; rankId < rankSize; ++rankId) {
             threads.emplace_back([=]() {
@@ -86,6 +106,9 @@ protected:
         auto taskQueues = SimTaskQueue::Global()->GetAllRankTaskQueues();
         HcclResult res = CheckBroadcast(taskQueues, rankSize, dataType, count, root);
         EXPECT_TRUE(res == HCCL_SUCCESS);
+        if (hcclAlgo != nullptr) {
+            ExpectAlgoHit("RHD");
+        }
 
         // 资源清理
         SimWorld::Global()->Deinit();
@@ -486,4 +509,83 @@ TEST_F(ST_BROADCAST_TEST, st_broadcast_a5_aicpu_Mesh1DZAxisDetourNHR_Tail_test)
     auto root = 0;                                     // root节点
     auto dataTypeSize = sizeof(int32_t);
     RunBroadcastTest(topoMeta, rankSize, count, dataType, root, dataTypeSize);
+}
+
+// ==================== Broadcast RHD（AICPU 二级 / 三级） ====================
+// 以下用例显式配置 HCCL_ALGO，并由 RunBroadcastTest 断言实际命中 RHD；
+namespace {
+constexpr const char* BROADCAST_RHD_2LEVEL = "broadcast:sequence{level0=meshconcur,level1=rhd}";
+constexpr const char* BROADCAST_RHD_3LEVEL = "broadcast:sequence{level0=meshconcur,level1=rhd,level2=rhd}";
+} // namespace
+
+// AICPU 二级 2 次幂：L0=2、L1=2；原地 Broadcast，root 位于高位。
+TEST_F(ST_BROADCAST_TEST, st_broadcast_rhd_aicpu_2level_power_root_high)
+{
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 1, 2, 2);
+    RunBroadcastTest(topoMeta, 4, 100, HcclDataType::HCCL_DATA_TYPE_INT32, 3, sizeof(int32_t), BROADCAST_RHD_2LEVEL);
+}
+
+// AICPU 二级非 2 次幂：L1=3；root=0、2、4 分别覆盖 part1 低位代表、高位代表和 block。
+TEST_F(ST_BROADCAST_TEST, st_broadcast_rhd_aicpu_2level_nonpower_root_low)
+{
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 1, 3, 2);
+    RunBroadcastTest(topoMeta, 6, 1025, HcclDataType::HCCL_DATA_TYPE_INT32, 0, sizeof(int32_t), BROADCAST_RHD_2LEVEL);
+}
+
+TEST_F(ST_BROADCAST_TEST, st_broadcast_rhd_aicpu_2level_nonpower_root_high)
+{
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 1, 3, 2);
+    RunBroadcastTest(topoMeta, 6, 1025, HcclDataType::HCCL_DATA_TYPE_INT32, 2, sizeof(int32_t), BROADCAST_RHD_2LEVEL);
+}
+
+TEST_F(ST_BROADCAST_TEST, st_broadcast_rhd_aicpu_2level_nonpower_root_block)
+{
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 1, 3, 2);
+    RunBroadcastTest(topoMeta, 6, 1025, HcclDataType::HCCL_DATA_TYPE_INT32, 4, sizeof(int32_t), BROADCAST_RHD_2LEVEL);
+}
+
+// AICPU 三级非 2 次幂：L1=3；count 不整除，多 loop 且覆盖层内高位代表。
+TEST_F(ST_BROADCAST_TEST, st_broadcast_rhd_aicpu_3level_nonpower_tail_multiloop)
+{
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 2, 3, 2);
+    RunBroadcastTest(
+        topoMeta, 12, MultiLoopCount(sizeof(int8_t)), HcclDataType::HCCL_DATA_TYPE_INT8, 2, sizeof(int8_t),
+        BROADCAST_RHD_3LEVEL);
+}
+
+// AICPU 三级 root 位于 L1 block（L2 高位），覆盖跨层 root 位置组合。
+TEST_F(ST_BROADCAST_TEST, st_broadcast_rhd_aicpu_3level_root_block)
+{
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 2, 3, 2);
+    RunBroadcastTest(topoMeta, 12, 1025, HcclDataType::HCCL_DATA_TYPE_INT8, 10, sizeof(int8_t), BROADCAST_RHD_3LEVEL);
+}
+
+// AICPU 三级 L2 非 2 次幂：root=0 覆盖 L2 part1 低位代表，count=1 覆盖最小数据量。
+TEST_F(ST_BROADCAST_TEST, st_broadcast_rhd_aicpu_3level_l2_nonpower_root_low_count1)
+{
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 3, 2, 2);
+    RunBroadcastTest(topoMeta, 12, 1, HcclDataType::HCCL_DATA_TYPE_INT8, 0, sizeof(int8_t), BROADCAST_RHD_3LEVEL);
+}
+
+// AICPU 三级 L2 非 2 次幂：root=8 覆盖 L2 block。
+TEST_F(ST_BROADCAST_TEST, st_broadcast_rhd_aicpu_3level_l2_nonpower_root_block)
+{
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 3, 2, 2);
+    RunBroadcastTest(topoMeta, 12, 1025, HcclDataType::HCCL_DATA_TYPE_INT8, 8, sizeof(int8_t), BROADCAST_RHD_3LEVEL);
+}
+
+// AICPU 二级非 2 次幂：root=2 覆盖 part1 高位代表，BFP16 覆盖 2 字节数据类型。
+TEST_F(ST_BROADCAST_TEST, st_broadcast_rhd_aicpu_2level_nonpower_bfp16)
+{
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 1, 6, 2);
+    RunBroadcastTest(topoMeta, 12, 257, HcclDataType::HCCL_DATA_TYPE_BFP16, 2, sizeof(uint16_t), BROADCAST_RHD_2LEVEL);
 }

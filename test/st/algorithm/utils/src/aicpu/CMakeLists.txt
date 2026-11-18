@@ -383,6 +383,7 @@ if(_ST_CANN_VERSION_NUM GREATER_EQUAL 90000000)
         # AicpuBroadcastSequenceMeshConcurNHRNHR
         # DpuBroadcastSequenceMeshNHR
         ${HCCL_DEV_BASE}/src/ops/broadcast/algorithm/executor/ins_v2_broadcast_sequence_executor.cc
+        ${HCCL_DEV_BASE}/src/ops/broadcast/algorithm/executor/ins_v2_broadcast_sequence_rhd_executor.cc
         ${HCCL_DEV_BASE}/src/ops/broadcast/algorithm/executor/ins_v2_broadcast_sequence_executor_aicpu_3level.cc
         ${HCCL_DEV_BASE}/src/ops/broadcast/algorithm/template/aicpu/ins_temp_allgather_nhr_dpu_inter.cc
         ${HCCL_DEV_BASE}/src/ops/broadcast/algorithm/template/aicpu/ins_temp_scatter_nhr_dpu_inter.cc

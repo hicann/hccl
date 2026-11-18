@@ -153,7 +153,8 @@ HcclResult InsTempScatterRHD::KernelRun(
     isDmaRead_ = isPcieProtocol;                                     // 是否使用Read模式
     HCCL_DEBUG("[InsTempScatterRHD] Use Dma Read[%d]", isDmaRead_);
 
-    HCCL_INFO("[InsTempScatterRHD] queNum_ = [%u], threads size = [%zu]", threadNum_, templateResource.threads.size());
+    HCCL_INFO(
+        "[InsTempScatterRHD] threadNum_ = [%u], threads size = [%zu]", threadNum_, templateResource.threads.size());
     HCCL_INFO("[InsTempScatterRHD] Run Start");
     CHK_PRT_RET(
         templateResource.threads.empty(), HCCL_ERROR("[InsTempScatterRHD][KernelRun] threads is empty"),

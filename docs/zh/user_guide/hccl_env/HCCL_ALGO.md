@@ -120,6 +120,10 @@ export HCCL_ALGO="allgather:sequence{level0=meshconcur,level1=rhd,level2=rhd}"
 export HCCL_ALGO="scatter:sequence{level0=meshconcur,level1=rhd}"
 # Scatter算子三级拓扑：level0执行MeshConcur算法，level1与level2均执行RHD算法（跨超节点为host-DPU引擎）。
 export HCCL_ALGO="scatter:sequence{level0=meshconcur,level1=rhd,level2=rhd}"
+# Broadcast算子显式启用RHD，二级拓扑；AICPU与HostDPU路径由拓扑和展开模式自动匹配。
+export HCCL_ALGO="broadcast:sequence{level0=meshconcur,level1=rhd}"
+# Broadcast算子显式启用RHD，三级拓扑；level1与level2均执行RHD。
+export HCCL_ALGO="broadcast:sequence{level0=meshconcur,level1=rhd,level2=rhd}"
 ```
 
 ### 配置生效语义

@@ -20,6 +20,7 @@ add_subdirectory(common/topo_match)
 add_subdirectory(common/adapter_error_manager)
 add_subdirectory(reduce_scatter_selector)
 add_subdirectory(common/executor)
+add_subdirectory(broadcast_sequence_executor)
 add_subdirectory(common/channel_process_link)
 add_subdirectory(common/ccu_resource_expansion)
 # white_box_guards: 序列化反序列化边界校验、图模式资源计算零值守卫的防御性 UT。
