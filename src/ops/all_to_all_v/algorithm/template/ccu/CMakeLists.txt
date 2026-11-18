@@ -25,6 +25,11 @@ set(src_list
     ${CMAKE_CURRENT_SOURCE_DIR}/ccu_temp_all_to_all_concurrent_mesh_nhr.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ccu_temp_all_to_all_v_mesh1d_2Die.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/kernel/ccu_kernel_all_to_all_v_mesh1d_2die.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/hier/ccu_alltoall_stage_template_registry.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/hier/ccu_temp_all_to_all_hier_first_stage.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/kernel/ccu_kernel_all_to_all_hier_first_stage.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/hier/ccu_temp_all_to_all_hier_last_stage.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/kernel/ccu_kernel_all_to_all_hier_last_stage.cc
 )
 
 if(TARGET hccl)
