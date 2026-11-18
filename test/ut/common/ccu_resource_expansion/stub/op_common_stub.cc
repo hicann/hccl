@@ -12,8 +12,27 @@
 
 #include "adapter_acl.h"
 #include "hccl_aiv_utils.h"
+#include "hccl_sym_win_dl.h"
+
+// op_common.cc 的对端对称 VA 取址引用，真实实现定义在 hccl_sym_win_dl.cc（本 UT 不链接）；
+// CCU 资源申请用例不走 AIV 对称路径，此处恒视为已登记并按 identity 填充，避免影响用例。
+extern "C" bool GetSymWinRankToMemberTable(HcclCommSymWindow, uint32_t rankSize, uint32_t* memberIds)
+{
+    if (memberIds == nullptr) {
+        return false;
+    }
+    for (uint32_t rank = 0; rank < rankSize; rank++) {
+        memberIds[rank] = rank;
+    }
+    return true;
+}
 
 namespace ops_hccl {
+// 对称 VA 表签名缓存，真实实现定义在 hccl_aiv_utils.cc（本 UT 不链接），此处恒视为未填表。
+bool IsAivSymPeerTableFilled(const void*, const AivSymSign&) { return false; }
+
+void RecordAivSymPeerTable(const void*, const AivSymSign&) {}
+
 // GetAlgResWithEngine同时引用非CCU分支；这些依赖仅用于链接，CCU用例不应调用。
 HcclResult haclrtMemcpy(void*, size_t, const void*, size_t, aclrtMemcpyKind)
 {

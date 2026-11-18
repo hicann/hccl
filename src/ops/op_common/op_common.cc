@@ -19,6 +19,8 @@
 #include <mutex>
 #include <cstdlib> // 包含getenv函数
 #include <cstring> // 包含strcmp函数
+#include <cstddef>
+#include <cstdint>
 #include <stdexcept>
 
 #ifdef HCCL_ALGO_PLUGIN_ENABLE
@@ -71,6 +73,7 @@
 #include "utils.h"
 #include "selector_engine.h"
 #include "hcomm_dlsym.h"
+#include "hccl_sym_win_dl.h"
 #include "hccl/hccl_res.h"
 
 namespace ops_hccl {
@@ -532,6 +535,149 @@ bool IsAivCacheSupported(const OpParam& param)
            && param.opMode == OpMode::OPBASE && !IsStreamInCaptureMode(param.stream);
 }
 
+// 填充一份「对端对称 VA 数组」：任一侧取不到地址时清 0 整份数组，
+// kernel 侧据本 rank 条目是否为 0 判断该侧对称是否可用，为 0 时回退非对称两跳路径。
+// 对端 VA 由 hcomm 的 HcclSymWinGetPeerDevicePointer 按 LSA memberId 计算，
+// 非 UB 窗口返回 HCCL_E_NOT_SUPPORT：全部 peer 失败时关闭本 rank 对称直读、算子继续；
+// 仅部分 peer 失败说明各 rank 窗口/偏移不一致，执行期返回参数错误终止（资源申请期降级重试），
+// 避免两侧同步协议不同导致 hang。
+static HcclResult FillSymPeerAddrArray(
+    u8* commInfo, u64 addrOffset, void* win, uint64_t winOffset, const void* myPtr, u32 rankSize, u32 myRank,
+    bool& fallback, bool strictWhenPartial)
+{
+    fallback = false;
+    // 数组区只按 MAX_RANK_SIZE 项划分，越界会读到相邻的 buffers 指针区；rank 本身仍会下发给 kernel，
+    // host 无法阻止 device 侧的越界读，故直接报错终止，不降级为不对称路径。
+    if (rankSize > MAX_RANK_SIZE || myRank >= rankSize) {
+        HCCL_ERROR(
+            "[%s] invalid rankSize[%u] or myRank[%u], maxRankSize[%u]", __func__, rankSize, myRank, MAX_RANK_SIZE);
+        return HCCL_E_PARA;
+    }
+    // 降级时清整份数组（含对端槽位），不残留上一个窗口写入的 VA。
+    auto clearArray = [commInfo, addrOffset, rankSize]() -> HcclResult {
+        void* zeros[MAX_RANK_SIZE] = {};
+        return haclrtMemcpy(
+            commInfo + addrOffset, rankSize * sizeof(void*), zeros, rankSize * sizeof(void*),
+            ACL_MEMCPY_HOST_TO_DEVICE);
+    };
+    if (win == nullptr || myPtr == nullptr) {
+        return clearArray();
+    }
+    // 旧版 hcomm 未导出 host 侧取址接口：按非 UB 窗口处理，关闭本 rank 对称直读，不进入逐 peer 的 weak 桩调用。
+    // 该能力缺失与窗口类型一样是稳定状态（同版本各 rank 一致），不置 fallback，允许调用方记录签名避免重复清表。
+    if (!HcommIsSupportHcclSymWinGetPeerDevicePointer()) {
+        HCCL_WARNING(
+            "[%s] HcclSymWinGetPeerDevicePointer is unavailable in current hcomm, symmetric direct access is "
+            "disabled on this rank",
+            __func__);
+        return clearArray();
+    }
+    void* symPeerAddrs[MAX_RANK_SIZE] = {};
+    // 本 rank 条目必须存用户 buffer VA 而非对称映射 VA：kernel 用
+    // (output_ - GetGmSymOut(rank_)) 求本次 launch 的分循环偏移，映射 VA 与用户 VA 不在同一
+    // 地址空间，差值恒为 0，多 loop 时会重写首轮片且尾部数据永不写入。
+    symPeerAddrs[myRank] = const_cast<void*>(myPtr);
+    u32 members[MAX_RANK_SIZE] = {};
+    if (!GetSymWinRankToMemberTable(win, rankSize, members)) {
+        // 映射未登记或已被并发淘汰（如窗口表超限）：不能按 identity 猜 memberId，多层/子团队下
+        // rank 与 memberId 不等价，HcclSymWinGetPeerDevicePointer 仍可能成功但返回别的 rank 的地址，
+        // 造成静默写错对端 buffer。与取址失败一致，本 rank 关闭该侧对称直读，kernel 回退非对称两跳。
+        HCCL_WARNING(
+            "[%s] rank->LSA memberId table is not registered, window[%p], symmetric direct access is disabled "
+            "on this rank",
+            __func__, win);
+        fallback = true;
+        return clearArray();
+    }
+    u32 failCount = 0;
+    u32 failedPeer = 0;
+    u32 failedMember = 0;
+    HcclResult failedRet = HCCL_SUCCESS;
+    for (u32 peerRank = 0; peerRank < rankSize; peerRank++) {
+        if (peerRank == myRank) {
+            continue;
+        }
+        void* peerPtr = nullptr;
+        const HcclResult ret = HcclSymWinGetPeerDevicePointer(win, winOffset, members[peerRank], &peerPtr);
+        if (ret != HCCL_SUCCESS) {
+            if (failCount == 0) {
+                failedPeer = peerRank;
+                failedMember = members[peerRank];
+                failedRet = ret;
+            }
+            failCount++;
+            continue;
+        }
+        symPeerAddrs[peerRank] = peerPtr;
+    }
+    if (failCount != 0) {
+        // 取址失败一律清整表且不记录签名（fallback=true），下次算子入口重试，避免瞬时失败固化。
+        fallback = true;
+        CHK_RET(clearArray());
+        // 全部 peer 失败：与「接口不可用/窗口为空」同属稳定降级形态，本 rank 关闭对称直读、算子继续走两跳。
+        const u32 peerTotal = rankSize - 1;
+        if (failCount < peerTotal) {
+            // 部分 peer 失败说明各 rank 注册的窗口/偏移不一致：本 rank 回退两跳、对端仍会直读本 rank，
+            // 两条路径的 flag 语义不同，继续执行会在 WaitFlag 上死等或读到未就绪数据。
+            if (!strictWhenPartial) {
+                // 资源申请期各 rank 注册窗口的时序本就不同步，部分失败属于暂时状态：降级且不记录签名，
+                // 由执行期（strict）重试判定。
+                HCCL_WARNING(
+                    "[%s] get peer VA failed on %u/%u peers, first peerRank[%u] memberId[%u] ret[%d], window[%p] "
+                    "winOffset[%llu], symmetric direct access is disabled on this rank and will be retried",
+                    __func__, failCount, peerTotal, failedPeer, failedMember, static_cast<int>(failedRet), win,
+                    winOffset);
+                return HCCL_SUCCESS;
+            }
+            HCCL_ERROR(
+                "[%s] get peer VA failed on %u/%u peers, first peerRank[%u] memberId[%u] ret[%d], window[%p] "
+                "winOffset[%llu], symmetric windows are inconsistent across ranks",
+                __func__, failCount, peerTotal, failedPeer, failedMember, static_cast<int>(failedRet), win, winOffset);
+            return HCCL_E_PARA;
+        }
+        HCCL_WARNING(
+            "[%s] get peer VA failed on all %u peers, first peerRank[%u] memberId[%u] ret[%d], window[%p] "
+            "winOffset[%llu], symmetric direct access is disabled on this rank",
+            __func__, failCount, peerTotal, failedPeer, failedMember, static_cast<int>(failedRet), win, winOffset);
+        return HCCL_SUCCESS;
+    }
+    CHK_RET(haclrtMemcpy(
+        commInfo + addrOffset, rankSize * sizeof(void*), symPeerAddrs, rankSize * sizeof(void*),
+        ACL_MEMCPY_HOST_TO_DEVICE));
+    return HCCL_SUCCESS;
+}
+
+// 判定「设备表已是本次签名」、写表与记录签名必须在同一临界区内完成：aivCommInfo 由同一通信域内所有
+// AIV 执行器共享（按 commModeTag 取 ctx），两个线程若在查表未命中后交错填表，后记录者会把签名指向
+// 另一线程写入的内容，随后同签名算子会误判为「已填」而跳过重填、直接消费别人的对端 VA。
+// 本锁只保证签名记录与设备表内容一致；设备表在 kernel 执行期间不被改写，仍要求上层按
+// 「同一通信域的 AIV 算子不跨 stream 并发」使用。
+static std::mutex g_aivSymPeerFillMutex;
+
+static HcclResult RefreshAivSymPeerTable(
+    u8* commInfo, const AivSymSign& sign, bool force, void* outWin, uint64_t outOffset, const void* outPtr, void* inWin,
+    uint64_t inOffset, const void* inPtr, u32 rankSize, u32 myRank, bool strictWhenPartial)
+{
+    std::lock_guard<std::mutex> lock(g_aivSymPeerFillMutex);
+    if (!force && IsAivSymPeerTableFilled(commInfo, sign)) {
+        return HCCL_SUCCESS;
+    }
+    bool outFallback = false;
+    bool inFallback = false;
+    CHK_RET(FillSymPeerAddrArray(
+        commInfo, AIV_SYM_PEER_OUT_ADDR_OFFSET, outWin, outOffset, outPtr, rankSize, myRank, outFallback,
+        strictWhenPartial));
+    CHK_RET(FillSymPeerAddrArray(
+        commInfo, AIV_SYM_PEER_IN_ADDR_OFFSET, inWin, inOffset, inPtr, rankSize, myRank, inFallback,
+        strictWhenPartial));
+    // 降级（取址失败/映射缺失）不记录签名：设备表已被清空，记录后本次签名会命中跳过，瞬时失败将
+    // 固化成永久的非对称路径。
+    if (!outFallback && !inFallback) {
+        RecordAivSymPeerTable(commInfo, sign);
+    }
+    return HCCL_SUCCESS;
+}
+
 HcclResult HcclAivCacheCheckAndReplay(HcclComm comm, OpParam& param, bool& cacheHit)
 {
     cacheHit = false;
@@ -578,11 +724,51 @@ HcclResult HcclAivCacheCheckAndReplay(HcclComm comm, OpParam& param, bool& cache
     std::string cachedAlgName;
     AivInstruction* instructions = nullptr;
     u32 insCount = 0;
+    u32 cachedSymMode = 0;
+    AivSymSign cachedSign;
     // Keep cached instruction storage alive through replay, including its non-trivial members.
     std::unique_lock<std::mutex> cacheLock(GetAivCacheMutex());
-    CHK_RET(LookupAivCacheCtx(comm, ctxTag, keyHash, cacheHit, cachedAlgName, instructions, insCount));
+    CHK_RET(LookupAivCacheCtx(
+        comm, ctxTag, keyHash, cacheHit, cachedAlgName, instructions, insCount, cachedSymMode, cachedSign));
     if (!cacheHit) {
         return HCCL_SUCCESS;
+    }
+
+    // 对称指令集只能在对称模式下复用：本次 buffer 不支持对称时放弃命中，按本次 buffer 重判走完整流程。
+    AivSymSign curSign;
+    if (cachedSymMode != 0) {
+        OpParam probeParam;
+        probeParam.hcclComm = comm;
+        // 探测必须带上本次引擎：CheckAndSetSymmetricMemory 的 AIV 门禁（LSA memberId 覆盖校验）
+        // 依赖 engine，缺省 COMM_ENGINE_RESERVED 会跳过门禁，命中缓存后按 identity 映射填错对端 VA。
+        probeParam.engine = param.engine;
+        probeParam.inputPtr = param.inputPtr;
+        probeParam.inputSize = param.inputSize;
+        probeParam.outputPtr = param.outputPtr;
+        probeParam.outputSize = param.outputSize;
+        CheckAndSetSymmetricMemory(probeParam);
+        curSign.inWin = reinterpret_cast<u64>(probeParam.inputSymWindow);
+        curSign.outWin = reinterpret_cast<u64>(probeParam.outputSymWindow);
+        curSign.inOffset = probeParam.inputOffset;
+        curSign.outOffset = probeParam.outputOffset;
+        // 录制时拿到对称窗口的一侧本次也必须拿到：否则该侧对称能力已消失，指令集不可原样复现，交给完整流程重判。
+        const bool reproducible = probeParam.supportSymmetricMemory && (cachedSign.inWin == 0 || curSign.inWin != 0)
+                                  && (cachedSign.outWin == 0 || curSign.outWin != 0);
+        if (!reproducible) {
+            HCCL_INFO("[%s] symmetric memory is unavailable, skip cache replay", __func__);
+            cacheHit = false;
+            return HCCL_SUCCESS;
+        }
+    }
+
+    // 对端 VA 数组会被中间算子覆盖，命中后需按本次签名重填；非对称模式传空窗口即清 0 整份数组。
+    // 判定/写表/记录签名由 RefreshAivSymPeerTable 在同一临界区内完成，签名命中即跳过重填。
+    if (insCount > 0 && instructions[0].opArgs.buffersIn != nullptr && instructions[0].opArgs.rank < MAX_RANK_SIZE) {
+        u8* commInfo = static_cast<u8*>(instructions[0].opArgs.buffersIn);
+        CHK_RET(RefreshAivSymPeerTable(
+            commInfo, curSign, false, reinterpret_cast<void*>(curSign.outWin), curSign.outOffset, param.outputPtr,
+            reinterpret_cast<void*>(curSign.inWin), curSign.inOffset, param.inputPtr, instructions[0].opArgs.rankSize,
+            instructions[0].opArgs.rank, /*strictWhenPartial=*/true));
     }
 
     HCCL_INFO("[HcclAivCacheCheckAndReplay] cache hit, algName[%s], insCount[%u]", cachedAlgName.c_str(), insCount);
@@ -666,6 +852,16 @@ HcclResult ExecuteAivCacheLogic(
     AlgResourceCtxSerializable& resCtxHost)
 {
     bool useCache = IsAivCacheSupported(param);
+    // 对称签名随指令集一起录制：命中后据此重填对端 VA 数组，保证同一套指令在相同模式下重放。
+    u32 symMode = 0;
+    AivSymSign symSign;
+    if (param.supportSymmetricMemory) {
+        symMode = 1;
+        symSign.inWin = reinterpret_cast<u64>(param.inputSymWindow);
+        symSign.outWin = reinterpret_cast<u64>(param.outputSymWindow);
+        symSign.inOffset = param.inputOffset;
+        symSign.outOffset = param.outputOffset;
+    }
 
     std::string ctxTag;
     u64 keyHash = 0;
@@ -700,7 +896,7 @@ HcclResult ExecuteAivCacheLogic(
     if (useCache && g_recordingQueue) {
         AivCacheIndexCtx* indexCtx = nullptr;
         CHK_RET(GetOrCreateAivCacheIndexCtx(comm, &indexCtx));
-        CHK_RET(StoreAivCacheCtx(comm, ctxTag, keyHash, algName, indexCtx));
+        CHK_RET(StoreAivCacheCtx(comm, ctxTag, keyHash, algName, indexCtx, symMode, symSign));
         g_recordingQueue = nullptr;
         g_baseInputAddr = 0;
         g_baseOutputAddr = 0;
@@ -1437,6 +1633,43 @@ HcclResult AicpuKernelLaunch(HcclComm comm, OpParam& param, ThreadHandle unfoldT
     return HCCL_SUCCESS;
 }
 
+// A5/950 对称内存：把「对端 output/input 对称 VA 数组」写入 aivCommInfo 空闲区（buffIn）。
+// 对端VA = 对端窗口基址 + 算子内偏移，与算子内 buffer 偏移强相关；同一通信域复用引擎ctx
+// （algTag相同、TryReuseResource命中）时 HcclAllocAlgResourceAiv 不再执行，数组会沿用到上一档
+// 算子的地址导致写错位置，故必须逐算子刷新；窗口与偏移签名未变时直接返回，无设备拷贝开销。
+// 使用约束：各 rank 必须对同一算子使用同一对称窗口与同一偏移，违反时对端取址会失败或指向错误数据，
+// 属未定义行为；此处只能感知取址失败，无法校验偏移是否一致。
+static HcclResult FillAivSymWinPeerAddrs(const OpParam& param, AlgResourceCtxSerializable& resCtxHost, bool force)
+{
+    if (resCtxHost.aivCommInfoPtr == nullptr) {
+        return HCCL_SUCCESS;
+    }
+    void* outWin = param.supportSymmetricMemory ? param.outputSymWindow : nullptr;
+    void* inWin = param.supportSymmetricMemory ? param.inputSymWindow : nullptr;
+    const uint64_t outOffset = (outWin != nullptr) ? param.outputOffset : 0;
+    const uint64_t inOffset = (inWin != nullptr) ? param.inputOffset : 0;
+
+    u8* commInfo = static_cast<u8*>(resCtxHost.aivCommInfoPtr);
+    AivSymSign filledSign;
+    filledSign.outWin = reinterpret_cast<u64>(outWin);
+    filledSign.outOffset = outOffset;
+    filledSign.inWin = reinterpret_cast<u64>(inWin);
+    filledSign.inOffset = inOffset;
+    // 同一通信域内不同 algTag 的 AIV 执行器共享同一块 aivCommInfo（按 commModeTag 取 ctx），设备表可能
+    // 已被其他算子覆盖；跳过判据必须查 commInfo 记录的最近一次写入签名，不能用 per-resCtxHost 缓存
+    // （它只反映本 resCtx 上次写的内容，与设备当前内容可能脱节）。判定/写表/记录签名在同一临界区内完成。
+    const u32 rankSize = resCtxHost.topoInfo.userRankSize;
+    const u32 myRank = resCtxHost.topoInfo.userRank;
+    // force=true 只出现在资源申请期：此时各 rank 注册窗口的时序不同步，部分 peer 取址失败按可重试降级处理。
+    CHK_RET(RefreshAivSymPeerTable(
+        commInfo, filledSign, force, outWin, outOffset, param.outputPtr, inWin, inOffset, param.inputPtr, rankSize,
+        myRank, /*strictWhenPartial=*/!force));
+    HCCL_INFO(
+        "[%s] supportSym[%d] outWin[%p] outOffset[%llu] inWin[%p] inOffset[%llu] userRankSize[%u]", __func__,
+        param.supportSymmetricMemory, outWin, outOffset, inWin, inOffset, rankSize);
+    return HCCL_SUCCESS;
+}
+
 HcclResult HcclAivKernelEntranceLaunch(
     HcclComm comm, OpParam& param, const std::unique_ptr<TopoInfoWithNetLayerDetails>& topoInfo,
     AlgResourceCtxSerializable& resCtxHost)
@@ -1445,6 +1678,7 @@ HcclResult HcclAivKernelEntranceLaunch(
     HCCL_INFO(
         "[%s] algTag[%s] commModeTag[%s] resCtx(Host)[%p] aivCommInfoPtr(Device)[%p]", __func__, param.algTag,
         param.commModeTag, param.resCtx, resCtxHost.aivCommInfoPtr);
+    CHK_RET(FillAivSymWinPeerAddrs(param, resCtxHost, false));
     u32 numBlocksLimit = 0;
     AivParamStorage* aivParam = nullptr;
     HcclResult ret = GetAivParamStorageByComm(comm, &aivParam, false);
@@ -3955,6 +4189,9 @@ HcclResult HcclAllocAlgResourceAiv(
                 levelRanks.data(), levelRankCount * sizeof(u32), ACL_MEMCPY_HOST_TO_DEVICE));
         }
     }
+    // A5/950 对称内存：资源申请时写入对端对称VA数组；复用引擎ctx时本函数不执行，
+    // 由 HcclAivKernelEntranceLaunch 逐算子刷新。
+    CHK_RET(FillAivSymWinPeerAddrs(param, *resCtxHost, true));
 
     HCCL_INFO("[%s] Alloc res success.", __func__);
     return HCCL_SUCCESS;
@@ -4916,19 +5153,29 @@ bool IsBarrierHostDpu(HcclComm comm)
     return false;
 }
 
-// AllReduce/ReduceScatter共用的对称内存限制：64位数据类型与PROD规约不支持，
-// 与算子入口Selector后的限制条件保持一致
+// AllReduce/ReduceScatter 共用的对称内存限制（与算子入口 Selector 后保持一致）：
+// AIV 对称路径是 UB 本地归约、不走 Reduce64 的 int64 原子加模拟，AR/RS 均已实例化 int64，故放行；
+// AICPU_TS 的 int64 依赖 GM 原子加，仍排除。
+// uint64 基线不支持、fp64 未实例化、PROD 的本地归约未实现，三者一律排除。
 static bool IsReduceOpSymMemAllowed(const OpParam& param)
 {
     HcclDataType dataType
         = param.opType == HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V ? param.vDataDes.dataType : param.DataDes.dataType;
-    return dataType != HcclDataType::HCCL_DATA_TYPE_INT64 && dataType != HcclDataType::HCCL_DATA_TYPE_UINT64
-           && dataType != HcclDataType::HCCL_DATA_TYPE_FP64 && param.reduceType != HcclReduceOp::HCCL_REDUCE_PROD;
+    if (param.engine == CommEngine::COMM_ENGINE_AIV) {
+        return param.reduceType != HcclReduceOp::HCCL_REDUCE_PROD
+               && param.DataDes.dataType != HcclDataType::HCCL_DATA_TYPE_FP64
+               && param.DataDes.dataType != HcclDataType::HCCL_DATA_TYPE_UINT64;
+    } else {
+        return dataType != HcclDataType::HCCL_DATA_TYPE_INT64 && dataType != HcclDataType::HCCL_DATA_TYPE_UINT64
+               && dataType != HcclDataType::HCCL_DATA_TYPE_FP64 && param.reduceType != HcclReduceOp::HCCL_REDUCE_PROD;
+    }
 }
 
 // 对称内存规约确定性门禁：SoleNHR 为单模板单棵全 rank 蝶形树，多级仅改变链路层、规约顺序仍固定，
 // 不受 topoLevelNums 限制，故先于拓扑级数检查放行；其余多级算法 L0/L1 两棵树参与规约，确定性未验证；
 // 单级白名单算法均由单一模板完成规约、规约写者按步序固定，确定性成立。
+// AllReduce/ReduceScatter对称内存的规约确定性门禁：
+// 仅放行规约顺序确定的算法；多级拓扑下 L1 NHR 模板也参与规约，一并禁用。
 bool IsReduceOpSymMemDeterministic(const std::string& algName, const TopoInfoWithNetLayerDetails* topoInfo)
 {
     if (algName == "AicpuAllReduceSoleNHR" || algName == "AicpuReduceScatterSoleNHR") {
@@ -4941,7 +5188,8 @@ bool IsReduceOpSymMemDeterministic(const std::string& algName, const TopoInfoWit
     return algName == "AicpuReduceScatterPipeLineMeshNHR" || algName == "AicpuAllReducePipeLineMeshNHR"
            || algName == "AicpuAllReduceSoleMeshChunkTwoShot" || algName == "AicpuReduceScatterSoleMeshChunk"
            || algName == "AicpuReduceScatterConcurMeshNHR" || algName == "AicpuAllReduceConcurMeshTwoShotNHR"
-           || algName == "AicpuReduceScatterVSoleMeshChunk";
+           || algName == "AicpuReduceScatterVSoleMeshChunk" || algName == "AivAllReduceSoleMeshTwoShot"
+           || algName == "AivReduceScatterSoleMesh";
 }
 
 // 仅 Scatter 跳过 input 侧探测（API 结构原因：非 root sendBuf 可空/虚值）。
@@ -4958,6 +5206,185 @@ static bool IsSymMemWindowValid(const OpParam& param)
     return inputValid && outputValid;
 }
 
+// 对端取址要求「通信域 rank 能换算成 LSA WorldTeam memberId」：host 按
+// baseVa + offset + memberId*stride 计算对端 VA，多层/子团队下存在不在 LSA team 内的 rank，取址必然错误。
+// 该门禁仅在 AIV 引擎下生效。
+// 返回 true 表示各窗口的 rank 均可换算（或旧版 hcomm 无 LSA team 接口，保持 identity）。
+static bool IsSymWinLsaCovered(const OpParam& param)
+{
+    if (param.inputSymWindow == nullptr && param.outputSymWindow == nullptr) {
+        return true;
+    }
+    if (param.hcclComm == nullptr) {
+        return false;
+    }
+    u32 rankSize = 0;
+    HcclResult ret = HcclGetRankSize(param.hcclComm, &rankSize);
+    if (ret != HCCL_SUCCESS || rankSize == 0) {
+        HCCL_WARNING("[%s] get rankSize failed, ret[%d], fallback to non-symmetric", __func__, ret);
+        return false;
+    }
+    HcclComm comm = static_cast<HcclComm>(param.hcclComm);
+    bool covered = true;
+    if (param.inputSymWindow != nullptr) {
+        covered = RefreshSymWinRankToMember(comm, param.inputSymWindow, rankSize) && covered;
+    }
+    if (param.outputSymWindow != nullptr) {
+        covered = RefreshSymWinRankToMember(comm, param.outputSymWindow, rankSize) && covered;
+    }
+    return covered;
+}
+
+// 对称内存不支持 inplace：inplace 时 input/output 为同一块或重叠内存，而对称路径要读对端
+// user input、写对端 user output，跨 rank 的读写会互相踩。判据为两侧字节区间 [ptr, ptr+size)
+// 是否有交集；alltoall 类不设 size，退化为「地址相同即 inplace」。
+static bool IsSymMemInplaceOverlap(const OpParam& param)
+{
+    // broadcast 语义上就是同址：root 写、其余 rank 读同一块 buffer。跨 rank 仍是各自的 buffer，
+    // 对称路径只写本地/对端 output 不读本方 output，不存在读写互踩，故豁免 inplace 门禁；
+    // 否则 broadcast 对称内存会恒被否决，成为永不生效的代码路径。
+    if (param.opType == HcclCMDType::HCCL_CMD_BROADCAST) {
+        return false;
+    }
+    if (param.inputPtr == nullptr || param.outputPtr == nullptr) {
+        return false;
+    }
+    const u64 inSize = param.inputSize;
+    const u64 outSize = param.outputSize;
+    if (inSize == 0 || outSize == 0) {
+        return param.inputPtr == param.outputPtr;
+    }
+    const u64 inStart = reinterpret_cast<u64>(param.inputPtr);
+    const u64 outStart = reinterpret_cast<u64>(param.outputPtr);
+    return (inStart < outStart + outSize) && (outStart < inStart + inSize);
+}
+
+// UBX 上 alltoall 类的对称内存放行规则（与 all_to_all_v.cc 的入口门禁逐条一致）：
+// 算法白名单（MultiJetty 单级 / Concurrent，排除 pairwise 系列）+ 小数据仍走非对称的阈值。
+static bool IsUbxAicpuTsAllToAllSymAlg(const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo)
+{
+    const std::string alg(param.algName);
+    const bool singleLevel = (topoInfo->topoLevelNums == TOPO_LEVEL_NUM_1);
+    constexpr u64 UBX_ALLTOALL_SYM_DATA_SIZE = 4ULL * 1024 * 1024;                // concurrent 拓扑的小数据阈值
+    constexpr u64 UBX_ALLTOALL_MULTI_JETTY_8P_SYM_DATA_SIZE = 1ULL * 1024 * 1024; // np8 MultiJetty 的小数据阈值
+    constexpr u32 UBX_CONCURRENT_MAX_RANK_SIZE = 4;
+    if (param.opType != HcclCMDType::HCCL_CMD_ALLTOALL) {
+        // 仅 ALLTOALL 入口按算法白名单探测；ALLTOALLVC/ALLTOALLV 不做对称路径
+        // （其算法选择未经过本白名单，UBX 上会选到不支持对称窗口的算法）
+        return false;
+    }
+    // pairwise 系列不支持对称内存
+    if (alg == "AicpuAllToAllSolePairwise" || alg == "AicpuAllToAllVSolePairwise"
+        || alg == "AicpuAllToAllVCSolePairwise") {
+        return false;
+    }
+    const bool multiJetty = (alg == "AicpuAllToAllSoleMeshMultiJetty") && singleLevel;
+    const bool concurrent = (alg == "AicpuAllToAllSoleMeshConcurrent");
+    if (!multiJetty && !concurrent) {
+        return false;
+    }
+    u64 dataSize = 0;
+    if (param.all2AllVDataDes.sendCounts != nullptr) {
+        dataSize = (*(static_cast<const u64*>(param.all2AllVDataDes.sendCounts)))
+                   * DATATYPE_SIZE_TABLE[param.all2AllVDataDes.sendType];
+    }
+    bool concurrentTopo = false;
+    if ((topoInfo->userRankSize <= UBX_CONCURRENT_MAX_RANK_SIZE) && singleLevel) {
+        (void)AutoSelectorBase::CheckMeshNumEqualToClosNum(topoInfo, concurrentTopo);
+    }
+    const bool multiJetty8P = multiJetty && (topoInfo->userRankSize == 8);
+    if (concurrentTopo && (dataSize < UBX_ALLTOALL_SYM_DATA_SIZE)) {
+        return false;
+    }
+    return !(multiJetty8P && (dataSize < UBX_ALLTOALL_MULTI_JETTY_8P_SYM_DATA_SIZE));
+}
+
+// UBX（level0 = MESH_1D_CLOS 且非 PCIe 混合）上 AICPU_TS 引擎的对称内存算法白名单，
+// 与各算子入口的放行条件一致；回退会替换 algName，必须按新 algName 重判，
+// 否则会把入口已明确禁止的组合重新打开。
+static bool IsUbxAicpuTsSymAlg(const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo)
+{
+    const std::string alg(param.algName);
+    const bool singleLevel = (topoInfo->topoLevelNums == TOPO_LEVEL_NUM_1);
+    // all_gather 入口的「UBX concurrent 拓扑小数据仍走非对称」阈值
+    constexpr u64 UBX_ALLGATHER_SYM_DATA_SIZE = 8ULL * 1024 * 1024;
+    // reduce_scatter 入口的「UBX concurrent 拓扑小数据仍走非对称」阈值
+    constexpr u64 UBX_REDUCE_SCATTER_SYM_DATA_SIZE = 4ULL * 1024 * 1024;
+    constexpr u32 UBX_CONCURRENT_MAX_RANK_SIZE = 4;
+    switch (param.opType) {
+        case HcclCMDType::HCCL_CMD_ALLREDUCE:
+            return (alg == "AicpuAllReducePipeLineMeshNHR" && singleLevel)
+                   || alg == "AicpuAllReduceConcurMeshTwoShotNHR";
+        case HcclCMDType::HCCL_CMD_REDUCE_SCATTER: {
+            const bool twoLevelMeshNhrOmni = (alg == "AicpuReduceScatterPipeLineMeshNHR" && singleLevel);
+            const bool concurrent = (alg == "AicpuReduceScatterConcurMeshNHR");
+            if (!twoLevelMeshNhrOmni && !concurrent) {
+                return false;
+            }
+            // 与入口一致：UBX concurrent 拓扑（np<=4 单级且 mesh 数 == clos 数）下 <4MB 小数据仍走非对称
+            bool ubxConcurrentTopo = false;
+            if ((topoInfo->userRankSize <= UBX_CONCURRENT_MAX_RANK_SIZE) && singleLevel) {
+                (void)AutoSelectorBase::CheckMeshNumEqualToClosNum(topoInfo, ubxConcurrentTopo);
+            }
+            return !(ubxConcurrentTopo && (param.outputSize < UBX_REDUCE_SCATTER_SYM_DATA_SIZE));
+        }
+        case HcclCMDType::HCCL_CMD_ALLGATHER: {
+            // 单级拓扑要求的原因：单个 MESH_1D_CLOS 网络层在 Omni executor 内展开为 Mesh+NHR 两层，
+            // 额外网络层会继续展开出 DPU 第三层，不能进入对称内存路径。
+            const bool twoLevelMeshNhrOmni = (alg == "AicpuAllGatherPipeLineMeshNHR" && singleLevel);
+            const bool concurrent = (alg == "AicpuAllGatherConcurMeshNHR");
+            if (!twoLevelMeshNhrOmni && !concurrent) {
+                return false;
+            }
+            // 与入口一致：UBX concurrent 拓扑（np<=4 单级且 mesh 数 == clos 数）下 <4MB 小数据仍走非对称
+            bool ubxConcurrentTopo = false;
+            if ((topoInfo->userRankSize <= UBX_CONCURRENT_MAX_RANK_SIZE) && singleLevel) {
+                (void)AutoSelectorBase::CheckMeshNumEqualToClosNum(topoInfo, ubxConcurrentTopo);
+            }
+            return !(ubxConcurrentTopo && (param.inputSize < UBX_ALLGATHER_SYM_DATA_SIZE));
+        }
+        case HcclCMDType::HCCL_CMD_ALLTOALL:
+        case HcclCMDType::HCCL_CMD_ALLTOALLVC:
+            return IsUbxAicpuTsAllToAllSymAlg(param, topoInfo);
+        case HcclCMDType::HCCL_CMD_BROADCAST:
+            return false; // broadcast 入口只放行 MESH_1D + AICPU_TS，UBX 上不放行
+        default:
+            return false;
+    }
+}
+
+// UBX 上 AIV 引擎的对称内存算法白名单（与各算子入口的 isAiv*SoleMeshSym 一致）
+static bool IsUbxAivSymAlg(const OpParam& param)
+{
+    const std::string alg(param.algName);
+    switch (param.opType) {
+        case HcclCMDType::HCCL_CMD_ALLREDUCE:
+            return alg == "AivAllReduceSoleMeshTwoShot";
+        case HcclCMDType::HCCL_CMD_REDUCE_SCATTER:
+            return alg == "AivReduceScatterSoleMesh";
+        case HcclCMDType::HCCL_CMD_ALLGATHER:
+            return alg == "AivAllGatherSoleMesh";
+        case HcclCMDType::HCCL_CMD_ALLTOALL:
+            return alg == "AivAllToAllSoleMesh";
+        case HcclCMDType::HCCL_CMD_ALLTOALLVC:
+            return false;
+        default:
+            return false;
+    }
+}
+
+// alltoall 的 pairwise 系列算法不支持对称内存；UBX 分支已在 IsUbxAicpuTsAllToAllSymAlg 排除，
+// server MESH_1D 分支在此排除，与 all_to_all_v.cc 入口门禁的 isPairwiseAlgo 一致。
+static bool IsAllToAllPairwiseAlg(const OpParam& param)
+{
+    if ((param.opType != HcclCMDType::HCCL_CMD_ALLTOALL) && (param.opType != HcclCMDType::HCCL_CMD_ALLTOALLVC)) {
+        return false;
+    }
+    const std::string alg(param.algName);
+    return alg == "AicpuAllToAllSolePairwise" || alg == "AicpuAllToAllVSolePairwise"
+           || alg == "AicpuAllToAllVCSolePairwise";
+}
+
 HcclResult RefreshSymmetricMemory(OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo)
 {
     // 基础门禁与算子入口一致：版本、单算子模式、AICPU_TS引擎、MESH_1D一级拓扑、非 PCIe（含混合）组网。
@@ -4965,9 +5392,23 @@ HcclResult RefreshSymmetricMemory(OpParam& param, const TopoInfoWithNetLayerDeta
     // reduce_scatter_v.cc 两个入口的 !level0PcieMix 对齐，作为公共层统一兜底——尤其覆盖 CCU→AICPU
     // 回退路径的补探测（入口条件不满足未探测、symMemChecked=false 时由本函数补测，若缺此检查
     // 会在 PCIe 组网下绕过入口排除而开启对称，模板侧 read 模式回退 CCL 后单轮全量有越界风险）
+    const bool isUBX = topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix;
+    const bool isSupportVersionOpbase = GetHcommVersion() >= CANN_VERSION(9, 1, 0) && param.opMode == OpMode::OPBASE;
+    if (!isSupportVersionOpbase || (!isUBX && param.engine == CommEngine::COMM_ENGINE_AIV)) {
+        // 9.1.0 以下版本或图模式不开启对称内存；AIV 对称内存暂时只支持UBX
+        param.supportSymmetricMemory = false;
+        return HCCL_SUCCESS;
+    }
+    // UBX 上必须按「引擎 + 最终算法」白名单重判：回退会把 algName 换成新算法，入口的判定已过期
+    const bool ubxAicpuTsAlgOk
+        = (param.engine == CommEngine::COMM_ENGINE_AICPU_TS) && IsUbxAicpuTsSymAlg(param, topoInfo);
+    const bool ubxAivAlgOk = (param.engine == CommEngine::COMM_ENGINE_AIV) && IsUbxAivSymAlg(param);
+    bool symMemAllowedUBX = isUBX && (ubxAicpuTsAlgOk || ubxAivAlgOk);
+    bool symMemAllowedServer = topoInfo->level0Topo == Level0Shape::MESH_1D
+                               && param.engine == CommEngine::COMM_ENGINE_AICPU_TS && !topoInfo->level0PcieMix;
+    // 基础门禁与算子入口一致：版本、单算子模式、引擎与一级拓扑
     bool symMemAllowed = GetHcommVersion() >= CANN_VERSION(9, 1, 0) && param.opMode == OpMode::OPBASE
-                         && param.engine == CommEngine::COMM_ENGINE_AICPU_TS
-                         && topoInfo->level0Topo == Level0Shape::MESH_1D && !topoInfo->level0PcieMix;
+                         && (symMemAllowedUBX || symMemAllowedServer);
     if (symMemAllowed) {
         switch (param.opType) {
             case HcclCMDType::HCCL_CMD_ALLGATHER:
@@ -4990,24 +5431,39 @@ HcclResult RefreshSymmetricMemory(OpParam& param, const TopoInfoWithNetLayerDeta
                 break;
         }
     }
-
-    if (symMemAllowed) {
-        if (param.symMemChecked) {
-            // 本轮已在算子入口探测过，窗口句柄仍留在param中，无需重复查询；
-            // 入口条件块可能因初始引擎/算法清过flag，此处按窗口有效性恢复
-            param.supportSymmetricMemory = IsSymMemWindowValid(param);
-        } else {
-            CheckAndSetSymmetricMemory(param);
-        }
+    // server MESH_1D 分支同样要排除 alltoall 的 pairwise 系列（UBX 分支已在 helper 内排除）
+    if (symMemAllowed && IsAllToAllPairwiseAlg(param)) {
+        symMemAllowed = false;
     }
-    // 条件不满足时不清除：初始路径的清除由算子入口条件块负责；
-    // 回退仅发生在CCU向AICPU_TS的降级方向，初始为CCU时入口的flag必为false
+
+    if (!symMemAllowed) {
+        // 回退后入口条件块对「旧引擎/旧算法」的判定已过期（AIV→AICPU_TS、algName 被替换等），
+        // 必须在此统一清掉 flag，否则会把入口已禁止的组合（如 UBX + AICPU_TS + 非白名单算法）带进执行路径。
+        param.supportSymmetricMemory = false;
+        return HCCL_SUCCESS;
+    }
+    if (param.symMemChecked) {
+        // 本轮已在算子入口探测过，窗口句柄仍在 param 中，无需重复查询；入口条件块可能因初始
+        // 引擎/算法清过 flag，此处按窗口有效性恢复；inplace 时一律不恢复，LSA 覆盖仅对 AIV 校验。
+        const bool lsaCovered = param.engine != CommEngine::COMM_ENGINE_AIV || IsSymWinLsaCovered(param);
+        param.supportSymmetricMemory = IsSymMemWindowValid(param) && !IsSymMemInplaceOverlap(param) && lsaCovered;
+    } else {
+        CheckAndSetSymmetricMemory(param);
+    }
     return HCCL_SUCCESS;
 }
 
 void CheckAndSetSymmetricMemory(OpParam& param)
 {
     param.symMemChecked = true;
+    // inplace 场景不支持对称内存：直接不置 supportSymmetricMemory，kernel 侧自动回退非对称路径
+    if (IsSymMemInplaceOverlap(param)) {
+        HCCL_INFO(
+            "[%s] inplace(input[%p] size[%llu] / output[%p] size[%llu]) is not supported by symmetric memory, "
+            "fallback to non-symmetric",
+            __func__, param.inputPtr, param.inputSize, param.outputPtr, param.outputSize);
+        return;
+    }
     size_t inputOffset = 0;
     size_t outputOffset = 0;
 
@@ -5035,6 +5491,13 @@ void CheckAndSetSymmetricMemory(OpParam& param)
         }
     }
     param.supportSymmetricMemory = true;
+    if (param.engine == CommEngine::COMM_ENGINE_AIV && !IsSymWinLsaCovered(param)) {
+        // 多层/子团队（lsaTeamSize < rankSize）：AIV 按 memberId 取对端地址会因上界校验失败，
+        // 提前整体回退非对称。
+        param.supportSymmetricMemory = false;
+        HCCL_INFO("[%s] LSA team does not cover all ranks, fallback to non-symmetric", __func__);
+        return;
+    }
     param.inputOffset = inputOffset;
     param.outputOffset = outputOffset;
     return;

@@ -293,8 +293,12 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
     HCCL_INFO("[InsV2AlltoAllVSoleExecutor] maxSendOrRecvDataCount[%llu]", maxSendOrRecvDataCount);
 
     // 对称路径直接把本地input写入对端output，不受ccl scratch和UB_MAX_DATA_SIZE限制。
+    // AIV 侧 kernel 尚未消费 enableRemoteMemAccess，仍走 myGmIn_ 两跳，中转区为 rankSize×全量，
+    // 须保留按 rankSize 的分片以免越界（507035）。
     if (param.supportSymmetricMemory && param.opType == HcclCMDType::HCCL_CMD_ALLTOALL
-        && std::string(param.algName) == "AicpuAllToAllSoleMeshMultiJetty") {
+        && (std::string(param.algName) == "AicpuAllToAllSoleMeshMultiJetty"
+            || std::string(param.algName) == "AivAllToAllSoleMesh")
+        && param.engine != CommEngine::COMM_ENGINE_AIV) {
         maxDataCountPerLoop = maxSendOrRecvDataCount;
         maxDataSizePerLoop = maxDataCountPerLoop * dataTypeSize_;
         tempAlgParams.enableRemoteMemAccess = true;
@@ -315,11 +319,16 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
     tempAlgParams.inputSliceStride = maxDataCountPerLoop * dataTypeSize_;
     // 这里用来放每张卡之间的stride大小
     tempAlgParams.outputSliceStride = maxSendOrRecvDataCount * dataTypeSize_;
-    // 对称内存零拷贝：不受cclBuffer和UB_MAX_DATA_SIZE限制，一次传完
+    // 对称内存零拷贝：非 AIV 引擎不受 cclBuffer/UB_MAX_DATA_SIZE 限制，一次传完；
+    // AIV 侧 kernel 尚未消费 enableRemoteMemAccess，仍走 myGmIn_ 两跳，须保留分片（见上）。
     if (param.supportSymmetricMemory) {
-        loopTimes = 1;
-        tempAlgParams.enableRemoteMemAccess = true;
-        HCCL_INFO("[InsV2AlltoAllVSoleExecutor][OrchestrateLoop] %s: symmetric memory enabled", param.algName);
+        if (param.engine != CommEngine::COMM_ENGINE_AIV) {
+            loopTimes = 1;
+            tempAlgParams.enableRemoteMemAccess = true;
+        }
+        HCCL_INFO(
+            "[InsV2AlltoAllVSoleExecutor][OrchestrateLoop] %s: symmetric memory enabled, engine[%d], loopTimes[%llu]",
+            param.algName, static_cast<int32_t>(param.engine), loopTimes);
     }
     for (u64 loop = 0; loop < loopTimes; loop++) {
         u64 currDataCount = (loop == loopTimes - 1) ? maxSendOrRecvDataCount - processedDataCount : maxDataCountPerLoop;

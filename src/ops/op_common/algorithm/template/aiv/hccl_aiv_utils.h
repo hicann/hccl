@@ -21,10 +21,12 @@
 #include "alg_param.h"
 
 namespace ops_hccl {
-constexpr u32 MAX_RANK_SIZE = 1024;  // 注意要和device侧的一致
 constexpr u32 MAX_RANK_SIZE_V = 256; // 注意要和device侧的一致
+constexpr u32 MAX_RANK_SIZE = 1024;  // 对端对称 VA 数组容量，注意要和device侧的一致
 
 constexpr u32 AIV_TAG_ADDR_OFFSET = 16 * 1024;
+constexpr u64 AIV_SYM_PEER_OUT_ADDR_OFFSET = 8 * 1024; // 注意要和device侧的一致
+constexpr u64 AIV_SYM_PEER_IN_ADDR_OFFSET = 24 * 1024; // 注意要和device侧的一致
 constexpr u32 AIV_TOPO_ADDR_OFFSET = 32 * 1024;
 constexpr u32 AIV_TOPO_BUFF_LEN = 8 * 1024;
 constexpr u32 AIV_FLAG_ADDR_OFFSET = 1 * 1024 * 1024;
@@ -213,10 +215,26 @@ struct AivOpCacheArgs {
     }
 };
 
+// 对称内存签名：窗口句柄与算子内 buffer 偏移，决定对端 VA 数组的内容
+struct AivSymSign {
+    u64 inWin = 0;
+    u64 outWin = 0;
+    u64 inOffset = 0;
+    u64 outOffset = 0;
+
+    bool operator==(const AivSymSign& other) const
+    {
+        return inWin == other.inWin && outWin == other.outWin && inOffset == other.inOffset
+               && outOffset == other.outOffset;
+    }
+};
+
 struct AivCacheCtxHeader {
     u64 keyHash;
     u32 insCount;
     u32 algNameLen;
+    u32 symMode; // 1=该指令集在对称模式下录制，replay 必须保持对称模式
+    AivSymSign symSign;
     // 后续内存布局: char algName[algNameLen] + AivInstruction[insCount]
 };
 
@@ -314,14 +332,20 @@ std::mutex& GetAivCacheMutex();
 
 HcclResult LookupAivCacheCtx(
     HcclComm comm, const std::string& ctxTag, u64 keyHash, bool& cacheHit, std::string& algName,
-    AivInstruction*& instructions, u32& insCount);
+    AivInstruction*& instructions, u32& insCount, u32& symMode, AivSymSign& symSign);
 
 HcclResult ReplayAivInstructions(const AivInstruction* instructions, u32 insCount, OpParam& param);
 
 HcclResult ReplayAivInstructionsV(const AivInstruction* instructions, u32 insCount, OpParam& param);
 
 HcclResult StoreAivCacheCtx(
-    HcclComm comm, const std::string& ctxTag, u64 keyHash, const std::string& algName, AivCacheIndexCtx* indexCtx);
+    HcclComm comm, const std::string& ctxTag, u64 keyHash, const std::string& algName, AivCacheIndexCtx* indexCtx,
+    u32 symMode, const AivSymSign& symSign);
+
+// 对端对称 VA 数组的设备侧内容：与最近一次写表签名一致时可跳过写表，否则需按该签名重填。
+bool IsAivSymPeerTableFilled(const void* commInfo, const AivSymSign& sign);
+
+void RecordAivSymPeerTable(const void* commInfo, const AivSymSign& sign);
 
 HcclResult ClearAivTagCb(HcclComm comm, HcclCommStatePhase state, void* userPtr);
 

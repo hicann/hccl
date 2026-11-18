@@ -167,6 +167,7 @@ __aicore__ inline void AivAllReduceV2Mesh1DOneShotSuperKernel(SUPERKERNEL_ARGS_D
     uint64_t countLeft = op.len_;
 
     int32_t loopTag = op.tag_;
+    uint32_t barrierSeq = 0;
 
     while (countLeft > 0) {
         uint64_t curCount = (countLeft > maxCountPerLoop) ? maxCountPerLoop : countLeft;
@@ -177,7 +178,8 @@ __aicore__ inline void AivAllReduceV2Mesh1DOneShotSuperKernel(SUPERKERNEL_ARGS_D
         } else {
             op.ProcessCoreSmallCase(curCount, loopTag, 1);
         }
-        op.BarrierAll();
+        op.BarrierAll(barrierSeq);
+        ++barrierSeq;
 
         countLeft -= curCount;
         op.input_ += curSize;

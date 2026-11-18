@@ -20,6 +20,8 @@ extern "C" {
 
 // 动态库管理接口（大驼峰命名）
 void HcommDlInit(void);
+/* HcommDlInit 已持有的 libhcomm 句柄（未加载成功时为 nullptr），供同模块解析可选符号，避免重复 dlopen。 */
+void* HcommGetLibHandle(void);
 int GetHcommVersion(void);
 
 // 功能支持情况查询

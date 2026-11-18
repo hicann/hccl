@@ -165,6 +165,8 @@ HcclResult AllGatherOutPlaceCommon(
 
     OpParam param;
     CHK_RET(HcclGetCommName(comm, param.commName));
+    // CheckAndSetSymmetricMemory 依赖 hcclComm 查询对称窗口，缺省为 nullptr 时会直接探测失败
+    param.hcclComm = comm;
     param.stream = stream;
     param.opMode = opMode;
 
@@ -216,32 +218,14 @@ HcclResult AllGatherOutPlaceCommon(
         CHK_RET(SingleRankProc(comm, param));
         return HcclResult::HCCL_SUCCESS;
     }
+    if (GetHcommVersion() >= CANN_VERSION(9, 1, 0) && param.opMode == OpMode::OPBASE) {
+        CheckAndSetSymmetricMemory(param);
+    }
     std::string algName;
     std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
     CHK_RET(Selector(comm, param, topoInfo, algName));
 
-    // 单个 MESH_1D_CLOS 网络层在 Omni executor 内展开为 Mesh+NHR 两层；
-    // 额外网络层会继续展开出 DPU 第三层，因此不能进入当前对称内存路径。
-    const bool isTwoLevelMeshNhrOmni = algName == "AicpuAllGatherPipeLineMeshNHR"
-                                       && topoInfo->topoLevelNums == TOPO_LEVEL_NUM_1
-                                       && topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix;
-    const bool isAllGatherConcurrent = algName == "AicpuAllGatherConcurMeshNHR";
-    constexpr u32 UBX_CONCURRENT_MAX_RANK_SIZE = 4;
-    // Concurrent适用拓扑中，输入达到该阈值后查询对称窗口。
-    constexpr u64 UBX_ALLGATHER_SYM_DATA_SIZE = 8ULL * 1024 * 1024;
-    // 在 Concurrent 适用拓扑内，小数据即使选中 SoleMesh 也使用非对称内存路径。
-    bool isUbxConcurrentTopo = false;
-    if (param.opMode == OpMode::OPBASE && param.engine == CommEngine::COMM_ENGINE_AICPU_TS
-        && topoInfo->userRankSize <= UBX_CONCURRENT_MAX_RANK_SIZE && topoInfo->topoLevelNums == TOPO_LEVEL_NUM_1
-        && topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
-        CHK_RET(AutoSelectorBase::CheckMeshNumEqualToClosNum(topoInfo.get(), isUbxConcurrentTopo));
-    }
-    if (GetHcommVersion() >= CANN_VERSION(9, 1, 0) && param.opMode == OpMode::OPBASE
-        && param.engine == CommEngine::COMM_ENGINE_AICPU_TS
-        && (!isUbxConcurrentTopo || inputSize >= UBX_ALLGATHER_SYM_DATA_SIZE)
-        && (topoInfo->level0Topo == Level0Shape::MESH_1D || isTwoLevelMeshNhrOmni || isAllGatherConcurrent)) {
-        CheckAndSetSymmetricMemory(param);
-    }
+    // 对称内存是否生效由 HcclExecOp 里的 RefreshSymmetricMemory 按最终引擎/算法统一判定，入口不重复判断
     CHK_RET(HcclExecOp(comm, param, topoInfo, algName, resPack));
     HCCL_INFO("Execute AllGatherOutPlace success.");
     return HCCL_SUCCESS;

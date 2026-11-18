@@ -229,6 +229,7 @@ HcclResult AllReduceOutPlaceCommon(
         return HcclResult::HCCL_SUCCESS;
     }
 
+    // 探测必须早于 Selector：UBX 大数据档选型依赖 supportSymmetricMemory，入口不探测则该值恒为 false。
     if (GetHcommVersion() >= CANN_VERSION(9, 1, 0) && param.opMode == OpMode::OPBASE) {
         CheckAndSetSymmetricMemory(param);
     }
@@ -237,32 +238,7 @@ HcclResult AllReduceOutPlaceCommon(
     std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
     CHK_RET(Selector(comm, param, topoInfo, algName));
 
-    if (algName == "AicpuAllReduceSoleMeshOneShot" || algName == "AicpuAllReduceSoleMeshTwoShot") {
-        param.supportSymmetricMemory = false;
-    }
-
-    if (!IsReduceOpSymMemDeterministic(algName, topoInfo.get())) {
-        param.supportSymmetricMemory = false;
-    }
-    if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
-        const bool isTwoLevelMeshNhrOmni
-            = algName == "AicpuAllReducePipeLineMeshNHR" && topoInfo->topoLevelNums == TOPO_LEVEL_NUM_1;
-        const bool isConcurrentMeshNhr = algName == "AicpuAllReduceConcurMeshTwoShotNHR";
-        if (!isTwoLevelMeshNhrOmni && !isConcurrentMeshNhr) {
-            param.supportSymmetricMemory = false;
-        }
-    } else {
-        const bool supportSymmetricMemory
-            = (param.engine == CommEngine::COMM_ENGINE_AICPU_TS && topoInfo->level0Topo == Level0Shape::MESH_1D
-               && param.DataDes.dataType != HcclDataType::HCCL_DATA_TYPE_INT64
-               && param.DataDes.dataType != HcclDataType::HCCL_DATA_TYPE_UINT64
-               && param.DataDes.dataType != HcclDataType::HCCL_DATA_TYPE_FP64
-               && param.reduceType != HcclReduceOp::HCCL_REDUCE_PROD);
-        if (!supportSymmetricMemory) {
-            param.supportSymmetricMemory = false;
-        }
-    }
-
+    // 对称内存放行判定由 HcclExecOp 内的 RefreshSymmetricMemory 统一负责，入口不再重复判断。
     CHK_RET(HcclExecOp(comm, param, topoInfo, algName, resPack));
     HCCL_INFO("Execute AllReduceOutPlace success.");
     return HCCL_SUCCESS;

@@ -40,6 +40,28 @@ constexpr uint64_t OUTPUT_BASE = 0x3000000000ULL;
 inline uint64_t Address(uint64_t base, uint32_t rank) { return base + rank * RANK_STRIDE; }
 } // namespace allreduce_aiv_test
 
+// 设备侧 HcclReduceOp 来自 CANN 头文件，这里给出同名的非限定枚举，
+// 既支持生产代码里的 `HcclReduceOp::HCCL_REDUCE_*` 写法，也保持与 uint32_t 可直接比较。
+enum HcclReduceOp {
+    HCCL_REDUCE_SUM = 0,
+    HCCL_REDUCE_PROD = 1,
+    HCCL_REDUCE_MAX = 2,
+    HCCL_REDUCE_MIN = 3,
+};
+
+// 对称路径通过 inOutQue 申请 UB tensor；桩不模拟真实队列，只保证类型可编译。
+class StubTensorQue {
+public:
+    template <typename T>
+    AscendC::LocalTensor<T> AllocTensor()
+    {
+        return AscendC::LocalTensor<T>();
+    }
+    template <typename T>
+    void FreeTensor(const AscendC::LocalTensor<T>&)
+    {}
+};
+
 // Run the production kernel on the CPU and replay its data/flag dependencies in the test scheduler.
 class AivCommBase {
 public:
@@ -62,6 +84,9 @@ public:
     {
         return reinterpret_cast<GM_ADDR>(allreduce_aiv_test::Address(allreduce_aiv_test::CCL_BASE, rank));
     }
+    // 桩不区分对称/非对称内存：两侧均返回空地址，对称开关默认关闭，UT 继续覆盖两 shot 基线。
+    GM_ADDR GetGmSymIn(uint32_t) { return nullptr; }
+    GM_ADDR GetGmSymOut(uint32_t) { return nullptr; }
     template <typename T>
     void CpGM2GM(T* destination, T* source, uint64_t count)
     {
@@ -96,7 +121,11 @@ public:
     bool IsFirstOP(uint32_t) { return true; }
     bool IsIdleCore() const { return blockIdx_ >= numBlocks_; }
     void BarrierForFirstOP() { ++allreduce_aiv_test::currentTrace->firstBarriers; }
-    void BarrierAll() { ++allreduce_aiv_test::currentTrace->endBarriers; }
+    void BarrierAll(uint32_t = 0) { ++allreduce_aiv_test::currentTrace->endBarriers; }
+    // 卡死检测计数入口：本 UT 只关心 kernel 能否在 host 侧编译/调用，不校验计数下发。
+    void HeadCounter() {}
+    void TailCounter() {}
+    void SyncBeforeTail() {}
     static uint32_t GetLargestPowerOf2LessThan(uint32_t value)
     {
         uint32_t power = 1;
@@ -112,10 +141,24 @@ public:
     uint32_t rank_ = 0;
     uint32_t rankSize_ = 0;
     uint32_t reduceOp_ = 0;
+    // 对称路径开关：桩恒为 0，生产代码落回两 shot 基线。
+    uint32_t symInEnable_ = 0;
+    uint32_t symOutEnable_ = 0;
+    uint32_t dataType_ = 0;
+    uint32_t root_ = 0;
+    uint64_t inputSliceStride_ = 0;
+    uint64_t outputSliceStride_ = 0;
     uint32_t numBlocks_ = 0;
     uint32_t blockIdx_ = 0;
     uint32_t tag_ = 1;
     uint32_t curTag_ = 0;
     GM_ADDR myGmIn_ = nullptr;
+    GM_ADDR myGmOut_ = nullptr;
+    StubTensorQue inOutQue;
 };
+
+// 生产 kernel 的入口函数在类外调用 SyncAll<true>()，桩需提供同名自由函数。
+template <bool isAIVOnly = true>
+inline void SyncAll()
+{}
 #endif

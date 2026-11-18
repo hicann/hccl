@@ -12,6 +12,26 @@
 
 using namespace AscendC;
 
+// 对称路径 UB 预算：只有 inOutQue(194560B) 在 UB 内真实可用 —— base Init 的 localFlagBuf(2560)
+// 加 inOutQue 与 3*48640 已超出 256KB 池，inQueueY 仅前 16384B 有效、outQueueZ 完全在 UB 外，
+// 超写会报 507035（MTE2 write UB out of bounds）。
+constexpr uint64_t AR_SYM_UB_BYTES = 194560ULL;
+// 中等数据量时单核 tile 下限（按字节，避免随 dtype 变化）：再小只剩 DMA 固定开销。
+constexpr uint64_t AR_SYM_MIN_TILE_BYTES = 8192ULL;
+// 单 tile 目标粒度（按字节）：一个 tile 内每核要下发 (1+peers) 笔读 + rankSize 笔写，tile 过大则
+// 这组 DMA 在 tile 内排队串行化、跨 tile 的读/写重叠也变少。取值与 RS 保持一致。
+constexpr uint64_t AR_SYM_TILE_TARGET_BYTES = 13312ULL;
+constexpr uint32_t AR_SYM_READS_PER_EVENT = 3U;
+// 读分组事件 ID 只有 0~7，且与 V_MTE3 等固定事件共用编号空间，故分组数收敛在 4 以内：
+// peers 超过 AR_SYM_READS_PER_EVENT * AR_SYM_MAX_READ_EVENTS 时按 ceil(peers/4) 扩大每组读的数量。
+constexpr uint32_t AR_SYM_MAX_READ_EVENTS = 4U;
+// 写段（acc）双缓冲槽数：tile t 的广播写在 tile t+1 的累加/预取期间继续在飞
+constexpr uint32_t AR_SYM_WRITE_SLOTS = 2U;
+// rankSize >= AR_SYM_NP16_RANK 时，tile 数少于 AR_SYM_NP16_MIN_TILES 回退两 shot（固定开销吃光收益）
+constexpr uint32_t AR_SYM_NP16_RANK = 16U;
+constexpr uint64_t AR_SYM_NP16_MIN_TILES = 4ULL;
+constexpr uint32_t AR_SYM_TWOSHOT_MIN_RATIO = 2U;
+
 template <typename T>
 class AivAllReduceMesh1DTwoShot : public AivCommBase {
 public:
@@ -26,8 +46,14 @@ public:
 
         // 将core分组
         producerNum = rankSize_;
-        groupSize = (coreNum - producerNum) / producerNum; // 一个producer对应几个consumer，整数倍
+        // 一个producer对应几个consumer，整数倍；核数不足 2*rankSize 时没有 consumer
+        groupSize = (coreNum > producerNum) ? ((coreNum - producerNum) / producerNum) : 0;
         consumerNum = groupSize * producerNum;
+        // 消费者为 0（核数 < 2*rankSize）时两 shot 切分不可用，对称路径按 tile 均分、不依赖切分结果，
+        // 直接返回避免后续 count / sliceNum 除零
+        if (consumerNum == 0) {
+            return;
+        }
         // 返回多余的核
         if (coreIdx >= producerNum + consumerNum) {
             return;
@@ -67,8 +93,266 @@ public:
 
     __aicore__ inline void Process()
     {
+        // 对称内存：两侧窗口可用且 reduceOp 受支持时走零同步对称路径，否则落回两 shot 基线。
+        if (UseSymPath()) {
+            SymProcess();
+            return;
+        }
         ReduceScatter();
         AllGather();
+    }
+
+    // rankSize >= AR_SYM_NP16_RANK 时才可能回退；回退目标两 shot 要求核数 >= 2*rankSize，
+    // 否则消费者为 0 数据搬不动，这种核数下仍留在对称路径（按 tile 均分，任意核数可跑）。
+    __aicore__ inline bool SymSmallFallback() const
+    {
+        if (rankSize_ < AR_SYM_NP16_RANK) {
+            return false;
+        }
+        if (numBlocks_ < AR_SYM_TWOSHOT_MIN_RATIO * rankSize_) {
+            return false;
+        }
+        // 与 MakeSymPlan 同源估算 tile；只依赖全 rank 一致的量，避免边界档位各卡判定分叉。
+        const uint64_t symChunkCount = len_ / rankSize_;
+        const uint32_t symPeers = static_cast<uint32_t>(rankSize_ - 1U);
+        const uint64_t symMaxChunk = CalcSymTileElems(symChunkCount, symPeers, static_cast<uint32_t>(numBlocks_));
+        const uint64_t symTiles = (symChunkCount + symMaxChunk - 1) / symMaxChunk;
+        return (symTiles < AR_SYM_NP16_MIN_TILES);
+    }
+
+    // 走对称路径的条件：in/out 两侧窗口都就绪 + reduceOp 受 SymReduceLocal 支持 + 未触发小档回退。
+    // SymReduceLocal 对 SUM/MAX/MIN 之外的算子不做任何累加（会静默丢对端数据），必须落回基线路径。
+    __aicore__ inline bool UseSymPath() const
+    {
+        if ((symInEnable_ != 1) || (symOutEnable_ != 1)) {
+            return false;
+        }
+        const bool opSupported = (reduceOp_ == HcclReduceOp::HCCL_REDUCE_SUM)
+                                 || (reduceOp_ == HcclReduceOp::HCCL_REDUCE_MAX)
+                                 || (reduceOp_ == HcclReduceOp::HCCL_REDUCE_MIN);
+        return opSupported && !SymSmallFallback();
+    }
+
+    // UB 本地累加 acc = acc ⊕ tmp（⊕ 由 reduceOp_ 决定）：用向量单元替代 GM 原子加，按 CHUNK_SIZE 分段下发。
+    __aicore__ inline void SymReduceLocal(const LocalTensor<T>& acc, const LocalTensor<T>& tmp, uint32_t cnt)
+    {
+        uint32_t done = 0;
+        while (done < cnt) {
+            uint32_t step
+                = ((cnt - done) > static_cast<uint32_t>(CHUNK_SIZE)) ? static_cast<uint32_t>(CHUNK_SIZE) : (cnt - done);
+            LocalTensor<T> accStep = acc[done];
+            LocalTensor<T> tmpStep = tmp[done];
+            if (reduceOp_ == HcclReduceOp::HCCL_REDUCE_SUM) {
+                Add<T>(accStep, accStep, tmpStep, step);
+            } else if (reduceOp_ == HcclReduceOp::HCCL_REDUCE_MAX) {
+                Max<T>(accStep, accStep, tmpStep, step);
+            } else if (reduceOp_ == HcclReduceOp::HCCL_REDUCE_MIN) {
+                Min<T>(accStep, accStep, tmpStep, step);
+            }
+            done += step;
+        }
+    }
+
+    // 每核执行计划：一次算好，所有卡数共用同一套流水结构
+    struct SymPlan {
+        uint64_t chunkStart;   // 本 rank 负责的输出 chunk 在 output 内的元素偏移
+        uint64_t chunkCount;   // 本 rank 负责的输出 chunk 元素数
+        uint64_t loopOffsetIn; // input_ 相对本 rank 对称窗口基址的偏移（host 分循环后需自己补）
+        uint64_t loopOffsetOut;
+        uint64_t blkElems; // 单 tile 元素数
+        uint64_t tBegin;   // 本核负责的 tile 区间 [tBegin, tBegin+tNum)
+        uint64_t tNum;
+        uint32_t rot; // 对端轮转起点
+        uint32_t peers;
+        uint32_t readBlocks;    // 每个对端占一块 UB（own 直接落在 acc 槽里，不占读块）
+        uint32_t readsPerEvent; // 每 readsPerEvent 笔读共用一个 MTE2_V 事件（基线 3，大 rank 数时放大）
+        uint32_t groups;        // 读分组数，恒 <= AR_SYM_MAX_READ_EVENTS
+    };
+
+    // 对称内存「全核零同步」两段式：A 段按环序把 own + 各 peer 的同偏移片读进 UB 并向量累加，
+    // B 段把归约结果直写本端与所有对端的 output 对称 VA。全程无 staging/flag/cclBuffer/原子加，
+    // 每元素累加顺序固定 → 结果确定；远端流量与两跳算法同量级，跨 rank 完成由入口 BarrierAll 收口。
+    __aicore__ inline void SymProcess()
+    {
+        SymPlan p;
+        if (!MakeSymPlan(p)) {
+            return; // 入口 AivAllReduceV2Mesh1DTwoShot 在 Process() 之后统一调 BarrierAll
+        }
+        LocalTensor<T> ubBuf = inOutQue.AllocTensor<T>();
+        SymRunTiles(p, ubBuf);
+        inOutQue.FreeTensor(ubBuf);
+    }
+
+    // 片划分 + UB 预算 + 核/tile 分配；false = 本核无 tile（入口统一调 BarrierAll）
+    __aicore__ inline bool MakeSymPlan(SymPlan& p)
+    {
+        // 片划分以 32B（UB_ALIGN_SIZE）为单位：chunkStart 必须 32B 对齐，否则 SymDataCopy* 会走
+        // DataCopyPad 路径，非对齐起点 + 多 tile 会错元素；不足 32B 的零头并给最后一个 rank。
+        const uint64_t alignElem = UB_ALIGN_SIZE / sizeof(T);
+        const uint64_t units = len_ / alignElem;
+        const uint64_t baseUnits = units / rankSize_;
+        const uint64_t extraUnits = units % rankSize_;
+        p.chunkCount = (baseUnits + ((rank_ < extraUnits) ? 1U : 0U)) * alignElem;
+        p.chunkStart = (rank_ * baseUnits + ((rank_ < extraUnits) ? rank_ : extraUnits)) * alignElem;
+        if (rank_ + 1U == rankSize_) {
+            p.chunkCount += len_ - units * alignElem;
+        }
+        if (p.chunkCount == 0U) {
+            return false; // 本 rank 没有片（数据量小于 rankSize_ 个 32B 单位）；入口统一调 BarrierAll
+        }
+        // 对端 VA 数组只含「窗口基址 + 算子级 inputOffset」，不含 host 分循环偏移 → 自己补 loopOffset
+        const uint64_t mySymIn = reinterpret_cast<uint64_t>(GetGmSymIn(rank_));
+        p.loopOffsetIn = (input_ >= mySymIn) ? (input_ - mySymIn) : 0;
+        const uint64_t mySymOut = reinterpret_cast<uint64_t>(GetGmSymOut(rank_));
+        p.loopOffsetOut = (output_ >= mySymOut) ? (output_ - mySymOut) : 0;
+        const uint32_t cores = static_cast<uint32_t>(numBlocks_);
+        if (cores == 0) {
+            return false;
+        }
+        p.peers = (rankSize_ > 1) ? static_cast<uint32_t>(rankSize_ - 1) : 0;
+        p.readBlocks = p.peers;
+        // 事件 ID 有限：每组读数量取 max(3, ceil(peers/4))，保证分组数不超过 AR_SYM_MAX_READ_EVENTS。
+        p.readsPerEvent = (p.readBlocks + AR_SYM_MAX_READ_EVENTS - 1U) / AR_SYM_MAX_READ_EVENTS;
+        p.readsPerEvent = ((p.readsPerEvent > AR_SYM_READS_PER_EVENT) ? p.readsPerEvent : AR_SYM_READS_PER_EVENT);
+        p.groups = (p.readBlocks + p.readsPerEvent - 1U) / p.readsPerEvent;
+        p.blkElems = CalcSymTileElems(p.chunkCount, p.readBlocks, cores);
+        // 按 tile 切核（小数据量只放少量核参与，保证每核至少一整块）
+        const uint64_t tiles = (p.chunkCount + p.blkElems - 1) / p.blkElems;
+        const uint32_t usedCores = (tiles < static_cast<uint64_t>(cores)) ? static_cast<uint32_t>(tiles) : cores;
+        if (blockIdx_ >= usedCores) {
+            return false;
+        }
+        const uint64_t perCore = tiles / usedCores;
+        const uint64_t rem = tiles % usedCores;
+        p.tBegin = blockIdx_ * perCore + ((blockIdx_ < rem) ? blockIdx_ : rem);
+        p.tNum = perCore + ((blockIdx_ < rem) ? 1 : 0);
+        p.rot = static_cast<uint32_t>(blockIdx_ % rankSize_); // 对端轮转，避免所有核同时压同一条链路
+        return true;
+    }
+
+    // 单 tile 元素数：UB 按「读块(readBlocks，own 直接落 acc 槽) + 写槽(AR_SYM_WRITE_SLOTS)」均分，
+    // 再按 tile 目标粒度收敛；中等数据量时按「每核需搬的量」缩小，下限 AR_SYM_MIN_TILE_BYTES。
+    static __aicore__ inline uint64_t CalcSymTileElems(uint64_t chunkCount, uint32_t readBlocks, uint32_t cores)
+    {
+        const uint64_t blocks = static_cast<uint64_t>(readBlocks) + AR_SYM_WRITE_SLOTS; // 对端读块 + acc 双槽
+        uint64_t maxChunk = AR_SYM_UB_BYTES / blocks / UB_ALIGN_SIZE * UB_ALIGN_SIZE / sizeof(T);
+        const uint64_t target = AR_SYM_TILE_TARGET_BYTES / sizeof(T);
+        maxChunk = (target < maxChunk) ? target : maxChunk;
+        const uint64_t perCoreNeed = (chunkCount + cores - 1) / cores;
+        const uint64_t alignElems = UB_ALIGN_SIZE / sizeof(T);
+        const uint64_t minTileElems = AR_SYM_MIN_TILE_BYTES / sizeof(T);
+        if (perCoreNeed < maxChunk) {
+            uint64_t q = perCoreNeed / alignElems * alignElems;
+            q = (q < minTileElems) ? minTileElems : q;
+            maxChunk = (q < maxChunk) ? q : maxChunk;
+        }
+        return maxChunk;
+    }
+
+    __aicore__ inline void CopySymIn(const LocalTensor<T>& dst, uint64_t srcAddr, uint32_t cnt)
+    {
+        GlobalTensor<T> g;
+        g.SetGlobalBuffer((__gm__ T*)srcAddr, cnt);
+        DataCopyGM2UBByAddr(dst, g, cnt, srcAddr);
+    }
+
+    // 对端 user input（对称 VA）→ UB；peerOff 已含 loopOffset
+    __aicore__ inline void CopySymPeerIn(const LocalTensor<T>& dst, uint32_t peer, uint64_t peerOff, uint32_t cnt)
+    {
+        CopySymIn(dst, reinterpret_cast<uint64_t>(GetGmSymIn(peer)) + peerOff, cnt);
+    }
+
+    __aicore__ inline void CopySymOut(uint64_t dstAddr, const LocalTensor<T>& src, uint32_t cnt)
+    {
+        GlobalTensor<T> g;
+        g.SetGlobalBuffer((__gm__ T*)dstAddr, cnt);
+        DataCopyUB2GMByAddr(g, src, cnt, dstAddr);
+    }
+
+    // 全卡数共用的流水：acc 双槽（slot = (t - tBegin) & 1），tile t 的广播写在 tile t+1 的累加/预取期间
+    // 继续在飞；预取（tile t+1 的读）在 tile t 的广播写之前下发，使读段与写段重叠。
+    // 对端对称 VA 的广播写既不归 MTE3 事件统计，也不被 PIPE_MTE3 屏障排空，因此 acc 槽复用前必须用
+    // PipeBarrier<PIPE_ALL> 收口，写段最多压 2 个 tile 在飞。
+    __aicore__ inline void SymRunTiles(const SymPlan& p, const LocalTensor<T>& ubBuf)
+    {
+        if (p.tNum == 0U) {
+            return;
+        }
+        const LocalTensor<T> accSlot0 = ubBuf[p.blkElems * p.readBlocks];
+        const LocalTensor<T> accSlot1 = ubBuf[p.blkElems * (p.readBlocks + 1U)];
+        const uint64_t tEnd = p.tBegin + p.tNum;
+        SymPrefetchTile(p, ubBuf, accSlot0, p.tBegin);
+        for (uint64_t t = p.tBegin; t < tEnd; ++t) {
+            const bool oddSlot = (((t - p.tBegin) & 1U) != 0U);
+            const LocalTensor<T> acc = oddSlot ? accSlot1 : accSlot0;
+            const uint64_t tileOff = t * p.blkElems;
+            const uint64_t cur = (p.chunkCount - tileOff > p.blkElems) ? p.blkElems : (p.chunkCount - tileOff);
+            const uint64_t off = (p.chunkStart + tileOff) * sizeof(T);
+            const uint32_t cnt = static_cast<uint32_t>(cur);
+            SymReduceTile(p, ubBuf, acc, cnt); // 等本 tile 分组读齐 → 累加对端片
+            AscendC::SetFlag<HardEvent::V_MTE3>(EVENT_ID0);
+            AscendC::WaitFlag<HardEvent::V_MTE3>(EVENT_ID0); // 累加落地才能直写
+            if (t + 1U < tEnd) {
+                // acc 槽复用前先等该槽上一轮广播写排空（对端对称 VA 的写只能靠全流水屏障收口）
+                PipeBarrier<PIPE_ALL>();
+                SymPrefetchTile(p, ubBuf, oddSlot ? accSlot0 : accSlot1, t + 1U);
+            }
+            SymBroadcastTile(p, acc, off, cnt);
+        }
+        PipeBarrier<PIPE_ALL>(); // 收尾：最后一 tile 的广播写（含对端）排空
+    }
+
+    // 下发一个 tile 的读：own 直接进 acc 槽，各对端进 readBlocks 的其余块（环序轮转，避免压同一条链路）
+    __aicore__ inline void
+    SymPrefetchTile(const SymPlan& p, const LocalTensor<T>& ubBuf, const LocalTensor<T>& acc, uint64_t t)
+    {
+        const uint64_t tileOff = t * p.blkElems;
+        const uint64_t cur = (p.chunkCount - tileOff > p.blkElems) ? p.blkElems : (p.chunkCount - tileOff);
+        const uint64_t off = (p.chunkStart + tileOff) * sizeof(T);
+        const uint32_t cnt = static_cast<uint32_t>(cur);
+        CopySymIn(acc, input_ + off, cnt);
+        uint32_t r = 0;
+        uint32_t g = 0;
+        for (uint32_t k = 0; k < rankSize_ && r < p.peers; ++k) {
+            const uint32_t peer = (p.rot + k) % rankSize_;
+            if (peer == rank_) {
+                continue;
+            }
+            ++r;
+            CopySymPeerIn(ubBuf[p.blkElems * (r - 1U)], peer, p.loopOffsetIn + off, cnt);
+            if (((r % p.readsPerEvent) == 0U) || (r == p.peers)) {
+                AscendC::SetFlag<HardEvent::MTE2_V>(EVENT_ID0 + g);
+                ++g;
+            }
+        }
+    }
+
+    // 等分组读齐后逐块累加到 acc（own 已由预取直接落在 acc 里）
+    __aicore__ inline void
+    SymReduceTile(const SymPlan& p, const LocalTensor<T>& ubBuf, const LocalTensor<T>& acc, uint32_t cnt)
+    {
+        for (uint32_t g = 0; g < p.groups; ++g) {
+            AscendC::WaitFlag<HardEvent::MTE2_V>(EVENT_ID0 + g);
+            const uint32_t rBeg = p.readsPerEvent * g;
+            uint32_t rEnd = rBeg + p.readsPerEvent;
+            rEnd = (rEnd < p.readBlocks) ? rEnd : p.readBlocks;
+            for (uint32_t r = rBeg; r < rEnd; ++r) {
+                SymReduceLocal(acc, ubBuf[p.blkElems * r], cnt);
+            }
+        }
+    }
+
+    // 归约结果直写所有对端 output（对称 VA）+ 本端 output。写留在 MTE3 管道，由 acc 槽轮转处的
+    // PipeBarrier<PIPE_ALL> 收口（对端对称 VA 的写只能靠全流水屏障排空）。
+    __aicore__ inline void SymBroadcastTile(const SymPlan& p, const LocalTensor<T>& acc, uint64_t off, uint32_t cnt)
+    {
+        for (uint32_t k = 0; k < rankSize_; ++k) {
+            const uint32_t peer = (p.rot + k) % rankSize_;
+            const uint64_t dst = (peer == rank_) ?
+                                     (output_ + off) :
+                                     (reinterpret_cast<uint64_t>(GetGmSymOut(peer)) + p.loopOffsetOut + off);
+            CopySymOut(dst, acc, cnt);
+        }
     }
 
     __aicore__ inline void ReduceScatter()
@@ -412,14 +696,24 @@ __aicore__ inline void AivAllReduceV2Mesh1DTwoShot(KERNEL_ARGS_DEF)
     if (op.IsFirstOP(sliceId)) {
         op.BarrierForFirstOP();
     }
-    if (op.numBlocks_ >= rankSize * 2) {
+    // 对称路径对核数无「>= 2*rankSize」要求，须优先走 Prepare/Process：是否进 SymProcess 由 UseSymPath 决定，
+    // 否则 Process() 落回两 shot 基线，此时核数 < 2*rankSize 数据搬不动，必须走 SmallCore 分支。
+    const bool symPath = op.UseSymPath();
+    // sliceId 是模板对象内每次 launch 自增的序号，每个算子从 1 开始，故 1 即本算子首轮：
+    // 首轮已确认全 rank 输入就绪，后续轮次读同一份输入的其他区段，由上一轮出口 BarrierAll 收口即可。
+    const bool needEntrySync = symPath && (sliceId == 1);
+    if (needEntrySync) {
+        op.BarrierAll(0); // 直读对端 input 前确认各 rank 本轮输入已提交
+        SyncAll<true>();  // BarrierAll 只确认本核负责的 rank 子集，须补核间同步
+    }
+    if (symPath || op.numBlocks_ >= rankSize * 2) {
         op.Prepare(sliceId);
         op.Process();
     } else {
         op.SmallCoreReduceScatter(sliceId);
         op.SmallCoreAllgather();
     }
-    op.BarrierAll();
+    op.BarrierAll(needEntrySync ? 1U : 0U);
 }
 
 template <typename T>
@@ -445,19 +739,21 @@ __aicore__ inline void AivAllReduceV2Mesh1DTwoShotSuperKernel(SUPERKERNEL_ARGS_D
     uint64_t countLeft = op.len_;
 
     int32_t loopTag = op.tag_;
+    uint32_t barrierSeq = 0;
 
     while (countLeft > 0) {
         uint64_t curCount = (countLeft > maxCountPerLoop) ? maxCountPerLoop : countLeft;
         uint64_t curSize = curCount * sizeof(T);
         op.len_ = curCount;
-        if (op.numBlocks_ >= op.rankSize_ * 2) {
+        if (op.UseSymPath() || op.numBlocks_ >= op.rankSize_ * 2) {
             op.Prepare(loopTag);
             op.Process();
         } else {
             op.SmallCoreReduceScatter(loopTag);
             op.SmallCoreAllgather();
         }
-        op.BarrierAll();
+        op.BarrierAll(barrierSeq);
+        ++barrierSeq;
 
         countLeft -= curCount;
         op.input_ += curSize;

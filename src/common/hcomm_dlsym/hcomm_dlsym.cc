@@ -20,6 +20,8 @@
 #include "hcomm_host_profiling_dl.h"
 #include "hccl_host_comm_dl.h"
 #include "hccl_res_expt_dl.h"
+#include "hccl_sym_win_dl.h"
+#include <pthread.h>
 #include <dlfcn.h>
 #include <atomic>
 #include <cstdio>
@@ -30,6 +32,8 @@
 static void* gLibHandle = nullptr;
 static std::atomic<int> gHcommVersion{0};
 static std::mutex gHcommDlInitMutex;
+
+void* HcommGetLibHandle(void) { return gLibHandle; }
 
 int GetHcommVersion(void)
 {
@@ -89,6 +93,7 @@ static void DoHcommDlInit(void)
     HcclCcuResDlInit(gLibHandle);
     CcuLaunchDlInit(gLibHandle);
     CcuPrimitivesImplDlInit(gLibHandle);
+    HcclSymWinHostDlInit(gLibHandle);
 }
 
 // 初始化，线程安全：通过互斥锁串行化；成功初始化后不重复执行，失败时允许后续重试

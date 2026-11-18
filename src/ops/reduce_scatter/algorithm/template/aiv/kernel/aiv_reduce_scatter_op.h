@@ -23,6 +23,16 @@
 
 using namespace AscendC;
 
+// 对称内存使能探测：host 按窗口布局算好对端 input 对称 VA 数组后下发，本 rank 条目非 0 表示可用。
+// ConsumerSym 按输出连续区间切分全部核、不依赖「生产者/消费者」两段式，低核数（numBlocks <= 2*rankSize）
+// 也走对称分支，故入口不按 rankSize / 核数设限（host 侧 CalNumBlocks 只压核数上限，不会抬到 2 核）。
+__aicore__ inline bool AivReduceScatterSymInEnabled(GM_ADDR buffIn, uint32_t rank, uint32_t rankSize)
+{
+    (void)rankSize;
+    __gm__ uint64_t* base = reinterpret_cast<__gm__ uint64_t*>(buffIn);
+    return base[AIV_SYM_PEER_IN_ADDR_OFFSET / sizeof(uint64_t) + rank] != 0;
+}
+
 #if defined(HCCL_AIV_ACLGRAPH_SK)
 #define AIV_REDUCE_SCATTER_KERNEL_DECL(type) \
     extern "C" __aicore__ void aiv_reduce_scatter_##type##_inner(KERNEL_ARGS_DEF);
@@ -32,6 +42,10 @@ using namespace AscendC;
     extern "C" __aicore__ void aiv_reduce_scatter_##type##_inner(KERNEL_ARGS_DEF) \
     {                                                                             \
         AIV_INFO_HINT;                                                            \
+        if (AivReduceScatterSymInEnabled(buffIn, rank, rankSize)) {               \
+            AivReduceScatterV2Mesh1DBigData<type>(KERNEL_ARGS_CALL);              \
+            return;                                                               \
+        }                                                                         \
         if (isWrite && numBlocks > 2 * rankSize) {                                \
             AivReduceScatterV2Mesh1DBigDataWrite<type>(KERNEL_ARGS_CALL);         \
             return;                                                               \
@@ -64,6 +78,10 @@ using namespace AscendC;
     extern "C" __global__ __aicore__ void aiv_reduce_scatter_##type(KERNEL_ARGS_DEF) \
     {                                                                                \
         AIV_INFO_HINT;                                                               \
+        if (AivReduceScatterSymInEnabled(buffIn, rank, rankSize)) {                  \
+            AivReduceScatterV2Mesh1DBigData<type>(KERNEL_ARGS_CALL);                 \
+            return;                                                                  \
+        }                                                                            \
         if (isWrite && numBlocks > 2 * rankSize) {                                   \
             AivReduceScatterV2Mesh1DBigDataWrite<type>(KERNEL_ARGS_CALL);            \
             return;                                                                  \

@@ -251,11 +251,17 @@ HcclResult InsV2AllGatherSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
     u64 loopTimes = dataCount_ / maxCountPerLoop + static_cast<u64>(dataCount_ % maxCountPerLoop != 0);
     u64 processedDataCount = 0;
 
-    // 如果是对称内存，每次传输的大小不受cclbuffer和UB_MAX_DATA_SIZE的限制
+    // 对称内存：非 AIV 引擎 kernel 直接读写对端 user buffer，不受 cclBuffer/UB_MAX_DATA_SIZE 限制，一次传完；
+    // AIV 侧 kernel 尚未消费 enableRemoteMemAccess，仍走 cclIn 两跳中转，中转区随 count 增长，
+    // 须保留分片以免越界（507035）。
     if (param.supportSymmetricMemory) {
-        loopTimes = 1;
-        tempAlgParams.enableRemoteMemAccess = true;
-        HCCL_INFO("[InsV2AllGatherSoleExecutor][OrchestrateLoop] %s: symmetric memory enabled", param.algName);
+        if (param.engine != CommEngine::COMM_ENGINE_AIV) {
+            loopTimes = 1;
+            tempAlgParams.enableRemoteMemAccess = true;
+        }
+        HCCL_INFO(
+            "[InsV2AllGatherSoleExecutor][OrchestrateLoop] %s: symmetric memory enabled, engine[%d], loopTimes[%llu]",
+            param.algName, static_cast<int32_t>(param.engine), loopTimes);
     }
     HCCL_INFO(
         "[InsV2AllGatherSoleExecutor][OrchestrateLoop] myRank[%u], templateScratchMultiplier[%u] "

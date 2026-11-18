@@ -42,6 +42,28 @@ constexpr uint64_t OUTPUT_BASE = 0x3000000000ULL;
 inline uint64_t Address(uint64_t base, uint32_t rank) { return base + rank * RANK_STRIDE; }
 } // namespace all_reduce_aiv_test
 
+// 设备侧 HcclReduceOp 来自 CANN 头文件，这里给出同名的非限定枚举，
+// 既支持生产代码里的 `HcclReduceOp::HCCL_REDUCE_*` 写法，也保持与 uint32_t 可直接比较。
+enum HcclReduceOp {
+    HCCL_REDUCE_SUM = 0,
+    HCCL_REDUCE_PROD = 1,
+    HCCL_REDUCE_MAX = 2,
+    HCCL_REDUCE_MIN = 3,
+};
+
+// 对称路径通过 inOutQue 申请 UB tensor；桩不模拟真实队列，只保证类型可编译。
+class StubTensorQue {
+public:
+    template <typename T>
+    AscendC::LocalTensor<T> AllocTensor()
+    {
+        return AscendC::LocalTensor<T>();
+    }
+    template <typename T>
+    void FreeTensor(const AscendC::LocalTensor<T>&)
+    {}
+};
+
 // 在CPU上执行生产kernel，记录拷贝与flag依赖关系，随后由测试调度器解析依赖并校验覆盖情况。
 class AivCommBase {
 public:
@@ -72,6 +94,9 @@ public:
         return reinterpret_cast<GM_ADDR>(
             all_reduce_aiv_test::Address(all_reduce_aiv_test::CCL_BASE, static_cast<uint32_t>(rank)));
     }
+    // 桩不区分对称/非对称内存：两侧均返回空地址，对称开关默认关闭，UT 继续覆盖两 shot 基线。
+    GM_ADDR GetGmSymIn(uint32_t) { return nullptr; }
+    GM_ADDR GetGmSymOut(uint32_t) { return nullptr; }
     template <typename T>
     void CpGM2GM(T* destination, T* source, uint64_t count)
     {
@@ -111,7 +136,10 @@ public:
     bool IsFirstOP(uint32_t) { return true; }
     bool IsIdleCore() const { return blockIdx_ >= numBlocks_; }
     void BarrierForFirstOP() { ++all_reduce_aiv_test::currentTrace->firstBarriers; }
-    void BarrierAll() { ++all_reduce_aiv_test::currentTrace->endBarriers; }
+    void BarrierAll(uint32_t = 0) { ++all_reduce_aiv_test::currentTrace->endBarriers; }
+    void HeadCounter() {}
+    void TailCounter() {}
+    void SyncBeforeTail() {}
 
     uint64_t len_ = 0;
     uint64_t input_ = 0;
@@ -128,6 +156,10 @@ public:
     uint32_t tag_ = 1;
     uint32_t curTag_ = 0;
     GM_ADDR myGmIn_ = nullptr;
+    // 对称路径开关：桩恒为 0，使 UseSymPath() 返回 false，生产代码落回两 shot 基线。
+    uint32_t symInEnable_ = 0;
+    uint32_t symOutEnable_ = 0;
+    StubTensorQue inOutQue;
 
 private:
     template <typename T>

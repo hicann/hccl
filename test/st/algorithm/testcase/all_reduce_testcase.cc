@@ -294,3 +294,25 @@ TEST_F(ST_ALL_REDUCE_TEST, st_all_reduce_hcclbuff_add_1)
     HcclReduceOp reduceOp = HcclReduceOp::HCCL_REDUCE_MIN;
     RunAllReduceCase(topoMeta, dataCount, dataType, dataTypeSize, reduceOp);
 }
+
+// np16 每卡 2MB（总量 32MB）正处于旧 tile 估算会误判回退、当前估算仍走对称路径的区间，
+// 固定该档位不再回退；同组的 +1 元素档覆盖总量不能被 rankSize 整除的情况。
+TEST_F(ST_ALL_REDUCE_TEST, st_all_reduce_np16_sym_small_boundary_2m)
+{
+    TopoMeta topoMeta{{{0, 1, 2, 3, 4, 5, 6, 7}, {0, 1, 2, 3, 4, 5, 6, 7}}};
+    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_FP16;
+    u32 dataTypeSize = 2;
+    u64 dataCount = 2 * 1024 * 1024 / dataTypeSize;
+    HcclReduceOp reduceOp = HcclReduceOp::HCCL_REDUCE_SUM;
+    RunAllReduceCase(topoMeta, dataCount, dataType, dataTypeSize, reduceOp);
+}
+
+TEST_F(ST_ALL_REDUCE_TEST, st_all_reduce_np16_sym_small_boundary_2m_rem)
+{
+    TopoMeta topoMeta{{{0, 1, 2, 3, 4, 5, 6, 7}, {0, 1, 2, 3, 4, 5, 6, 7}}};
+    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_FP16;
+    u32 dataTypeSize = 2;
+    u64 dataCount = 2 * 1024 * 1024 / dataTypeSize + 1;
+    HcclReduceOp reduceOp = HcclReduceOp::HCCL_REDUCE_MAX;
+    RunAllReduceCase(topoMeta, dataCount, dataType, dataTypeSize, reduceOp);
+}

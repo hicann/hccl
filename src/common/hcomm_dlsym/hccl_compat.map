@@ -98,9 +98,12 @@
         /*
         * Source: hccl_sym_win_dl.cc
         * Consumer: collective algorithm templates querying
-        * remote symmetric-window memory.
+        * remote symmetric-window memory, and op entry probing
+        * rank-to-LSA-member coverage for symmetric memory.
         */
+        GetSymWinRankToMemberTable;
         GetSymWinRemoteMem;
+        RefreshSymWinRankToMember;
 
         /*
         * Source: hcomm_primitives_dl.cc
@@ -117,6 +120,7 @@
         HcclCommSymWinGet;
         HcclHcommBatchTransferOnThread;
         HcclSetNotifyWaitTimeOut;
+        HcclSymWinGetPeerDevicePointer;
         HcclSymWinGetPeerPointer;
         HcclThreadNotifyWaitOnThreadDefault;
         HcclThreadResAcquireTimeOut;
@@ -137,6 +141,7 @@
         HcommFenceOnThread;
         HcommFlush;
         HcommIsSupportHcclCommSymWinGet;
+        HcommIsSupportHcclSymWinGetPeerDevicePointer;
         HcommIsSupportHcclSymWinGetPeerPointer;
         HcommIsSupportHcommAicpuTsTaskCacheClear;
         HcommIsSupportHcommAicpuTsTaskCacheEnd;
@@ -160,7 +165,6 @@
         HcommIsSupportHcommReadReduceOnThread;
         HcommIsSupportHcommSendRequest;
         HcommIsSupportHcommSetNotifyWaitTimeOut;
-        HcommIsSupportHcommSymWinGetPeerPointer;
         HcommIsSupportHcommThreadJoin;
         HcommIsSupportHcommThreadNotifyRecordOnThread;
         HcommIsSupportHcommThreadNotifyWaitOnThread;
@@ -179,7 +183,6 @@
         HcommReadReduceOnThread;
         HcommSendRequest;
         HcommSetNotifyWaitTimeOut;
-        HcommSymWinGetPeerPointer;
         HcommThreadJoin;
         HcommThreadNotifyRecordOnThread;
         HcommThreadNotifyWaitOnThread;

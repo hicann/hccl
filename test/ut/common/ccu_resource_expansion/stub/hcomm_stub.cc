@@ -292,6 +292,8 @@ CCU_EXPANSION_SUPPORTED(HcclChannelDestroy)
 #undef CCU_EXPANSION_SUPPORTED
 
 bool HcommIsSupportHcclChannelQuery(void) { return false; }
+// op_common.cc 对称取址接口的前置检查（真实符号由 hccl_sym_win_dl.cc 生成），本 UT 按不支持处理
+bool HcommIsSupportHcclSymWinGetPeerDevicePointer(void) { return false; }
 // op_common.cc HcclGetChannel/CheckSupportNda 引用（真实符号由 hcomm_primitives_dl.cc 生成，本 UT 用桩），按不支持 NDA
 // 特性查询处理
 bool HcommIsSupportHcommEndpointCheckFeature(void) { return false; }

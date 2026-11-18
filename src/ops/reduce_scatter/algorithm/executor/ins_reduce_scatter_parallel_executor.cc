@@ -602,10 +602,15 @@ HcclResult InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     if (param.engine != CommEngine::COMM_ENGINE_AICPU_TS) {
         maxCountPerLoop = std::min<u64>(scratchMemBlockSize, UB_MAX_DATA_SIZE) / dataTypeSize_;
     }
-    // 对称内存零拷贝：不受cclBuffer和UB_MAX_DATA_SIZE限制，一次传完
+    // 非 AIV 引擎保持一次传完；AIV 侧 kernel 可能回退到基线两段式，中转区随 count 增长，须保留分片（507035）。
     if (param.supportSymmetricMemory) {
-        maxCountPerLoop = dataCount_;
-        HCCL_INFO("[InsReduceScatterParallelExecutor][OrchestrateLoop] %s: symmetric memory enabled", param.algName);
+        if (param.engine != CommEngine::COMM_ENGINE_AIV) {
+            maxCountPerLoop = dataCount_;
+        }
+        HCCL_INFO(
+            "[InsReduceScatterParallelExecutor][OrchestrateLoop] %s: symmetric memory enabled, engine[%d], "
+            "maxCountPerLoop[%llu]",
+            param.algName, static_cast<int32_t>(param.engine), maxCountPerLoop);
     }
     CHK_PRT_RET(
         maxCountPerLoop == 0, HCCL_ERROR("[InsReduceScatterParallelExecutor][OrchestrateLoop] maxCountPerLoop is 0"),

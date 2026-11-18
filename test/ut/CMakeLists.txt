@@ -81,6 +81,8 @@ add_subdirectory(reduce)
 # scatter_rhd: Scatter RHD 主体步骤生成（消费 template_utils 公共函数族），注册同 reduce_scatter_seq64
 # —— build.sh -u 不传 ENABLE_EXPERIMENTAL，须无条件注册才会被 -u 覆盖。
 add_subdirectory(scatter_rhd)
+# sym_win_dlsym: host 侧通信域 rank → LSA WorldTeam memberId 映射与取址语义覆盖。
+add_subdirectory(sym_win_dlsym)
 # recursive_executor 测试仅在 --experimental 构建（ENABLE_EXPERIMENTAL=ON）时编译
 if(ENABLE_EXPERIMENTAL)
     add_subdirectory(reduce_scatter_birs)

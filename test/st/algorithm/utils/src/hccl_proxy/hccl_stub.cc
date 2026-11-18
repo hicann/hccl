@@ -1065,12 +1065,6 @@ int32_t HcommChannelFence(ChannelHandle channel)
     return -1;
 }
 
-HcclResult HcommSymWinGetPeerPointer(HcclCommSymWindow winHandle, size_t offset, uint32_t peerRank, void** ptr)
-{
-    HCCL_ERROR("[%s] not support.", __func__);
-    return HCCL_E_NOT_SUPPORT;
-}
-
 HcclResult HcclCommAddExchangeInfo(HcclComm comm, const void* data, uint32_t length)
 {
     HCCL_WARNING("[%s] not support.", __func__);

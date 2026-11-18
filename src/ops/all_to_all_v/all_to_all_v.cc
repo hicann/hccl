@@ -766,49 +766,13 @@ HcclResult AlltoAllVExecDispatch(
     std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
     CHK_PTR_NULL(topoInfo);
     CHK_RET(Selector(comm, param, topoInfo, algName));
-    const bool isSoleAlltoAllUbxSymmetric
-        = param.opType == HcclCMDType::HCCL_CMD_ALLTOALL && algName == "AicpuAllToAllSoleMeshMultiJetty"
-          && topoInfo->topoLevelNums == TOPO_LEVEL_NUM_1 && topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS
-          && !topoInfo->level0PcieMix;
-    const bool isAllToAllConcurrent
-        = param.opType == HcclCMDType::HCCL_CMD_ALLTOALL && algName == "AicpuAllToAllSoleMeshConcurrent";
-    // 探测结果无条件带入param：窗口句柄供HcclExecOp回退路径直接复用，避免重复探测；
-    // 是否生效仍由下方引擎/拓扑条件与HcclExecOp内的RefreshSymmetricMemory决定
+    // 探测结果无条件带入 param：窗口句柄供 HcclExecOp 里的 RefreshSymmetricMemory 直接复用，避免重复探测；
+    // 是否生效由 RefreshSymmetricMemory 按最终引擎/算法统一判定。
     param.inputSymWindow = probeParam.inputSymWindow;
     param.inputOffset = probeParam.inputOffset;
     param.outputSymWindow = probeParam.outputSymWindow;
     param.outputOffset = probeParam.outputOffset;
     param.symMemChecked = probeParam.symMemChecked;
-    // 当前pairwise算法不支持对称内存
-    const bool isPairwiseAlgo = algName == "AicpuAllToAllSolePairwise" || algName == "AicpuAllToAllVSolePairwise"
-                                || algName == "AicpuAllToAllVCSolePairwise";
-    constexpr u64 UBX_ALLTOALL_SYM_DATA_SIZE = 4ULL * 1024 * 1024;
-    constexpr u64 UBX_ALLTOALL_MULTI_JETTY_8P_SYM_DATA_SIZE = 1ULL * 1024 * 1024;
-    constexpr u32 UBX_CONCURRENT_MAX_RANK_SIZE = 4;
-    // 在 Concurrent 适用拓扑内，小数据即使选中 MultiJetty 也使用非对称内存路径。
-    bool isUbxConcurrentTopo = false;
-    const bool isUbxMultiJetty8P = probeParam.supportSymmetricMemory && param.engine == CommEngine::COMM_ENGINE_AICPU_TS
-                                   && isSoleAlltoAllUbxSymmetric && topoInfo->userRankSize == 8;
-    bool isUbxSymmetricSmallData = false;
-    if (probeParam.supportSymmetricMemory && param.opType == HcclCMDType::HCCL_CMD_ALLTOALL
-        && param.engine == CommEngine::COMM_ENGINE_AICPU_TS && topoInfo->userRankSize <= UBX_CONCURRENT_MAX_RANK_SIZE
-        && topoInfo->topoLevelNums == TOPO_LEVEL_NUM_1 && topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS
-        && !topoInfo->level0PcieMix) {
-        CHK_RET(AutoSelectorBase::CheckMeshNumEqualToClosNum(topoInfo.get(), isUbxConcurrentTopo));
-    }
-    if (isUbxConcurrentTopo || isUbxMultiJetty8P) {
-        const auto* sendCounts = static_cast<const u64*>(param.all2AllVDataDes.sendCounts);
-        CHK_PTR_NULL(sendCounts);
-        const u64 dataSize = sendCounts[0] * HCCL_SIZE_TABLE[param.all2AllVDataDes.sendType];
-        isUbxSymmetricSmallData = (isUbxConcurrentTopo && dataSize < UBX_ALLTOALL_SYM_DATA_SIZE)
-                                  || (isUbxMultiJetty8P && dataSize < UBX_ALLTOALL_MULTI_JETTY_8P_SYM_DATA_SIZE);
-    }
-    if (probeParam.supportSymmetricMemory && param.engine == CommEngine::COMM_ENGINE_AICPU_TS
-        && !isUbxSymmetricSmallData
-        && ((topoInfo->level0Topo == Level0Shape::MESH_1D && !isPairwiseAlgo) || isSoleAlltoAllUbxSymmetric
-            || isAllToAllConcurrent)) {
-        param.supportSymmetricMemory = probeParam.supportSymmetricMemory;
-    }
 
     // 经过Selector后，算法可能从aicpu回退到aiv模型，需要检查aiv缓存
     if (param.engine == CommEngine::COMM_ENGINE_AIV) {

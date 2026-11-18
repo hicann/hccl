@@ -237,8 +237,15 @@ HcclResult InsV2ReduceScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchest
     u64 processedDataCount = 0;
 
     if (param.supportSymmetricMemory) {
-        loopTimes = 1;
-        HCCL_INFO("[InsV2ReduceScatterSoleExecutor][OrchestrateLoop] %s: symmetric memory enabled", param.algName);
+        // 非 AIV 引擎保持一次传完；AIV 侧 kernel 可能回退到基线两段式（UseSymPath 不满足），
+        // 中转区 cclBufferStride=count*rankSize*sizeof(T)，须保留分片以免越界（507035）。
+        if (param.engine != CommEngine::COMM_ENGINE_AIV) {
+            loopTimes = 1;
+        }
+        HCCL_INFO(
+            "[InsV2ReduceScatterSoleExecutor][OrchestrateLoop] %s: symmetric memory enabled, engine[%d], "
+            "loopTimes[%llu]",
+            param.algName, static_cast<int32_t>(param.engine), loopTimes);
     }
     for (u64 loop = 0; loop < loopTimes; loop++) {
         u64 currDataCount = (loop == loopTimes - 1) ? dataCount_ - processedDataCount : maxDataCountPerLoop;

@@ -187,3 +187,16 @@ TEST_F(ST_REDUCE_SCATTER_TEST, test_device_reducescatter_rhd_dev_002)
 // [CI run#5334/#5355] 三级用例（dev_003）在 ST 框架建链超时（HcclGetChannel hcclRet=9）——
 // ST SimWorld 不支持多 pod 拓扑（全部既有 ST 用例均为单 pod），三级通道建立不完整。
 // 三级覆盖由 VM checker rA3~rA6（12+ 例，2幂/非幂/双非幂全维度）承载，ST 不重复。
+// np16 档：send 缓冲总量 2MB 与相邻余数档，覆盖 rank 数超过 8 后的切片与余数处理。
+TEST_F(ST_REDUCE_SCATTER_TEST, test_np16_2m)
+{
+    TopoMeta topoMeta{{{0, 1, 2, 3, 4, 5, 6, 7}, {0, 1, 2, 3, 4, 5, 6, 7}}};
+    // 单卡接收 2MB / 16 / 4B = 32768 个 FP32，全量 send 缓冲恰为 2MB
+    RunReduceScatterTest(topoMeta, 2 * 1024 * 1024 / 16 / 4, HCCL_DATA_TYPE_FP32);
+}
+
+TEST_F(ST_REDUCE_SCATTER_TEST, test_np16_2m_rem)
+{
+    TopoMeta topoMeta{{{0, 1, 2, 3, 4, 5, 6, 7}, {0, 1, 2, 3, 4, 5, 6, 7}}};
+    RunReduceScatterTest(topoMeta, 2 * 1024 * 1024 / 16 / 4 + 1, HCCL_DATA_TYPE_FP32);
+}

@@ -230,52 +230,17 @@ HcclResult ReduceScatterOutPlace(
         return HcclResult::HCCL_SUCCESS;
     }
 
-    constexpr u32 UBX_CONCURRENT_MAX_RANK_SIZE = 4;
     constexpr u64 UBX_REDUCE_SCATTER_SYM_DATA_SIZE = 4ULL * 1024 * 1024;
     // 输出数据量达到 4 MiB 时，在选路前查询对称窗口，供算法选择使用。
     if (GetHcommVersion() >= CANN_VERSION(9, 1, 0) && param.opMode == OpMode::OPBASE
         && param.outputSize >= UBX_REDUCE_SCATTER_SYM_DATA_SIZE) {
         CheckAndSetSymmetricMemory(param);
     }
-
     std::string algName;
     std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
     CHK_RET(Selector(comm, param, topoInfo, algName));
 
-    // 单层 UBX Concurrent 拓扑中，小于 4 MiB 的输出使用非对称内存路径。
-    // 其他小数据场景在选路后查询窗口，再按最终算法检查是否启用。
-    bool isUbxConcurrentSmallData = false;
-    if (param.engine == CommEngine::COMM_ENGINE_AICPU_TS && topoInfo->userRankSize <= UBX_CONCURRENT_MAX_RANK_SIZE
-        && topoInfo->topoLevelNums == TOPO_LEVEL_NUM_1 && topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS
-        && !topoInfo->level0PcieMix && param.outputSize < UBX_REDUCE_SCATTER_SYM_DATA_SIZE) {
-        CHK_RET(AutoSelectorBase::CheckMeshNumEqualToClosNum(topoInfo.get(), isUbxConcurrentSmallData));
-    }
-    if (GetHcommVersion() >= CANN_VERSION(9, 1, 0) && param.opMode == OpMode::OPBASE
-        && param.outputSize < UBX_REDUCE_SCATTER_SYM_DATA_SIZE && !isUbxConcurrentSmallData) {
-        CheckAndSetSymmetricMemory(param);
-    }
-
-    if (!IsReduceOpSymMemDeterministic(algName, topoInfo.get())) {
-        param.supportSymmetricMemory = false;
-    }
-    if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
-        const bool isTwoLevelMeshNhrOmni
-            = algName == "AicpuReduceScatterPipeLineMeshNHR" && topoInfo->topoLevelNums == TOPO_LEVEL_NUM_1;
-        const bool isConcurrentMeshNhr = algName == "AicpuReduceScatterConcurMeshNHR";
-        if (!isTwoLevelMeshNhrOmni && !isConcurrentMeshNhr) {
-            param.supportSymmetricMemory = false;
-        }
-    } else {
-        const bool supportSymmetricMemory
-            = (param.engine == CommEngine::COMM_ENGINE_AICPU_TS && topoInfo->level0Topo == Level0Shape::MESH_1D
-               && param.inputPtr != param.outputPtr && param.DataDes.dataType != HcclDataType::HCCL_DATA_TYPE_INT64
-               && param.DataDes.dataType != HcclDataType::HCCL_DATA_TYPE_UINT64
-               && param.DataDes.dataType != HcclDataType::HCCL_DATA_TYPE_FP64
-               && param.reduceType != HcclReduceOp::HCCL_REDUCE_PROD);
-        if (!supportSymmetricMemory) {
-            param.supportSymmetricMemory = false;
-        }
-    }
+    // 对称内存放行判定统一由 HcclExecOp 里的 RefreshSymmetricMemory 负责，入口不再重复判断。
 
     CHK_RET(HcclExecOp(comm, param, topoInfo, algName));
     HCCL_INFO("Execute ReduceScatterOutPlace success.");

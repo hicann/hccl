@@ -84,7 +84,6 @@
         HcommIsSupportHcommReadReduceOnThread;
         HcommIsSupportHcommSendRequest;
         HcommIsSupportHcommSetNotifyWaitTimeOut;
-        HcommIsSupportHcommSymWinGetPeerPointer;
         HcommIsSupportHcommThreadJoin;
         HcommIsSupportHcommThreadNotifyRecordOnThread;
         HcommIsSupportHcommThreadNotifyWaitOnThread;
@@ -103,7 +102,6 @@
         HcommReadReduceOnThread;
         HcommSendRequest;
         HcommSetNotifyWaitTimeOut;
-        HcommSymWinGetPeerPointer;
         HcommThreadJoin;
         HcommThreadNotifyRecordOnThread;
         HcommThreadNotifyWaitOnThread;

@@ -67,6 +67,9 @@ public:
     {
         return reinterpret_cast<GM_ADDR>(alltoall_aiv_test::Address(alltoall_aiv_test::CCL_BASE, rank));
     }
+    // 桩不区分对称/非对称内存：两侧均返回空地址，对称开关默认关闭，UT 继续覆盖非对称基线。
+    GM_ADDR GetGmSymIn(uint32_t) { return nullptr; }
+    GM_ADDR GetGmSymOut(uint32_t) { return nullptr; }
     template <typename T>
     void CpGM2GM(T* destination, T* source, uint64_t count)
     {
@@ -102,5 +105,7 @@ public:
     uint32_t tag_ = 1;
     uint32_t curTag_ = 0;
     GM_ADDR myGmIn_ = nullptr;
+    uint32_t symInEnable_ = 0;
+    uint32_t symOutEnable_ = 0;
 };
 #endif

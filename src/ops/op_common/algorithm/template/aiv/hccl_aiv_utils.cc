@@ -1099,12 +1099,36 @@ HcclResult EvictAivCacheIfNeeded(HcclComm comm, AivCacheIndexCtx* indexCtx)
     return EvictAivCacheIfNeededLocked(comm, indexCtx);
 }
 
+// 设备侧对端 VA 数组只在写表时变化，按 commInfo 记录最近一次写入的签名。
+// 记录缺失（如超限清理）只会多写一次表，因此无需随通信域销毁回收；指针复用后由资源申请时的强制填表刷新。
+static constexpr size_t AIV_SYM_PEER_TABLE_MAX_ENTRY = 1024;
+static std::mutex g_aivSymPeerTableMutex;
+static std::unordered_map<const void*, AivSymSign> g_aivSymPeerTable;
+
+bool IsAivSymPeerTableFilled(const void* commInfo, const AivSymSign& sign)
+{
+    const std::lock_guard<std::mutex> lock(g_aivSymPeerTableMutex);
+    auto it = g_aivSymPeerTable.find(commInfo);
+    return it != g_aivSymPeerTable.end() && it->second == sign;
+}
+
+void RecordAivSymPeerTable(const void* commInfo, const AivSymSign& sign)
+{
+    const std::lock_guard<std::mutex> lock(g_aivSymPeerTableMutex);
+    if (g_aivSymPeerTable.size() >= AIV_SYM_PEER_TABLE_MAX_ENTRY) {
+        g_aivSymPeerTable.clear();
+    }
+    g_aivSymPeerTable[commInfo] = sign;
+}
+
 HcclResult LookupAivCacheCtx(
     HcclComm comm, const std::string& ctxTag, u64 keyHash, bool& cacheHit, std::string& algName,
-    AivInstruction*& instructions, u32& insCount)
+    AivInstruction*& instructions, u32& insCount, u32& symMode, AivSymSign& symSign)
 {
     // Caller holds GetAivCacheMutex() until replay finishes using the returned pointer.
     cacheHit = false;
+    symMode = 0;
+    symSign = AivSymSign{};
     void* ctx = nullptr;
     uint64_t ctxSize = 0;
     HcclResult ret = HcclEngineCtxGet(comm, ctxTag.c_str(), CommEngine::COMM_ENGINE_CPU_TS, &ctx, &ctxSize);
@@ -1132,6 +1156,8 @@ HcclResult LookupAivCacheCtx(
     instructions
         = reinterpret_cast<AivInstruction*>(static_cast<u8*>(ctx) + sizeof(AivCacheCtxHeader) + header->algNameLen);
     insCount = header->insCount;
+    symMode = header->symMode;
+    symSign = header->symSign;
 
     HCCL_INFO(
         "[%s] aiv cache hits, ctxTag[%s], keyHash[%llu], insCount[%u], algName[%s]", __func__, ctxTag.c_str(),
@@ -1182,7 +1208,8 @@ HcclResult ReplayAivInstructionsV(const AivInstruction* instructions, u32 insCou
 }
 
 HcclResult StoreAivCacheCtx(
-    HcclComm comm, const std::string& ctxTag, u64 keyHash, const std::string& algName, AivCacheIndexCtx* indexCtx)
+    HcclComm comm, const std::string& ctxTag, u64 keyHash, const std::string& algName, AivCacheIndexCtx* indexCtx,
+    u32 symMode, const AivSymSign& symSign)
 {
     const std::lock_guard<std::mutex> lock(g_aivCacheMutex);
     CHK_PTR_NULL(indexCtx);
@@ -1204,7 +1231,12 @@ HcclResult StoreAivCacheCtx(
     uint64_t ctxSize = sizeof(AivCacheCtxHeader) + algNameLen + queue.size() * sizeof(AivInstruction);
     void* ctx = nullptr;
     CHK_RET(HcclEngineCtxCreate(comm, ctxTag.c_str(), CommEngine::COMM_ENGINE_CPU_TS, ctxSize, &ctx));
-    AivCacheCtxHeader header{keyHash, static_cast<u32>(queue.size()), algNameLen};
+    AivCacheCtxHeader header{};
+    header.keyHash = keyHash;
+    header.insCount = static_cast<u32>(queue.size());
+    header.algNameLen = algNameLen;
+    header.symMode = symMode;
+    header.symSign = symSign;
     CHK_SAFETY_FUNC_RET(memcpy_s(ctx, ctxSize, &header, sizeof(header)));
     u8* ptr = static_cast<u8*>(ctx) + sizeof(AivCacheCtxHeader);
     if (algNameLen > 0) {

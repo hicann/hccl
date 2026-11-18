@@ -220,6 +220,12 @@ public:
             gmOutBase_ = outBase;
             gmOutOffset_ = tag_ % 2 == 0 ? FLAG1_OFFSET : FLAG2_OFFSET;
         }
+        // 表项是 host 按「本次 launch 的 buffer」下发的用户 VA，调用方用 (output_/input_ - 表项)
+        // 求分循环偏移。除表项非 0 外还要求表项不大于本次起点，否则无符号减法会回绕成巨值导致对端越界写。
+        gmSymOutBase_ = base + AIV_SYM_PEER_OUT_ADDR_OFFSET / sizeof(uint64_t);
+        symOutEnable_ = (gmSymOutBase_[rank_] != 0 && output_ >= gmSymOutBase_[rank_]) ? 1 : 0;
+        gmSymInBase_ = base + AIV_SYM_PEER_IN_ADDR_OFFSET / sizeof(uint64_t);
+        symInEnable_ = (gmSymInBase_[rank_] != 0 && input_ >= gmSymInBase_[rank_]) ? 1 : 0;
         myGmIn_ = GetGmIn(rank_);
         myGmOut_ = GetGmOut(rank_);
         pipe_barrier(PIPE_ALL);
@@ -228,6 +234,14 @@ public:
     __aicore__ inline GM_ADDR GetGmIn(uint32_t rank) { return (GM_ADDR)gmInBase_[rank] + gmInOffset_; }
 
     __aicore__ inline GM_ADDR GetGmOut(uint32_t rank) { return (GM_ADDR)gmOutBase_[rank] + gmOutOffset_; }
+
+    // 对端rank的output对称内存VA（仅A5/950对称内存路径有效）：host 按窗口布局算好后下发。
+    // 本rank条目存host下发的用户VA：调用方用 (output_ - GetGmSymOut(rank_)) 求本次launch的分循环偏移，
+    // 该偏移相对算子入口的 buffer 起始地址，不能用已随分循环前移的 output_ 代替。
+    __aicore__ inline GM_ADDR GetGmSymOut(uint32_t rank) { return (GM_ADDR)gmSymOutBase_[rank]; }
+
+    // 对端rank的input对称内存VA（AG/AR/RS 直接读对端 user input 用），取址规则同上。
+    __aicore__ inline GM_ADDR GetGmSymIn(uint32_t rank) { return (GM_ADDR)gmSymInBase_[rank]; }
 
     __aicore__ inline void GetTag(GM_ADDR buffIn)
     {
@@ -267,6 +281,23 @@ public:
     __aicore__ inline void SetAtomicOp(uint32_t atomicOp);
 
     template <typename T>
+    __aicore__ inline void
+    DataCopyGM2UB(const LocalTensor<T>& dstLocal, const GlobalTensor<T>& srcGlobal, const uint32_t calCount);
+
+    template <typename T>
+    __aicore__ inline void
+    DataCopyUB2GM(const GlobalTensor<T>& dstGlobal, const LocalTensor<T>& srcLocal, const uint32_t calCount);
+
+    // 按显式地址判断对齐的拷贝：GM 地址或长度非 32B 对齐时走 DataCopyPad
+    template <typename T>
+    __aicore__ inline void DataCopyGM2UBByAddr(
+        const LocalTensor<T>& dstLocal, const GlobalTensor<T>& srcGlobal, const uint32_t calCount, uint64_t srcAddr);
+
+    template <typename T>
+    __aicore__ inline void DataCopyUB2GMByAddr(
+        const GlobalTensor<T>& dstGlobal, const LocalTensor<T>& srcLocal, const uint32_t calCount, uint64_t dstAddr);
+
+    template <typename T>
     __aicore__ inline void CpGM2GM(__gm__ T* outputGM, __gm__ T* inputGM, uint64_t count, uint32_t atomicOp);
 
     template <typename T>
@@ -300,7 +331,7 @@ public:
         }
     }
 
-    __aicore__ inline void BarrierAll();
+    __aicore__ inline void BarrierAll(uint32_t barrierSeq = 0);
 
     __aicore__ inline void SendRecvBarrierAll(uint32_t myRank, uint32_t remoteRank);
 
@@ -337,8 +368,12 @@ public:
     uint64_t gmInOffset_ = 0;
     __gm__ uint64_t* gmOutBase_ = nullptr;
     uint64_t gmOutOffset_ = 0;
-    GM_ADDR myGmIn_ = nullptr;  // 本rank的GetGmIn(rank_)缓存，InitBuffArray后设置
-    GM_ADDR myGmOut_ = nullptr; // 本rank的myGmOut_缓存
+    __gm__ uint64_t* gmSymOutBase_ = nullptr; // 对端output对称VA数组（A5/950对称内存）
+    uint64_t symOutEnable_ = 0;               // 对称直写使能，0=走原有两跳路径
+    __gm__ uint64_t* gmSymInBase_ = nullptr;  // 对端input对称VA数组（AG/AR/RS）
+    uint64_t symInEnable_ = 0;                // 对端input对称VA可用标志
+    GM_ADDR myGmIn_ = nullptr;                // 本rank的GetGmIn(rank_)缓存，InitBuffArray后设置
+    GM_ADDR myGmOut_ = nullptr;               // 本rank的myGmOut_缓存
     uint32_t rank_;
     uint32_t sendRecvRemoteRank_;
     uint32_t root_;
@@ -492,7 +527,13 @@ __aicore__ inline void AivCommBase::SendRecvBarrierForFirstOP(uint32_t myRank, u
     SyncAll<true>();
 }
 
-__aicore__ inline void AivCommBase::BarrierAll()
+// BarrierAll 使用约束：
+// 1. barrierSeq 是同一 launch 内的调用序号，必须从 0 开始按调用顺序连续递增，不得跳号或重复：
+//    OPBASE 用 0 或 0/1（入口+出口），SK 循环外置 0、每轮 ++，次数不限。槽位组取
+//    n = tag_*2 + barrierSeq 的低 2 位，相邻调用必落不同槽位组。
+// 2. BarrierAll 只确认本核负责的那段 rank，返回不等于全局屏障：之后若要访问对端数据，必须补
+//    SyncAll<true>()；紧接下一次 BarrierAll 时，其顶部 SyncAll 已覆盖。
+__aicore__ inline void AivCommBase::BarrierAll(uint32_t barrierSeq)
 {
     SyncAll<true>();
     // SK空闲核必须参与本SyncAll（补齐满核同步），之后的flag收发不参与
@@ -500,20 +541,24 @@ __aicore__ inline void AivCommBase::BarrierAll()
         return;
     }
 
+    const uint32_t barrierStage = (tag_ * 2U + barrierSeq) & 3U;
+    const int32_t barrierTag = static_cast<int32_t>(((tag_ * 2U + barrierSeq) & 0x3FFFU) + 2U);
+
     // 每个核分配多个rank
     uint32_t perCoreRankNum = rankSize_ / numBlocks_;
     uint32_t remainRankNum = rankSize_ % numBlocks_;
     uint32_t curCoreRankNum = blockIdx_ < remainRankNum ? perCoreRankNum + 1 : perCoreRankNum;
     uint32_t startRank
         = blockIdx_ < remainRankNum ? (perCoreRankNum + 1) * blockIdx_ : perCoreRankNum * blockIdx_ + remainRankNum;
-    uint64_t flag_offset = BASE_FLAG_OFFSET - gmOutOffset_ + rank_ * FLAG_SIZE;
+    uint64_t flag_offset = BASE_FLAG_OFFSET - gmOutOffset_ + rank_ * FLAG_SIZE + barrierStage * rankSize_ * FLAG_SIZE;
     for (uint32_t rank = startRank; rank < startRank + curCoreRankNum; rank++) {
-        Record(rank, flag_offset / FLAG_SIZE, 1);
+        Record(rank, flag_offset / FLAG_SIZE, barrierTag);
     }
     PipeBarrier<PIPE_ALL>();
     for (uint32_t rank = startRank; rank < startRank + curCoreRankNum; rank++) {
-        uint64_t flag_offset = BASE_FLAG_OFFSET - gmOutOffset_ + rank * FLAG_SIZE;
-        WaitFlag(rank_, flag_offset / FLAG_SIZE, 1);
+        uint64_t flag_offset
+            = BASE_FLAG_OFFSET - gmOutOffset_ + rank * FLAG_SIZE + barrierStage * rankSize_ * FLAG_SIZE;
+        WaitFlag(rank_, flag_offset / FLAG_SIZE, barrierTag);
         Record(rank_, flag_offset / FLAG_SIZE, 0);
     }
 }
@@ -566,6 +611,65 @@ __aicore__ inline void AivCommBase::SetAtomicOp(uint32_t atomicOp)
         default:
             SetAtomicNone();
             break;
+    }
+}
+
+template <typename T>
+__aicore__ inline void
+AivCommBase::DataCopyGM2UB(const LocalTensor<T>& dstLocal, const GlobalTensor<T>& srcGlobal, const uint32_t calCount)
+{
+    if ((calCount * sizeof(T)) % UB_ALIGN_SIZE == 0) {
+        DataCopy(dstLocal, srcGlobal, calCount);
+    } else {
+        // 结构体DataCopyExtParams最后一个参数是rsv保留位
+        DataCopyExtParams copyParams{1, calCount * (uint32_t)sizeof(T), 0, 0, 0};
+        DataCopyPadExtParams<T> padParams;
+        padParams.isPad = true;
+        padParams.leftPadding = 0;
+        padParams.rightPadding = 1;
+        DataCopyPad(dstLocal, srcGlobal, copyParams, padParams);
+    }
+}
+
+template <typename T>
+__aicore__ inline void
+AivCommBase::DataCopyUB2GM(const GlobalTensor<T>& dstGlobal, const LocalTensor<T>& srcLocal, const uint32_t calCount)
+{
+    if ((calCount * sizeof(T)) % UB_ALIGN_SIZE == 0) {
+        DataCopy(dstGlobal, srcLocal, calCount);
+    } else {
+        DataCopyExtParams copyParams{1, calCount * (uint32_t)sizeof(T), 0, 0, 0};
+        DataCopyPad(dstGlobal, srcLocal, copyParams);
+    }
+}
+
+// 带地址的拷贝：DataCopy 要求 GM 地址 32B 对齐，否则触发向量核异常（507035）；
+// 仅按长度判断 32B 整数倍会漏掉「非对齐地址 + 对齐长度」，故显式传入地址并按需走 DataCopyPad。
+template <typename T>
+__aicore__ inline void AivCommBase::DataCopyGM2UBByAddr(
+    const LocalTensor<T>& dstLocal, const GlobalTensor<T>& srcGlobal, const uint32_t calCount, uint64_t srcAddr)
+{
+    if (((srcAddr % UB_ALIGN_SIZE) == 0) && ((calCount * sizeof(T)) % UB_ALIGN_SIZE == 0)) {
+        DataCopy(dstLocal, srcGlobal, calCount);
+    } else {
+        DataCopyExtParams copyParams{1, calCount * (uint32_t)sizeof(T), 0, 0, 0};
+        DataCopyPadExtParams<T> padParams;
+        padParams.isPad = true;
+        padParams.leftPadding = 0;
+        padParams.rightPadding = 1;
+        DataCopyPad(dstLocal, srcGlobal, copyParams, padParams);
+    }
+}
+
+template <typename T>
+__aicore__ inline void AivCommBase::DataCopyUB2GMByAddr(
+    const GlobalTensor<T>& dstGlobal, const LocalTensor<T>& srcLocal, const uint32_t calCount, uint64_t dstAddr)
+{
+    if (((dstAddr % UB_ALIGN_SIZE) == 0) && ((calCount * sizeof(T)) % UB_ALIGN_SIZE == 0)) {
+        DataCopy(dstGlobal, srcLocal, calCount);
+    } else {
+        DataCopyExtParams copyParams{1, calCount * (uint32_t)sizeof(T), 0, 0, 0};
+        DataCopyPad(dstGlobal, srcLocal, copyParams);
     }
 }
 

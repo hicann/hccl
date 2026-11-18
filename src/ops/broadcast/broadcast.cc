@@ -155,6 +155,8 @@ HcclResult BroadcastOutPlaceCommon(
 
     OpParam param;
     CHK_RET(HcclGetCommName(comm, param.commName));
+    // CheckAndSetSymmetricMemory 依赖 hcclComm 查询对称窗口，缺省为 nullptr 时会直接探测失败
+    param.hcclComm = comm;
     param.opMode = opMode;
     param.stream = stream;
 
@@ -189,7 +191,6 @@ HcclResult BroadcastOutPlaceCommon(
         CHK_RET(SingleRankProc(comm, param));
         return HcclResult::HCCL_SUCCESS;
     }
-
     CHK_RET(Selector(comm, param, topoInfo, algName));
 
     CHK_RET(HcclExecOp(comm, param, topoInfo, algName, resPack));
@@ -208,12 +209,14 @@ HcclResult BroadcastOutPlaceGraphMode(
 }
 
 HcclResult BroadcastOutPlacePrepareParam(
-    OpParam& param, void* buf, uint64_t count, HcclDataType dataType, uint32_t root, aclrtStream stream)
+    OpParam& param, void* buf, uint64_t count, HcclDataType dataType, uint32_t root, HcclComm comm, aclrtStream stream)
 {
     u32 perDataSize = DATATYPE_SIZE_TABLE[dataType];
     u64 inputSize = count * perDataSize;
     u64 outputSize = inputSize;
 
+    // CheckAndSetSymmetricMemory 依赖 hcclComm 查询对称窗口，缺省为 nullptr 时会直接探测失败
+    param.hcclComm = comm;
     param.stream = stream;
     param.opMode = OpMode::OPBASE;
 
@@ -241,7 +244,7 @@ HcclResult BroadcastOutPlace(
     u32 userRankSize;
     CHK_RET(HcclGetRankSize(comm, &userRankSize));
 
-    CHK_RET(BroadcastOutPlacePrepareParam(param, buf, count, dataType, root, stream));
+    CHK_RET(BroadcastOutPlacePrepareParam(param, buf, count, dataType, root, comm, stream));
 
     CHK_RET(HcclGetOpExpansionMode(comm, param));
 
@@ -273,10 +276,7 @@ HcclResult BroadcastOutPlace(
     std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
     CHK_RET(Selector(comm, param, topoInfo, algName));
 
-    if (GetHcommVersion() >= CANN_VERSION(9, 1, 0) && param.opMode == OpMode::OPBASE
-        && param.engine == CommEngine::COMM_ENGINE_AICPU_TS && topoInfo->level0Topo == Level0Shape::MESH_1D) {
-        CheckAndSetSymmetricMemory(param);
-    }
+    // 对称内存是否生效由 HcclExecOp 里的 RefreshSymmetricMemory 统一判定（broadcast 仅 MESH_1D + AICPU_TS）
     CHK_RET(HcclExecOp(comm, param, topoInfo, algName));
     return HCCL_SUCCESS;
 }

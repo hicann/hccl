@@ -73,6 +73,7 @@ public:
     __aicore__ inline void Process(uint32_t sliceId)
     {
         curTag_ = (static_cast<uint32_t>(tag_) << AIV_TAG_MOVE_RIGHT_BITS) | (sliceId & LOW_16_BITS);
+        // 对称内存路径只在 BigData kernel 内实现（见 aiv_reduce_scatter_mesh_1d_bigdata.h），本入口保持原路径。
         if (blockIdx_ < coreNumPerStage) { // 0-1
             Producer();
         } else if (blockIdx_ < (coreNumPerStage * stageNum)) { // 2-3
@@ -112,6 +113,7 @@ __aicore__ inline void AivReduceScatterV2Mesh1DSuperKernel(SUPERKERNEL_ARGS_DEF)
     uint64_t countLeft = op.len_;
 
     int32_t loopTag = op.tag_;
+    uint32_t barrierSeq = 0;
 
     while (countLeft > 0) {
         uint64_t curCount = (countLeft > maxCountPerLoop) ? maxCountPerLoop : countLeft;
@@ -120,7 +122,8 @@ __aicore__ inline void AivReduceScatterV2Mesh1DSuperKernel(SUPERKERNEL_ARGS_DEF)
         op.len_ = curCount;
         op.InitCoreInfo(curCount, op.inputSliceStride_);
         op.Process(loopTag);
-        op.BarrierAll();
+        op.BarrierAll(barrierSeq);
+        ++barrierSeq;
 
         countLeft -= curCount;
         op.input_ += curSize;

@@ -50,6 +50,7 @@ constexpr uint64_t FLAG_FIVE_OFFSET = FLAG_SIZE * 4;
 
 constexpr uint64_t DOUBLE = 2;
 constexpr uint64_t FLAG_BUF_NUM = 3;
+// UB_MAX_DATA_SIZE(inOutQue) 切成几份给 inQueueX/inQueueY/outQueueZ：194560/4 = 48640B 一份
 constexpr uint64_t TILING_NUM = 4;
 constexpr uint64_t CHUNK_SIZE = 2048;
 
@@ -72,6 +73,12 @@ constexpr uint32_t AIV_FLAG_EMPTY_OFFSET = 10 * 1024 * 1024;
 constexpr uint32_t GM_OUT_PING_OFFSET = 18 * 1024 * 1024;
 constexpr uint32_t GM_OUT_PONG_OFFSET = 34 * 1024 * 1024;
 constexpr uint64_t PINGPONG_TOTAL_DATA_LIMIT = (GM_OUT_PONG_OFFSET - GM_OUT_PING_OFFSET) / PING_PONG;
+
+// A5/950 对称内存：buffIn 空闲区里的「对端 output/input 对称 VA 数组」，按 rank 索引，各 MAX_RANK_SIZE 项。
+// host 按窗口布局算好每个 rank 的地址后下发；本 rank 条目存用户 VA（kernel 用 output_/input_ 减去它求
+// 分循环偏移），某项为 0 表示该侧对称不可用。
+constexpr uint64_t AIV_SYM_PEER_OUT_ADDR_OFFSET = 8 * 1024; // 8K~16K 空洞：对端 output 对称 VA 数组
+constexpr uint64_t AIV_SYM_PEER_IN_ADDR_OFFSET = 24 * 1024; // 24K~32K 空洞：对端 input 对称 VA 数组
 
 #if defined(HCCL_AIV_ACLGRAPH_SK)
 // SK_BIND cap 掩码：blockdim_scale_up，表示算子已自行支持核数向上扩展
