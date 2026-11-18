@@ -13,6 +13,7 @@ add_subdirectory(aiv)
 if(NOT HCCL_CANN_COMPAT_850)
     set(src_list
         ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_batch_send_recv_dpu.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_batch_send_recv_nda.cc
     )
 
     if(TARGET hccl)

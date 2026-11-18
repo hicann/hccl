@@ -14,6 +14,18 @@
 
 namespace ops_hccl {
 
+SelectorStatus BatchSendRecvAutoSelector::SelectNdaAlgo(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
+    const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
+{
+    (void)topoInfo;
+    (void)opParam;
+    (void)configAlgMap;
+    selectAlgName = "AicpuBatchSendRecvNdaMesh";
+    HCCL_DEBUG("[BatchSendRecvAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
+    return SelectorStatus::MATCH;
+}
+
 SelectorStatus BatchSendRecvAutoSelector::SelectAicpuAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
     const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const

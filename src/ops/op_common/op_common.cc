@@ -2569,7 +2569,8 @@ HcclResult HcclGetChannel(
                        || param.opType == HcclCMDType::HCCL_CMD_RECEIVE
                        || param.opType == HcclCMDType::HCCL_CMD_ALLTOALL
                        || param.opType == HcclCMDType::HCCL_CMD_ALLTOALLV
-                       || param.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC);
+                       || param.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC
+                       || param.opType == HcclCMDType::HCCL_CMD_BATCH_SEND_RECV);
                 if (isSupportNda && isNdaBoard && isNdaSupportedOp) {
                     deviceChannelRequest.emplace_back(channelRequest);
                 } else {
