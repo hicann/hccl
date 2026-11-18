@@ -107,6 +107,57 @@ struct A2ASendRecvInfo {
     std::vector<u64> recvDispls;
 };
 
+inline HcclResult
+ParseAlltoAllVarData(const OpParam& param, u64 rankSize, u64 dataTypeSize, A2ASendRecvInfo& localSendRecvInfo)
+{
+    const u64 minVarMemSize = ALL_TO_ALL_V_VECTOR_NUM * rankSize * sizeof(u64);
+    const u64 maxVarMemSize = (param.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC) ?
+                                  ALL_TO_ALL_VC_VECTOR_NUM * rankSize * sizeof(u64) :
+                                  minVarMemSize;
+    CHK_PRT_RET(
+        rankSize == 0 || param.varData == nullptr || param.varMemSize < minVarMemSize
+            || param.varMemSize > maxVarMemSize || param.varMemSize % (rankSize * sizeof(u64)) != 0,
+        HCCL_ERROR(
+            "[ParseAlltoAllVarData] rankSize [%llu] or param.varMemSize [%llu] is invalid", rankSize, param.varMemSize),
+        HcclResult::HCCL_E_PARA);
+
+    localSendRecvInfo.sendCounts.resize(rankSize, 0);
+    localSendRecvInfo.sendDispls.resize(rankSize, 0);
+    localSendRecvInfo.sendLength.resize(rankSize, 0);
+    localSendRecvInfo.sendOffset.resize(rankSize, 0);
+    localSendRecvInfo.recvCounts.resize(rankSize, 0);
+    localSendRecvInfo.recvDispls.resize(rankSize, 0);
+    localSendRecvInfo.recvLength.resize(rankSize, 0);
+    localSendRecvInfo.recvOffset.resize(rankSize, 0);
+
+    const u64* data = reinterpret_cast<const u64*>(param.varData);
+    for (u64 index = 0; index < ALL_TO_ALL_V_VECTOR_NUM * rankSize; index++) {
+        const u64 vectorIndex = index / rankSize;
+        const u64 rank = index % rankSize;
+        switch (vectorIndex) {
+            case 0:
+                localSendRecvInfo.sendCounts[rank] = data[index];
+                localSendRecvInfo.sendLength[rank] = data[index] * dataTypeSize;
+                break;
+            case 1:
+                localSendRecvInfo.recvCounts[rank] = data[index];
+                localSendRecvInfo.recvLength[rank] = data[index] * dataTypeSize;
+                break;
+            case 2:
+                localSendRecvInfo.sendDispls[rank] = data[index];
+                localSendRecvInfo.sendOffset[rank] = data[index] * dataTypeSize;
+                break;
+            case 3:
+                localSendRecvInfo.recvDispls[rank] = data[index];
+                localSendRecvInfo.recvOffset[rank] = data[index] * dataTypeSize;
+                break;
+            default:
+                break;
+        }
+    }
+    return HcclResult::HCCL_SUCCESS;
+}
+
 struct DataInfo {
     ChannelInfo channel_;
     SlicesList slices_;

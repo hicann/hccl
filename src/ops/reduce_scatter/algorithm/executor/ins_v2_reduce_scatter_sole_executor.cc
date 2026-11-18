@@ -348,7 +348,9 @@ HcclResult InsV2ReduceScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLau
         ccuKernelSubmitInfos, ccuKernelSubmitInfos + fastLaunchCtx->ccuKernelNum[0]);
     HCCL_INFO("[InsV2ReduceScatterSoleExecutor][FastLaunch] ccuKernelNum[%llu]", fastLaunchCtx->ccuKernelNum[0]);
     tempFastLaunchCtx.buffInfo.inputPtr = param.inputPtr;
+    tempFastLaunchCtx.buffInfo.inputSize = param.inputSize;
     tempFastLaunchCtx.buffInfo.outputPtr = param.outputPtr;
+    tempFastLaunchCtx.buffInfo.outputSize = param.outputSize;
     tempFastLaunchCtx.buffInfo.hcclBuff = param.hcclBuff;
 
     // 3 调template

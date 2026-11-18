@@ -101,54 +101,7 @@ InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>
     const OpParam& param)
 {
     HCCL_DEBUG("[SetAlltoAllLocalSendRecvInfo] rank[%u], userRankSize[%u]", myRank_, rankSize_);
-    localSendRecvInfo_.sendCounts.resize(rankSize_, 0);
-    localSendRecvInfo_.sendDispls.resize(rankSize_, 0);
-    localSendRecvInfo_.sendLength.resize(rankSize_, 0);
-    localSendRecvInfo_.sendOffset.resize(rankSize_, 0);
-
-    localSendRecvInfo_.recvCounts.resize(rankSize_, 0);
-    localSendRecvInfo_.recvDispls.resize(rankSize_, 0);
-    localSendRecvInfo_.recvLength.resize(rankSize_, 0);
-    localSendRecvInfo_.recvOffset.resize(rankSize_, 0);
-
-    u64 minVectorNum = ALL_TO_ALL_V_VECTOR_NUM;
-    u64 maxVectorNum
-        = (param.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC) ? ALL_TO_ALL_VC_VECTOR_NUM : ALL_TO_ALL_V_VECTOR_NUM;
-    CHK_PRT_RET(
-        param.varMemSize < minVectorNum * rankSize_ * sizeof(u64)
-            || param.varMemSize > maxVectorNum * rankSize_ * sizeof(u64),
-        HCCL_ERROR(
-            "[InsV2AllToAllVConcurrentExecutor][SetAlltoAllLocalSendRecvInfo] param.varMemSize [%llu] is invalid",
-            param.varMemSize),
-        HCCL_E_PARA);
-
-    const u64* data = reinterpret_cast<const u64*>(param.varData);
-    for (u64 i = 0; i < ALL_TO_ALL_V_VECTOR_NUM * rankSize_; i++) {
-        u64 val = i / rankSize_;
-        u64 curRank = i % rankSize_;
-        switch (val) {
-            case CONST_0:
-                localSendRecvInfo_.sendCounts[curRank] = data[i];
-                localSendRecvInfo_.sendLength[curRank] = data[i] * dataTypeSize_;
-                break;
-            case CONST_1:
-                localSendRecvInfo_.recvCounts[curRank] = data[i];
-                localSendRecvInfo_.recvLength[curRank] = data[i] * dataTypeSize_;
-                break;
-            case CONST_2:
-                localSendRecvInfo_.sendDispls[curRank] = data[i];
-                localSendRecvInfo_.sendOffset[curRank] = data[i] * dataTypeSize_;
-                break;
-            case CONST_3:
-                localSendRecvInfo_.recvDispls[curRank] = data[i];
-                localSendRecvInfo_.recvOffset[curRank] = data[i] * dataTypeSize_;
-                break;
-            default:
-                break;
-        }
-    }
-    HCCL_DEBUG("[SetAlltoAllLocalSendRecvInfo] SetAlltoAllLocalSendRecvInfo success");
-    return HcclResult::HCCL_SUCCESS;
+    return ParseAlltoAllVarData(param, rankSize_, dataTypeSize_, localSendRecvInfo_);
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>

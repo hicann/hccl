@@ -51,6 +51,7 @@ set(SOURCE_FILES
     ${PROJECT_SOURCE_DIR}/src/ops/op_common/algorithm/topo_match/topo_match_base_v2.cc
     ${PROJECT_SOURCE_DIR}/src/ops/op_common/algorithm/executor/channel/channel_request.cc
     ${PROJECT_SOURCE_DIR}/src/ops/op_common/algorithm/template/ccu_alg_template_base.cc
+    ${PROJECT_SOURCE_DIR}/src/ops/op_common/ccu_log.cc
 )
 # 版本探测前置（在定义任何 target 之前，先例 channel_process_link：STATUS+return() 不阻断其余 UT）
 set(ASCEND_HOME_PATH "$ENV{ASCEND_HOME_PATH}")

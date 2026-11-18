@@ -36,7 +36,6 @@ CcuTempAlltoAllVMesh1D::CcuTempAlltoAllVMesh1D(
     if (it != subCommRanks[0].end()) {
         mySubCommRank_ = std::distance(subCommRanks[0].begin(), it);
     }
-    loadFromMem_ = param.isMc2;
 }
 
 CcuTempAlltoAllVMesh1D::~CcuTempAlltoAllVMesh1D() {}
@@ -149,58 +148,37 @@ HcclResult CcuTempAlltoAllVMesh1D::FastLaunch(const OpParam& param, const Templa
     }
     HCCL_INFO("[CcuTempAlltoAllVMesh1D::FastLaunch] start");
 
-    uint64_t* args = const_cast<uint64_t*>(tempFastLaunchCtx.ccuKernelSubmitInfos[0].cachedArgs);
-    uint64_t rankSize = args[5];
-    uint32_t myRank = static_cast<uint32_t>(args[6]);
+    const uint64_t* args = tempFastLaunchCtx.ccuKernelSubmitInfos[0].cachedArgs;
+    const uint64_t rankSize = args[5];
+    const uint32_t myRank = static_cast<uint32_t>(args[6]);
     HcclDataType dataType = param.all2AllVDataDes.sendType;
     uint64_t dataTypeSize = HCCL_SIZE_TABLE[dataType];
-    u64 maxVectorNum
-        = (param.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC) ? ALL_TO_ALL_VC_VECTOR_NUM : ALL_TO_ALL_V_VECTOR_NUM;
-    CHK_PRT_RET(
-        param.varMemSize < ALL_TO_ALL_V_VECTOR_NUM * rankSize * sizeof(u64)
-            || param.varMemSize > maxVectorNum * rankSize * sizeof(u64),
-        HCCL_ERROR("[CcuTempAlltoAllVMesh1D::FastLaunch] param.varMemSize [%llu] is invalid", param.varMemSize),
-        HCCL_E_PARA);
-
     A2ASendRecvInfo localSendRecvInfo;
-    localSendRecvInfo.recvCounts.resize(rankSize, 0);
-    localSendRecvInfo.recvDispls.resize(rankSize, 0);
-    localSendRecvInfo.recvLength.resize(rankSize, 0);
-    localSendRecvInfo.recvOffset.resize(rankSize, 0);
-    localSendRecvInfo.sendCounts.resize(rankSize, 0);
-    localSendRecvInfo.sendDispls.resize(rankSize, 0);
-    localSendRecvInfo.sendLength.resize(rankSize, 0);
-    localSendRecvInfo.sendOffset.resize(rankSize, 0);
-
-    const u64* data = reinterpret_cast<const u64*>(param.varData);
-    for (u64 i = 0; i < ALL_TO_ALL_V_VECTOR_NUM * rankSize; i++) {
-        u64 val = i / rankSize;
-        u64 curRank = i % rankSize;
-        switch (val) {
-            case CONST_ZERO:
-                localSendRecvInfo.sendLength[curRank] = data[i] * dataTypeSize;
-                break;
-            case CONST_TWO:
-                localSendRecvInfo.sendOffset[curRank] = data[i] * dataTypeSize;
-                break;
-            case CONST_THREE:
-                localSendRecvInfo.recvOffset[curRank] = data[i] * dataTypeSize;
-                break;
-            default:
-                break;
-        }
+    CHK_RET(ParseAlltoAllVarData(param, rankSize, dataTypeSize, localSendRecvInfo));
+    if (std::all_of(
+            localSendRecvInfo.sendCounts.begin(), localSendRecvInfo.sendCounts.end(),
+            [](u64 count) {
+                return count == 0;
+            })
+        && std::all_of(localSendRecvInfo.recvCounts.begin(), localSendRecvInfo.recvCounts.end(), [](u64 count) {
+               return count == 0;
+           })) {
+        HCCL_INFO("[CcuTempAlltoAllVMesh1D::FastLaunch] all send and recv counts are zero, just success.");
+        return HCCL_SUCCESS;
     }
 
     uint64_t inputAddr = PointerToAddr(tempFastLaunchCtx.buffInfo.inputPtr) + args[7];
     uint64_t outputAddr = PointerToAddr(tempFastLaunchCtx.buffInfo.outputPtr) + args[8];
-    std::vector<uint64_t> taskArgs = {inputAddr, outputAddr, args[2], args[3], args[4]};
+    uint64_t token;
+    CHK_RET(GetToken(tempFastLaunchCtx.buffInfo, token));
+    std::vector<uint64_t> taskArgs = {inputAddr, outputAddr, token, args[3], args[4]};
 
     LoopGroupConfig config{};
     config.msInterleave = CCU_MS_INTERLEAVE;
     config.loopCount = CCU_MS_INTERLEAVE;
     config.memSlice = CCU_MS_INTERLEAVE * CCU_MS_SIZE;
 
-    if (loadFromMem_) {
+    if (param.isMc2) {
         taskArgs.push_back(0); // 空地址占位，保证参数个数与load个数一致
     } else {
         uint64_t xnMaxTransportSize = UB_MAX_TRANS_SIZE;
@@ -256,7 +234,6 @@ HcclResult CcuTempAlltoAllVMesh1D::FastLaunch(const OpParam& param, const Templa
 HcclResult CcuTempAlltoAllVMesh1D::KernelRun(
     const OpParam& param, const TemplateDataParams& templateDataParams, TemplateResource& templateResource)
 {
-    (void)param;
     // 遗留：localSendRecvInfo_ 从哪里传入呢？
     HCCL_INFO("[CcuTempAlltoAllVMesh1D] KernelRun");
 
@@ -318,7 +295,7 @@ HcclResult CcuTempAlltoAllVMesh1D::KernelRun(
     config.loopCount = CCU_MS_INTERLEAVE;
     config.memSlice = CCU_MS_INTERLEAVE * CCU_MS_SIZE;
 
-    if (loadFromMem_) {
+    if (param.isMc2) {
         taskArgs.push_back(0); // 空地址占位，保证参数个数与load个数一致
     } else {
         uint64_t xnMaxTransportSize = UB_MAX_TRANS_SIZE;

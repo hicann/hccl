@@ -243,19 +243,26 @@ HcclResult CcuAlgTemplateBase::ReverseChannelPerDieIfNeed(
 
 HcclResult CcuAlgTemplateBase::GetToken(const BuffInfo& buffinfo, uint64_t& token) const
 {
+    CcuResult ccuResult = CCU_SUCCESS;
     if (buffinfo.inputPtr != nullptr && buffinfo.inputSize != 0) {
-        HcommCcuGetMemToken(PointerToAddr(buffinfo.inputPtr), static_cast<uint64_t>(buffinfo.inputSize), &token);
-        return HCCL_SUCCESS;
+        ccuResult
+            = HcommCcuGetMemToken(PointerToAddr(buffinfo.inputPtr), static_cast<uint64_t>(buffinfo.inputSize), &token);
     } else if (buffinfo.outputPtr != nullptr && buffinfo.outputSize != 0) {
-        HcommCcuGetMemToken(PointerToAddr(buffinfo.outputPtr), static_cast<uint64_t>(buffinfo.outputSize), &token);
-        return HCCL_SUCCESS;
+        ccuResult = HcommCcuGetMemToken(
+            PointerToAddr(buffinfo.outputPtr), static_cast<uint64_t>(buffinfo.outputSize), &token);
     } else if (buffinfo.hcclBuff.addr != nullptr && buffinfo.hcclBuff.size != 0) {
-        HcommCcuGetMemToken(
+        ccuResult = HcommCcuGetMemToken(
             PointerToAddr(buffinfo.hcclBuff.addr), static_cast<uint64_t>(buffinfo.hcclBuff.size), &token);
-        return HCCL_SUCCESS;
+    } else {
+        HCCL_WARNING("[GetToken] inputMem, outputMem and hcclBuff are all null");
+        return HCCL_E_PTR;
     }
-    HCCL_WARNING("[GetToken] inputMem, outputMem and hcclBuff are all null");
-    return HCCL_E_PTR;
+
+    CHK_PRT_RET(
+        ccuResult != CCU_SUCCESS,
+        HCCL_ERROR("[CcuAlgTemplateBase::GetToken] get memory token failed, ccuRet -> %d", ccuResult),
+        ConvertCcuToHccl(ccuResult));
+    return HcclResult::HCCL_SUCCESS;
 }
 
 HcclResult CcuAlgTemplateBase::CalcDieSplitRatio(

@@ -15,6 +15,21 @@
 #include "ccu_launch_dl.h"
 
 namespace ops_hccl {
+namespace {
+    constexpr u32 REDUCE_SCATTER_TASK_ARG_NUM = 13;
+    constexpr u32 REDUCE_SCATTER_CACHED_ARG_NUM = 17;
+
+    static_assert(
+        REDUCE_SCATTER_CACHED_ARG_NUM == REDUCE_SCATTER_TASK_ARG_NUM + 4,
+        "cached args must be task args plus 4 offsets");
+
+    template <typename... Args>
+    HcclResult FillReduceScatterCachedArgs(CcuKernelSubmitInfo& info, Args... args)
+    {
+        static_assert(sizeof...(Args) == REDUCE_SCATTER_CACHED_ARG_NUM, "reduce scatter cached arg num is invalid");
+        return FillCachedArgs(info, args...);
+    }
+} // namespace
 
 std::vector<CostModelParam> CcuTempReduceScatterMeshMem2Mem1D2Die::CalcCostCoeff(CalcCostCoeffParam param)
 {
@@ -297,6 +312,17 @@ HcclResult CcuTempReduceScatterMeshMem2Mem1D2Die::KernelRun(
         }
     }
 
+    for (uint32_t dieIdx = 0; dieIdx < DIE_NUM; dieIdx++) {
+        CcuKernelSubmitInfo submitInfo;
+        submitInfo.kernelHandle = templateResource.ccuKernels[dieIdx];
+        CHK_RET(FillReduceScatterCachedArgs(
+            submitInfo, taskArgs[0], taskArgs[1], taskArgs[2], taskArgs[3], taskArgs[4], taskArgs[5], taskArgs[6],
+            taskArgs[7], taskArgs[8], taskArgs[9], taskArgs[10], taskArgs[11], taskArgs[12], buffInfo_.inBuffBaseOff,
+            buffInfo_.outBuffBaseOff, buffInfo_.hcclBuffBaseOff,
+            buffInfo_.hcclBuffBaseOff + normalSliceSize * (templateRankSize_ / DIE_NUM)));
+        templateResource.submitInfos.push_back(submitInfo);
+    }
+
     // 后流同步
     std::vector<u32> notifyIdxSubToMain(1, 0);
     CHK_RET(PostSyncInterThreads(templateResource.threads[0], subThreads, notifyIdxSubToMain));
@@ -312,6 +338,74 @@ HcclResult CcuTempReduceScatterMeshMem2Mem1D2Die::KernelRun(
         normalSliceSize / DATATYPE_SIZE_TABLE[param.DataDes.dataType]);
     CHK_RET(LocalReduce(templateResource.threads[0], srcSlice, dstSlice, param.DataDes.dataType, param.reduceType));
 
+    return HcclResult::HCCL_SUCCESS;
+}
+
+HcclResult
+CcuTempReduceScatterMeshMem2Mem1D2Die::FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx)
+{
+    u32 kernelNum = static_cast<u32>(tempFastLaunchCtx.ccuKernelSubmitInfos.size());
+    if (kernelNum == 0) {
+        HCCL_INFO("[CcuTempReduceScatterMeshMem2Mem1D2Die::FastLaunch] ccu kernel num is 0, just success.");
+        return HCCL_SUCCESS;
+    }
+    CHK_PRT_RET(
+        kernelNum != DIE_NUM || tempFastLaunchCtx.threads.size() != DIE_NUM,
+        HCCL_ERROR(
+            "[CcuTempReduceScatterMeshMem2Mem1D2Die::FastLaunch] Unexpected ccu kernel num[%u] or thread num[%zu], "
+            "expect[%u].",
+            kernelNum, tempFastLaunchCtx.threads.size(), DIE_NUM),
+        HcclResult::HCCL_E_INTERNAL);
+
+    constexpr u32 argInIdx = 0;
+    constexpr u32 argOutIdx = 1;
+    constexpr u32 argTokenIdx = 2;
+    constexpr u32 argScratchIdx = 3;
+    constexpr u32 argSliceSizeIdx = 7;
+    constexpr u32 argInOffsetIdx = 13;
+    constexpr u32 argOutOffsetIdx = 14;
+    constexpr u32 argScratchOffsetIdx = 15;
+    constexpr u32 argLocalReduceScratchOffsetIdx = 16;
+    constexpr u32 taskArgSize = REDUCE_SCATTER_TASK_ARG_NUM;
+
+    std::vector<ThreadHandle> subThreads(tempFastLaunchCtx.threads.begin() + 1, tempFastLaunchCtx.threads.end());
+    std::vector<u32> notifyIdxMainToSub(1, 0);
+    CHK_RET(PreSyncInterThreads(tempFastLaunchCtx.threads[0], subThreads, notifyIdxMainToSub));
+
+    uint64_t token;
+    CHK_RET(GetToken(tempFastLaunchCtx.buffInfo, token));
+
+    for (u32 dieIdx = 0; dieIdx < kernelNum; dieIdx++) {
+        uint64_t* args = const_cast<uint64_t*>(tempFastLaunchCtx.ccuKernelSubmitInfos[dieIdx].cachedArgs);
+        args[argInIdx] = PointerToAddr(tempFastLaunchCtx.buffInfo.inputPtr) + args[argInOffsetIdx];
+        args[argOutIdx] = PointerToAddr(tempFastLaunchCtx.buffInfo.outputPtr) + args[argOutOffsetIdx];
+        args[argTokenIdx] = token;
+        args[argScratchIdx] = PointerToAddr(tempFastLaunchCtx.buffInfo.hcclBuff.addr) + args[argScratchOffsetIdx];
+
+        CcuResult launchRet = HcommCcuKernelLaunch(
+            tempFastLaunchCtx.threads[dieIdx], tempFastLaunchCtx.ccuKernelSubmitInfos[dieIdx].kernelHandle,
+            reinterpret_cast<void*>(args), taskArgSize);
+        CHK_PRT_RET(
+            launchRet != CCU_SUCCESS,
+            HCCL_ERROR(
+                "[CcuTempReduceScatterMeshMem2Mem1D2Die::FastLaunch] kernel launch failed, ccuRet -> %d", launchRet),
+            ConvertCcuToHccl(launchRet));
+    }
+
+    std::vector<u32> notifyIdxSubToMain(1, 0);
+    CHK_RET(PostSyncInterThreads(tempFastLaunchCtx.threads[0], subThreads, notifyIdxSubToMain));
+
+    uint64_t* args = const_cast<uint64_t*>(tempFastLaunchCtx.ccuKernelSubmitInfos[0].cachedArgs);
+    uint64_t sliceSize = args[argSliceSizeIdx];
+    DataSlice srcSlice(
+        tempFastLaunchCtx.buffInfo.hcclBuff.addr, args[argLocalReduceScratchOffsetIdx], sliceSize,
+        sliceSize / DATATYPE_SIZE_TABLE[param.DataDes.dataType]);
+    DataSlice dstSlice(
+        tempFastLaunchCtx.buffInfo.outputPtr, args[argOutOffsetIdx], sliceSize,
+        sliceSize / DATATYPE_SIZE_TABLE[param.DataDes.dataType]);
+    CHK_RET(LocalReduce(tempFastLaunchCtx.threads[0], srcSlice, dstSlice, param.DataDes.dataType, param.reduceType));
+
+    HCCL_INFO("[CcuTempReduceScatterMeshMem2Mem1D2Die::FastLaunch] Template FastLaunch for all steps Ends.");
     return HcclResult::HCCL_SUCCESS;
 }
 

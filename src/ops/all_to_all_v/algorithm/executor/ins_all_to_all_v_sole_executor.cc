@@ -86,66 +86,7 @@ HcclResult InsAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlltoAllLo
     const OpParam& param, A2ASendRecvInfo& localSendRecvInfo) const
 {
     HCCL_DEBUG("[GetAlltoAllLocalSendRecvInfo] rank[%u], userRankSize[%u]", myRank_, rankSize_);
-    localSendRecvInfo.sendCounts.resize(rankSize_, 0);
-    localSendRecvInfo.sendDispls.resize(rankSize_, 0);
-    localSendRecvInfo.sendLength.resize(rankSize_, 0);
-    localSendRecvInfo.sendOffset.resize(rankSize_, 0);
-
-    localSendRecvInfo.recvCounts.resize(rankSize_, 0);
-    localSendRecvInfo.recvDispls.resize(rankSize_, 0);
-    localSendRecvInfo.recvLength.resize(rankSize_, 0);
-    localSendRecvInfo.recvOffset.resize(rankSize_, 0);
-
-    u64 minVectorNum = ALL_TO_ALL_V_VECTOR_NUM;
-    u64 maxVectorNum
-        = (param.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC) ? ALL_TO_ALL_VC_VECTOR_NUM : ALL_TO_ALL_V_VECTOR_NUM;
-    CHK_PRT_RET(
-        param.varMemSize < minVectorNum * rankSize_ * sizeof(u64)
-            || param.varMemSize > maxVectorNum * rankSize_ * sizeof(u64),
-        HCCL_ERROR(
-            "[InsAlltoAllVSoleExecutor][GetAlltoAllLocalSendRecvInfo] param.varMemSize [%llu] is invalid",
-            param.varMemSize),
-        HCCL_E_PARA);
-
-    const u64* data = reinterpret_cast<const u64*>(param.varData);
-    for (u64 i = 0; i < ALL_TO_ALL_V_VECTOR_NUM * rankSize_; i++) {
-        u64 val = i / rankSize_;
-        u64 curRank = i % rankSize_;
-        switch (val) {
-            case CONST_ZERO:
-                localSendRecvInfo.sendCounts[curRank] = data[i];
-                localSendRecvInfo.sendLength[curRank] = data[i] * dataTypeSize_;
-                HCCL_INFO(
-                    "data[i]: %llu, localSendRecvInfo.sendLength: %llu", data[i],
-                    localSendRecvInfo.sendLength[curRank]);
-                break;
-            case CONST_ONE:
-                localSendRecvInfo.recvCounts[curRank] = data[i];
-                localSendRecvInfo.recvLength[curRank] = data[i] * dataTypeSize_;
-                HCCL_INFO(
-                    "data[i]: %llu, localSendRecvInfo.recvLength: %llu", data[i],
-                    localSendRecvInfo.recvLength[curRank]);
-                break;
-            case CONST_TWO:
-                localSendRecvInfo.sendDispls[curRank] = data[i];
-                localSendRecvInfo.sendOffset[curRank] = data[i] * dataTypeSize_;
-                HCCL_INFO(
-                    "data[i]: %llu, localSendRecvInfo.sendOffset: %llu", data[i],
-                    localSendRecvInfo.sendOffset[curRank]);
-                break;
-            case CONST_THREE:
-                localSendRecvInfo.recvDispls[curRank] = data[i];
-                localSendRecvInfo.recvOffset[curRank] = data[i] * dataTypeSize_;
-                HCCL_INFO(
-                    "data[i]: %llu, localSendRecvInfo.recvOffset: %llu", data[i],
-                    localSendRecvInfo.recvOffset[curRank]);
-                break;
-            default:
-                break;
-        }
-    }
-    HCCL_DEBUG("[GetAlltoAllLocalSendRecvInfo] GetAlltoAllLocalSendRecvInfo success");
-    return HcclResult::HCCL_SUCCESS;
+    return ParseAlltoAllVarData(param, rankSize_, dataTypeSize_, localSendRecvInfo);
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
@@ -220,8 +161,7 @@ HcclResult InsAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::OrchestrateLo
     CHK_RET(algTemplate->KernelRun(param, tempAlgParams, templateAlgRes));
 
 #ifndef AICPU_COMPILE
-    if (param.engine == CommEngine::COMM_ENGINE_CCU && param.opType != HcclCMDType::HCCL_CMD_ALLTOALLVC
-        && param.opMode != OpMode::OFFLOAD) {
+    if (param.engine == CommEngine::COMM_ENGINE_CCU && param.opMode != OpMode::OFFLOAD) {
         CHK_RET(FastLaunchSaveCtx(param, templateAlgRes, resCtx.notifyNumOnMainThread));
     }
 #endif
@@ -291,6 +231,8 @@ HcclResult InsAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLaunch(
     HCCL_INFO("[InsAlltoAllVSoleExecutor][FastLaunch] ccuKernelNum[%u]", fastLaunchCtx->ccuKernelNum[0]);
     tempFastLaunchCtx.buffInfo.inputPtr = param.inputPtr;
     tempFastLaunchCtx.buffInfo.outputPtr = param.outputPtr;
+    tempFastLaunchCtx.buffInfo.inputSize = param.inputSize;
+    tempFastLaunchCtx.buffInfo.outputSize = param.outputSize;
 
     // 3 调template
     std::unique_ptr<InsAlgTemplate> algTemplate = std::make_unique<InsAlgTemplate>();
