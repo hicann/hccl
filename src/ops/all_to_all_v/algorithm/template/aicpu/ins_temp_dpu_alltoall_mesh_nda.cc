@@ -16,8 +16,68 @@
 #include "alg_data_trans_wrapper.h"
 #include "dpu_alg_data_trans_wrapper.h"
 #include "channel.h"
+#include "exec_timeout_manager.h"
 
 namespace ops_hccl {
+
+HcclResult InsTempDpuAlltoAllMeshNda::RunWindowChunk(
+    const ChannelInfo& channel, ThreadHandle thread, HcclDataType dataType, const RunWindowChunkSlices& slices)
+{
+    const DataSlice& input = slices.input;
+    const DataSlice& output = slices.output;
+    const DataSlice& sendBuffer = slices.sendBuffer;
+    const DataSlice& recvBuffer = slices.recvBuffer;
+    const bool nda = channel.protocol == COMM_PROTOCOL_ROCE;
+    if (nda && input.size_ != 0) {
+        CHK_RET(LocalCopy(thread, input, sendBuffer));
+    }
+    std::vector<DataSlice> sendSources;
+    std::vector<DataSlice> sendTargets;
+    if (input.size_ != 0) {
+        CHK_PRT_RET(
+            channel.remoteCclMem.addr == nullptr,
+            HCCL_ERROR("[InsTempDpuAlltoAllMeshNda][RunWindowChunk] null remote CCL buffer"), HCCL_E_INTERNAL);
+        sendSources.push_back(nda ? sendBuffer : input);
+        sendTargets.emplace_back(channel.remoteCclMem.addr, recvBuffer.offset_, input.size_, input.count_);
+    }
+    if (input.size_ != 0 && output.size_ != 0) {
+        SendRecvInfo info{{channel, channel}, {{sendSources, sendTargets}, {{}, {}}}, dataType};
+        CHK_RET(nda ? SendRecvWriteForNda(info, thread) : SendRecvWrite(info, thread));
+    } else if (input.size_ != 0) {
+        DataInfo info{channel, {sendSources, sendTargets}, dataType};
+        CHK_RET(nda ? SendWriteForNda(info, thread) : SendWrite(info, thread));
+    } else if (output.size_ != 0) {
+        DataInfo info{channel, {{}, {}}, dataType};
+        CHK_RET(nda ? RecvWriteForNda(info, thread) : RecvWrite(info, thread));
+    }
+    if (output.size_ != 0) {
+        CHK_RET(LocalCopy(thread, recvBuffer, output));
+    }
+    return HCCL_SUCCESS;
+}
+
+namespace {
+    HcclResult AppendCopy(
+        const ThreadHandle& thread, const DataSlice& source, const DataSlice& destination, DataSlice& pendingSource,
+        DataSlice& pendingDestination)
+    {
+        if (pendingSource.size_ != 0 && IsContinuousSlice(source, pendingSource)
+            && IsContinuousSlice(destination, pendingDestination) && source.size_ <= UB_MAX_DATA_SIZE
+            && pendingSource.size_ <= UB_MAX_DATA_SIZE - source.size_) {
+            pendingSource.size_ += source.size_;
+            pendingSource.count_ += source.count_;
+            pendingDestination.size_ += destination.size_;
+            pendingDestination.count_ += destination.count_;
+            return HCCL_SUCCESS;
+        }
+        if (pendingSource.size_ != 0) {
+            CHK_RET(LocalCopy(thread, pendingSource, pendingDestination));
+        }
+        pendingSource = source;
+        pendingDestination = destination;
+        return HCCL_SUCCESS;
+    }
+} // namespace
 
 InsTempDpuAlltoAllMeshNda::InsTempDpuAlltoAllMeshNda() {}
 InsTempDpuAlltoAllMeshNda::InsTempDpuAlltoAllMeshNda(
@@ -130,25 +190,24 @@ HcclResult InsTempDpuAlltoAllMeshNda::KernelRun(
 
     CHK_RET(LocalCopyforMyRank(subCommRanks_[0], tempAlgParams, threads_));
 
-    // 仅 HOST(ROCE) 对端需要先搬到 CCL_IN，其余对端直接从输入内存写对端 CCL buffer
-    CHK_RET(PreCopyDataToCclInBuf(subCommRanks_[0], tempAlgParams, templateResource.channels, threads_));
-
+    std::vector<ThreadHandle> subThreads;
     if (threadNum_ > 1) {
-        std::vector<ThreadHandle> subThreads(templateResource.threads.begin() + 1, templateResource.threads.end());
+        subThreads.assign(templateResource.threads.begin() + 1, templateResource.threads.end());
         GetNotifyIdxMainToSub(notifyIdxMainToSub_);
         CHK_RET(PreSyncInterThreads(templateResource.threads[0], subThreads, notifyIdxMainToSub_));
     }
 
-    CHK_RET(SendRecvData(subCommRanks_[0], tempAlgParams, templateResource));
+    CHK_RET(PreCopyDataToCclInBuf(subCommRanks_[0], tempAlgParams, templateResource.channels, threads_));
+
+    CHK_RET(SendRecvData(param, subCommRanks_[0], tempAlgParams, templateResource));
 
     if (threadNum_ > 1) {
-        std::vector<ThreadHandle> subThreads(templateResource.threads.begin() + 1, templateResource.threads.end());
         GetNotifyIdxSubToMain(notifyIdxSubToMain_);
         CHK_RET(PostSyncInterThreads(templateResource.threads[0], subThreads, notifyIdxSubToMain_));
     }
 
     // 将接收到的数据从CCL_OUT拷贝recvBuf
-    CHK_RET(PostCopyDataToRecvBuf(subCommRanks_[0], tempAlgParams, threads_));
+    CHK_RET(PostCopyDataToRecvBuf(subCommRanks_[0], tempAlgParams, templateResource.channels, threads_));
 
     return HCCL_SUCCESS;
 }
@@ -176,6 +235,8 @@ HcclResult InsTempDpuAlltoAllMeshNda::PreCopyDataToCclInBuf(
     const std::vector<u32>& commRanks, const TemplateDataParams& tempAlgParams,
     const std::map<u32, std::vector<ChannelInfo>>& channels, std::vector<ThreadHandle>& threads)
 {
+    DataSlice pendingSource(nullptr, 0, 0, 0);
+    DataSlice pendingDestination(nullptr, 0, 0, 0);
     for (u32 i = 0; i < commRanks.size(); i++) {
         u32 remoteRank = commRanks[i];
         u64 sendCount = tempAlgParams.sendCounts[remoteRank];
@@ -198,28 +259,26 @@ HcclResult InsTempDpuAlltoAllMeshNda::PreCopyDataToCclInBuf(
         DataSlice dstSlice = DataSlice(
             tempAlgParams.buffInfo.hcclBuff.addr,
             tempAlgParams.buffInfo.hcclBuffBaseOff + remoteRank * hcclbuffBlockMemSize_, sendSliceSize, sendCount);
-        CHK_RET(static_cast<HcclResult>(LocalCopy(threads[0], srcSlice, dstSlice)));
+        CHK_RET(AppendCopy(threads[0], srcSlice, dstSlice, pendingSource, pendingDestination));
+    }
+    if (pendingSource.size_ != 0) {
+        CHK_RET(LocalCopy(threads[0], pendingSource, pendingDestination));
     }
     return HcclResult::HCCL_SUCCESS;
 }
 
 HcclResult InsTempDpuAlltoAllMeshNda::SendRecvData(
-    const std::vector<u32>& commRanks, const TemplateDataParams& tempAlgParams,
+    const OpParam& param, const std::vector<u32>& commRanks, const TemplateDataParams& tempAlgParams,
     const TemplateResource& templateResource)
 {
-    // 0 号 thread 保留给本地拷贝、线程同步与 HOST 对端，DEVICE 对端从 1 号 thread 开始分配。
     u32 threadIdx = 1;
-    for (u32 remoteRank : commRanks) {
-        if (remoteRank == myRank_) {
-            continue;
-        }
-
-        auto it = templateResource.channels.find(remoteRank);
-        CHK_PRT_RET(
-            it == templateResource.channels.end() || it->second.empty(),
-            HCCL_ERROR("[InsTempDpuAlltoAllMeshNda][SendRecvData] no channel for remoteRank[%u]", remoteRank),
-            HCCL_E_PARA);
-        const ChannelInfo& link = it->second[0];
+    const ChannelInfo emptyChannel{};
+    SendRecvInfo sendRecvInfo{{emptyChannel, emptyChannel}, {{{}, {}}, {{}, {}}}, dataType_};
+    auto& txSrcSlices = sendRecvInfo.sendRecvSlices_.txSlicesList_.srcSlices_;
+    auto& txDstSlices = sendRecvInfo.sendRecvSlices_.txSlicesList_.dstSlices_;
+    auto& rxSrcSlices = sendRecvInfo.sendRecvSlices_.rxSlicesList_.srcSlices_;
+    auto& rxDstSlices = sendRecvInfo.sendRecvSlices_.rxSlicesList_.dstSlices_;
+    auto sendRecvPeer = [&](u32 remoteRank, const ChannelInfo& link) -> HcclResult {
         CHK_PRT_RET(
             link.locationType != EndpointLocType::ENDPOINT_LOC_TYPE_HOST
                 && link.locationType != EndpointLocType::ENDPOINT_LOC_TYPE_DEVICE,
@@ -230,7 +289,7 @@ HcclResult InsTempDpuAlltoAllMeshNda::SendRecvData(
         u64 sendCount = tempAlgParams.sendCounts[remoteRank];
         u64 recvCount = tempAlgParams.recvCounts[remoteRank];
         if (sendCount == 0 && recvCount == 0) {
-            continue;
+            return HCCL_SUCCESS;
         }
         void* remoteCclBuffAddr = link.remoteCclMem.addr;
         CHK_PRT_RET(
@@ -239,23 +298,20 @@ HcclResult InsTempDpuAlltoAllMeshNda::SendRecvData(
                 "[InsTempDpuAlltoAllMeshNda][SendRecvData] null remote CCL buffer for remoteRank[%u]", remoteRank),
             HCCL_E_INTERNAL);
 
-        std::vector<DataSlice> txSrcSlices;
-        std::vector<DataSlice> txDstSlices;
-        std::vector<DataSlice> rxSrcSlices;
-        std::vector<DataSlice> rxDstSlices;
+        if (link.protocol == COMM_PROTOCOL_ROCE) {
+            return SendRecvNda(remoteRank, link, tempAlgParams);
+        }
+
+        txSrcSlices.clear();
+        txDstSlices.clear();
+        rxSrcSlices.clear();
+        rxDstSlices.clear();
         if (sendCount > 0) {
             u64 sendSliceSize = sendCount * dataTypeSize_;
-            if (link.protocol != COMM_PROTOCOL_ROCE) {
-                // 非 ROCE 链路（UB 直连对端）直接从输入内存写出，省去 CCL_IN 中转
-                txSrcSlices.emplace_back(
-                    tempAlgParams.buffInfo.inputPtr, tempAlgParams.sdispls[remoteRank] * dataTypeSize_, sendSliceSize,
-                    sendCount);
-            } else {
-                txSrcSlices.emplace_back(
-                    tempAlgParams.buffInfo.hcclBuff.addr,
-                    tempAlgParams.buffInfo.hcclBuffBaseOff + remoteRank * hcclbuffBlockMemSize_, sendSliceSize,
-                    sendCount);
-            }
+            // 非 ROCE 链路（UB 直连对端）直接从输入内存写出，省去 CCL_IN 中转；ROCE 链路已在上面提前返回
+            txSrcSlices.emplace_back(
+                tempAlgParams.buffInfo.inputPtr, tempAlgParams.sdispls[remoteRank] * dataTypeSize_, sendSliceSize,
+                sendCount);
             txDstSlices.emplace_back(
                 remoteCclBuffAddr,
                 tempAlgParams.buffInfo.hcclBuffBaseOff + halfMaxTmpMemSize_ + myRank_ * hcclbuffBlockMemSize_,
@@ -263,9 +319,6 @@ HcclResult InsTempDpuAlltoAllMeshNda::SendRecvData(
         }
         if (recvCount > 0) {
             u64 recvSliceSize = recvCount * dataTypeSize_;
-            // rxSlices 仅 read 编排（对端读到本端）使用，当前编排走 write 分支不会读取。
-            // read 语义下对端已将发往本 rank 的切片暂存到自己的 CCL_IN 分块（按目的 rank 索引），
-            // 本端读到本地 CCL_OUT 的 remoteRank 分块，与 write 编排的落点一致。
             rxSrcSlices.emplace_back(
                 remoteCclBuffAddr, tempAlgParams.buffInfo.hcclBuffBaseOff + myRank_ * hcclbuffBlockMemSize_,
                 recvSliceSize, recvCount);
@@ -275,21 +328,8 @@ HcclResult InsTempDpuAlltoAllMeshNda::SendRecvData(
                 recvSliceSize, recvCount);
         }
 
-        SendRecvInfo sendRecvInfo{{link, link}, {{txSrcSlices, txDstSlices}, {rxSrcSlices, rxDstSlices}}};
-        if (link.locationType == EndpointLocType::ENDPOINT_LOC_TYPE_HOST) {
-            // HOST 通道直接在 AICPU 主 thread 上通信；单方向时走轻量 NDA 语义，省去一次多余的同步
-            if (sendCount > 0 && recvCount > 0) {
-                CHK_RET(SendRecvWriteForNda(sendRecvInfo, threads_[0]));
-            } else if (sendCount > 0) {
-                DataInfo sendInfo{link, {txSrcSlices, txDstSlices}};
-                CHK_RET(SendWriteForNda(sendInfo, threads_[0]));
-            } else {
-                DataInfo recvInfo{link, {rxSrcSlices, rxDstSlices}};
-                CHK_RET(RecvWriteForNda(recvInfo, threads_[0]));
-            }
-            continue;
-        }
-
+        sendRecvInfo.sendRecvChannels_.txChannel_ = link;
+        sendRecvInfo.sendRecvChannels_.rxChannel_ = link;
         CHK_PRT_RET(
             threadIdx >= threadNum_,
             HCCL_ERROR(
@@ -305,18 +345,168 @@ HcclResult InsTempDpuAlltoAllMeshNda::SendRecvData(
             DataInfo recvDataInfo{link, {rxSrcSlices, rxDstSlices}};
             CHK_RET(RecvWrite(recvDataInfo, threads_[threadIdx]));
         }
+        if (recvCount > 0) {
+            DataSlice outputSlice(
+                tempAlgParams.buffInfo.outputPtr, tempAlgParams.rdispls[remoteRank] * dataTypeSize_,
+                recvCount * dataTypeSize_, recvCount);
+            CHK_RET(LocalCopy(threads_[threadIdx], rxDstSlices[0], outputSlice));
+        }
         threadIdx++;
+        return HCCL_SUCCESS;
+    };
+
+    std::vector<std::pair<u32, const ChannelInfo*>> ndaPeers;
+    for (u32 remoteRank : commRanks) {
+        if (remoteRank == myRank_) {
+            continue;
+        }
+        auto channelIt = templateResource.channels.find(remoteRank);
+        CHK_PRT_RET(
+            channelIt == templateResource.channels.end() || channelIt->second.empty(),
+            HCCL_ERROR("[InsTempDpuAlltoAllMeshNda][SendRecvData] no channel for remoteRank[%u]", remoteRank),
+            HCCL_E_PARA);
+        const ChannelInfo& link = channelIt->second[0];
+        if (link.protocol == COMM_PROTOCOL_ROCE) {
+            if (tempAlgParams.sendCounts[remoteRank] != 0 || tempAlgParams.recvCounts[remoteRank] != 0) {
+                ndaPeers.emplace_back(remoteRank, &link);
+            }
+        } else {
+            CHK_RET(sendRecvPeer(remoteRank, link));
+        }
+    }
+    if (ndaPeers.empty()) {
+        return HCCL_SUCCESS;
+    }
+
+    std::sort(ndaPeers.begin(), ndaPeers.end(), [this](const auto& left, const auto& right) {
+        return (myRank_ ^ left.first) < (myRank_ ^ right.first);
+    });
+
+    CHK_RET(static_cast<HcclResult>(HcommBatchModeEnd(param.algTag)));
+    HcclResult transferRet = HCCL_SUCCESS;
+    if (param.opType == HcclCMDType::HCCL_CMD_ALLTOALL) {
+        transferRet = SendRecvNdaMesh(ndaPeers, tempAlgParams);
+    } else {
+        for (const auto& peer : ndaPeers) {
+            transferRet = sendRecvPeer(peer.first, *peer.second);
+            if (transferRet != HCCL_SUCCESS) {
+                break;
+            }
+        }
+    }
+    HcclResult batchRet = static_cast<HcclResult>(HcommBatchModeStart(param.algTag));
+    CHK_RET(transferRet);
+    CHK_RET(batchRet);
+    return HCCL_SUCCESS;
+}
+
+HcclResult
+InsTempDpuAlltoAllMeshNda::SendRecvNda(u32 remoteRank, const ChannelInfo& link, const TemplateDataParams& tempAlgParams)
+{
+    const u64 sendCount = tempAlgParams.sendCounts[remoteRank];
+    const u64 recvCount = tempAlgParams.recvCounts[remoteRank];
+    const ThreadHandle thread = threads_[0];
+    if (sendCount > 0 && recvCount == 0) {
+        const u64 bytes = sendCount * dataTypeSize_;
+        DataSlice source(
+            tempAlgParams.buffInfo.hcclBuff.addr,
+            tempAlgParams.buffInfo.hcclBuffBaseOff + remoteRank * hcclbuffBlockMemSize_, bytes, sendCount);
+        DataSlice destination(
+            link.remoteCclMem.addr,
+            tempAlgParams.buffInfo.hcclBuffBaseOff + halfMaxTmpMemSize_ + myRank_ * hcclbuffBlockMemSize_, bytes,
+            sendCount);
+        DataInfo sendInfo{link, {{source}, {destination}}, dataType_};
+        return SendWriteForNda(sendInfo, thread);
+    }
+    if (sendCount == 0 && recvCount > 0) {
+        DataInfo recvInfo{link, {{}, {}}, dataType_};
+        return RecvWriteForNda(recvInfo, thread);
+    }
+    const u32 timeout = ExecTimeoutManager::Instance().GetExecTimeout();
+    if (recvCount > 0) {
+        CHK_RET(static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(thread, link.handle, NOTIFY_IDX_ACK)));
+    }
+    if (sendCount > 0) {
+        CHK_RET(static_cast<HcclResult>(HcommChannelNotifyWaitOnThread(thread, link.handle, NOTIFY_IDX_ACK, timeout)));
+        const void* source = static_cast<s8*>(tempAlgParams.buffInfo.hcclBuff.addr)
+                             + tempAlgParams.buffInfo.hcclBuffBaseOff + remoteRank * hcclbuffBlockMemSize_;
+        void* destination = static_cast<s8*>(link.remoteCclMem.addr) + tempAlgParams.buffInfo.hcclBuffBaseOff
+                            + halfMaxTmpMemSize_ + myRank_ * hcclbuffBlockMemSize_;
+        CHK_RET(static_cast<HcclResult>(HcommWriteWithNotifyOnThread(
+            thread, link.handle, destination, source, sendCount * dataTypeSize_, NOTIFY_IDX_DATA_SIGNAL)));
+    }
+    if (recvCount > 0) {
+        CHK_RET(static_cast<HcclResult>(
+            HcommChannelNotifyWaitOnThread(thread, link.handle, NOTIFY_IDX_DATA_SIGNAL, timeout)));
+        CHK_RET(static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(thread, link.handle, NOTIFY_IDX_FIN_ACK)));
+    }
+    if (sendCount > 0) {
+        CHK_RET(
+            static_cast<HcclResult>(HcommChannelNotifyWaitOnThread(thread, link.handle, NOTIFY_IDX_FIN_ACK, timeout)));
+    }
+    return HCCL_SUCCESS;
+}
+
+HcclResult InsTempDpuAlltoAllMeshNda::SendRecvNdaMesh(
+    const std::vector<std::pair<u32, const ChannelInfo*>>& peers, const TemplateDataParams& tempAlgParams)
+{
+    const ThreadHandle thread = threads_[0];
+    const u32 timeout = ExecTimeoutManager::Instance().GetExecTimeout();
+    for (const auto& peer : peers) {
+        const ChannelInfo& link = *peer.second;
+        CHK_PRT_RET(
+            link.locationType != EndpointLocType::ENDPOINT_LOC_TYPE_HOST
+                && link.locationType != EndpointLocType::ENDPOINT_LOC_TYPE_DEVICE,
+            HCCL_ERROR(
+                "[InsTempDpuAlltoAllMeshNda][SendRecvData] unsupported locationType for remoteRank[%u]", peer.first),
+            HCCL_E_NOT_SUPPORT);
+        CHK_PRT_RET(
+            link.remoteCclMem.addr == nullptr,
+            HCCL_ERROR(
+                "[InsTempDpuAlltoAllMeshNda][SendRecvData] null remote CCL buffer for remoteRank[%u]", peer.first),
+            HCCL_E_INTERNAL);
+        CHK_RET(static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(thread, link.handle, NOTIFY_IDX_ACK)));
+    }
+    for (const auto& peer : peers) {
+        const ChannelInfo& link = *peer.second;
+        CHK_RET(static_cast<HcclResult>(HcommChannelNotifyWaitOnThread(thread, link.handle, NOTIFY_IDX_ACK, timeout)));
+        // 纯收方向的对端无数据要写：跳过 0 长度 WriteWithNotify，单独补一个 DATA_SIGNAL 通知对端
+        if (tempAlgParams.sendCounts[peer.first] == 0) {
+            CHK_RET(
+                static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(thread, link.handle, NOTIFY_IDX_DATA_SIGNAL)));
+            continue;
+        }
+        const void* source = static_cast<s8*>(tempAlgParams.buffInfo.hcclBuff.addr)
+                             + tempAlgParams.buffInfo.hcclBuffBaseOff + peer.first * hcclbuffBlockMemSize_;
+        void* destination = static_cast<s8*>(link.remoteCclMem.addr) + tempAlgParams.buffInfo.hcclBuffBaseOff
+                            + halfMaxTmpMemSize_ + myRank_ * hcclbuffBlockMemSize_;
+        CHK_RET(static_cast<HcclResult>(HcommWriteWithNotifyOnThread(
+            thread, link.handle, destination, source, tempAlgParams.sendCounts[peer.first] * dataTypeSize_,
+            NOTIFY_IDX_DATA_SIGNAL)));
+    }
+    for (const auto& peer : peers) {
+        const ChannelInfo& link = *peer.second;
+        CHK_RET(static_cast<HcclResult>(
+            HcommChannelNotifyWaitOnThread(thread, link.handle, NOTIFY_IDX_DATA_SIGNAL, timeout)));
+        CHK_RET(static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(thread, link.handle, NOTIFY_IDX_FIN_ACK)));
+    }
+    for (const auto& peer : peers) {
+        CHK_RET(static_cast<HcclResult>(
+            HcommChannelNotifyWaitOnThread(thread, peer.second->handle, NOTIFY_IDX_FIN_ACK, timeout)));
     }
     return HCCL_SUCCESS;
 }
 
 HcclResult InsTempDpuAlltoAllMeshNda::PostCopyDataToRecvBuf(
-    const std::vector<u32>& commRanks, const TemplateDataParams& tempAlgParams, std::vector<ThreadHandle>& threads)
+    const std::vector<u32>& commRanks, const TemplateDataParams& tempAlgParams,
+    const std::map<u32, std::vector<ChannelInfo>>& channels, std::vector<ThreadHandle>& threads)
 {
+    DataSlice pendingSource(nullptr, 0, 0, 0);
+    DataSlice pendingDestination(nullptr, 0, 0, 0);
     for (u32 i = 0; i < commRanks.size(); i++) {
         u32 remoteRank = commRanks[i];
         u64 recvCount = tempAlgParams.recvCounts[remoteRank];
-        if (remoteRank != myRank_ && recvCount > 0) {
+        if (remoteRank != myRank_ && recvCount > 0 && channels.at(remoteRank)[0].protocol == COMM_PROTOCOL_ROCE) {
             u64 recvSliceSize = recvCount * dataTypeSize_;
             u64 recvOffset = tempAlgParams.rdispls[remoteRank] * dataTypeSize_;
             DataSlice srcSlice = DataSlice(
@@ -331,8 +521,11 @@ HcclResult InsTempDpuAlltoAllMeshNda::PostCopyDataToRecvBuf(
                 myRank_, remoteRank,
                 tempAlgParams.buffInfo.hcclBuffBaseOff + halfMaxTmpMemSize_ + remoteRank * hcclbuffBlockMemSize_,
                 recvOffset, recvSliceSize);
-            CHK_RET(static_cast<HcclResult>(LocalCopy(threads[0], srcSlice, dstSlice)));
+            CHK_RET(AppendCopy(threads[0], srcSlice, dstSlice, pendingSource, pendingDestination));
         }
+    }
+    if (pendingSource.size_ != 0) {
+        CHK_RET(LocalCopy(threads[0], pendingSource, pendingDestination));
     }
     return HcclResult::HCCL_SUCCESS;
 }

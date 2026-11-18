@@ -8,6 +8,11 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 # -----------------------------------------------------------------------------------------------------------
 
+# 仓库 include/ 下的 hccl.h（HCCL 公开 API umbrella）是 op_common.h 等生产头 #include "hccl.h" 的来源。
+# 多个既有 UT 目标（alg_attrs/selector_engine/selector_mapper/reduce_scatter_* 等）编译生产代码时都缺 hccl.h，
+# 此处目录级补上是覆盖这些目标的唯一低侵入方式；逐目标 target_include_directories 会改到本 PR 之外的文件。
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+
 add_subdirectory(common/prepare_ut_env)
 add_subdirectory(aiv_template_selector)
 add_subdirectory(common/alg_parse)
@@ -29,6 +34,12 @@ add_subdirectory(common/hostdpu_inline_reduce)
 add_subdirectory(alltoall_hier)
 add_subdirectory(hccl_gen_task_superkernel)
 add_subdirectory(aicpu_task_cache)
+# alltoall_nda: InsTempDpuAlltoAllMeshNda 模板 host 侧 UT（RunWindowChunk / SendRecvNda /
+# SendRecvNdaMesh / AppendCopy 合并），直连编译生产模板源文件，wrapper/hcomm 依赖桩化。
+add_subdirectory(alltoall_nda)
+# alltoall_nda_selector: AlltoAllAutoSelector::SelectNdaAlgo 生产实现 UT（空拓扑/层级边界/
+# 输入输出重叠/level0Topo 形状守卫），复用 selector_engine 的 auto_selector_base 桩。
+add_subdirectory(alltoall_nda_selector)
 # alg_attrs: AllToAllV/VC Pairwise 选路修复的生产注册直连 UT。wrap 编译单元以 #include
 # 生产源文件的方式执行 REGISTER_ALG_ATTRS 注册（屏蔽 REGISTER_EXEC_V2，避免实例化
 # executor/模板代码），断言 AlgAttrsRegistry 中 topoCustomCheck/topoPriorityCheck 的

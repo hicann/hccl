@@ -2260,12 +2260,10 @@ HcclResult GetMainThreadInfo(HcclComm comm, const OpParam& param, ThreadHandle& 
     return HCCL_SUCCESS;
 }
 
-// UBX(350L)机型的mainboard id, 取自ACL_DEV_ATTR_MAINBOARD_ID; NDA仅在该机型上支持
-constexpr s64 UBX_350L_MAINBOARD_ID = 0x44;
+// 支持 NDA 的机型 mainboard id，取自 ACL_DEV_ATTR_MAINBOARD_ID
+constexpr s64 UBX_350L_MAINBOARD_ID = 0x44; // UBX(350L)
+constexpr s64 DAYU_MAINBOARD_ID = 0x48;     // 大禹
 
-/* 查询本卡mainboard id是否为支持NDA的机型(0x44/UBX 350L)。
- * 恒返回HCCL_SUCCESS: 查询失败按"不支持NDA"降级, 不阻断既有执行路径。
- */
 static HcclResult CheckNdaMainboardSupported(bool& isSupported)
 {
     isSupported = false;
@@ -2286,7 +2284,7 @@ static HcclResult CheckNdaMainboardSupported(bool& isSupported)
         return HCCL_SUCCESS;
     }
     // 严格相等的正向判断: 未识别的机型一律不支持NDA
-    isSupported = (mainBoardId == UBX_350L_MAINBOARD_ID);
+    isSupported = (mainBoardId == UBX_350L_MAINBOARD_ID || mainBoardId == DAYU_MAINBOARD_ID);
     HCCL_INFO(
         "[CheckNdaMainboardSupported] userDevId[%d] mainBoardId[0x%llx] isSupportNdaBoard[%d]", userDevId,
         static_cast<u64>(mainBoardId), static_cast<s32>(isSupported));
@@ -2303,7 +2301,6 @@ HcclResult HcclGetChannel(
             RegGraphModeBuffers(comm, param, memRegInfo.inputBuffTag, memRegInfo.outputBuffTag, memRegInfo.memHandles));
     }
     resCtxHost->channels.resize(resRequest.channels.size());
-    // NDA仅在mainboard id为0x44(UBX 350L)的机型上支持
     bool isNdaBoard = false;
     CHK_RET(CheckNdaMainboardSupported(isNdaBoard));
     for (u32 level = 0; level < resRequest.channels.size(); level++) {
@@ -2316,8 +2313,6 @@ HcclResult HcclGetChannel(
                 deviceChannelRequest.emplace_back(channelRequest);
             } else if (channelRequest.localEndpoint.loc.locType == ENDPOINT_LOC_TYPE_HOST) {
                 bool isSupportNda = false;
-                // 9.1.0 以下版本、当前 HCOMM 无 NDA 特性查询接口或非 NDA 机型(mainboard id 非 0x44)，
-                // 按不支持处理，走 host 建链；避免在非 NDA 机型上触发 HCOMM 侧 NDA 能力查询
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)
                 if (isNdaBoard && HcommIsSupportHcommEndpointCheckFeature()) {
                     CHK_RET(static_cast<HcclResult>(HcommEndpointCheckFeature(
@@ -4730,11 +4725,10 @@ HcclResult CheckSupportNda(const HcclComm comm, const TopoInfoWithNetLayerDetail
     isSupportNda = false;
     HCCL_INFO("Start CheckSupportNda");
 
-    // NDA仅在mainboard id为0x44(UBX 350L)的机型上支持
     bool isNdaBoard = false;
     CHK_RET(CheckNdaMainboardSupported(isNdaBoard));
     if (!isNdaBoard) {
-        HCCL_INFO("Not support NDA because mainboard id is not 0x44(UBX 350L)");
+        HCCL_INFO("Not support NDA because mainboard id is neither 0x44(UBX 350L) nor 0x48(Dayu)");
         return HCCL_SUCCESS;
     }
 

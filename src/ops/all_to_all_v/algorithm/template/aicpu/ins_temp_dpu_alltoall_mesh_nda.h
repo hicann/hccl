@@ -17,6 +17,14 @@
 #include "alg_v2_template_base.h"
 
 namespace ops_hccl {
+// 串行窗口 chunk 的四个数据切片：用户输入/输出 + CCL_IN/CCL_OUT 中转缓冲
+struct RunWindowChunkSlices {
+    DataSlice input;
+    DataSlice output;
+    DataSlice sendBuffer;
+    DataSlice recvBuffer;
+};
+
 class InsTempDpuAlltoAllMeshNda : public InsAlgTemplateBase {
 public:
     explicit InsTempDpuAlltoAllMeshNda();
@@ -31,6 +39,9 @@ public:
         info += std::to_string(templateRankSize_);
         return info;
     }
+
+    static HcclResult RunWindowChunk(
+        const ChannelInfo& channel, ThreadHandle thread, HcclDataType dataType, const RunWindowChunkSlices& slices);
 
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
     HcclResult KernelRun(
@@ -53,11 +64,17 @@ private:
         const std::map<u32, std::vector<ChannelInfo>>& channels, std::vector<ThreadHandle>& threads);
 
     HcclResult SendRecvData(
-        const std::vector<u32>& commRanks, const TemplateDataParams& tempAlgParams,
+        const OpParam& param, const std::vector<u32>& commRanks, const TemplateDataParams& tempAlgParams,
         const TemplateResource& templateResource);
 
+    HcclResult SendRecvNda(u32 remoteRank, const ChannelInfo& link, const TemplateDataParams& tempAlgParams);
+
+    HcclResult SendRecvNdaMesh(
+        const std::vector<std::pair<u32, const ChannelInfo*>>& peers, const TemplateDataParams& tempAlgParams);
+
     HcclResult PostCopyDataToRecvBuf(
-        const std::vector<u32>& commRanks, const TemplateDataParams& tempAlgParams, std::vector<ThreadHandle>& threads);
+        const std::vector<u32>& commRanks, const TemplateDataParams& tempAlgParams,
+        const std::map<u32, std::vector<ChannelInfo>>& channels, std::vector<ThreadHandle>& threads);
 
     u32 GetIntraRankNumFromPhysicalLevels(const TopoInfoWithNetLayerDetails* topoInfo);
 

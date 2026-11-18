@@ -16,7 +16,6 @@
 #include "ins_temp_all_to_all_v_mesh_1D.h"
 #include "ins_temp_all_to_all_v_pairwise.h"
 #include "ins_temp_dpu_alltoall_mesh.h"
-#include "ins_temp_dpu_alltoall_mesh_nda.h"
 #include "ins_temp_ubx_all_to_all_v_mesh_1D.h"
 #include "alg_attrs_registry.h"
 #ifndef AICPU_COMPILE
@@ -672,27 +671,6 @@ REGISTER_ALG_ATTRS(DpuAllToAllVCSoleMesh, topo.isSupportLevel0PcieMix = true; to
                    topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3; topo.isHostDpuOnly = true; topo.isSupportLevel1Nhr = true;
                    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;);
 
-REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLTOALL, DpuAllToAllSoleMeshNDA, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
-    InsTempDpuAlltoAllMeshNda);
-REGISTER_ALG_ATTRS(DpuAllToAllSoleMeshNDA, topo.isSupportLevel0PcieMix = true; topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
-                   topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3; topo.isHostDpuOnly = true; topo.isSupportLevel1Nhr = true;
-                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;);
-
-REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLTOALLV, DpuAllToAllVSoleMeshNDA, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
-    InsTempDpuAlltoAllMeshNda);
-REGISTER_ALG_ATTRS(DpuAllToAllVSoleMeshNDA, topo.isSupportLevel0PcieMix = true; topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
-                   topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3; topo.isHostDpuOnly = true; topo.isSupportLevel1Nhr = true;
-                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;);
-
-REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLTOALLVC, DpuAllToAllVCSoleMeshNDA, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
-    InsTempDpuAlltoAllMeshNda);
-REGISTER_ALG_ATTRS(DpuAllToAllVCSoleMeshNDA, topo.isSupportLevel0PcieMix = true;
-                   topo.minTopoLevelNum = TOPO_LEVEL_NUM_2; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3;
-                   topo.isHostDpuOnly = true; topo.isSupportLevel1Nhr = true;
-                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 
 #ifndef AICPU_COMPILE

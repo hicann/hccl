@@ -177,6 +177,7 @@ add_library(hccl_aicpu_kernel SHARED
 
 if(NOT HCCL_CANN_COMPAT_850)
     target_sources(hccl_aicpu_kernel PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_to_all_v/algorithm/executor/ins_v2_all_to_all_v_serial_sole_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/send/algorithm/executor/ins_send_dpu_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/recv/algorithm/executor/ins_recv_dpu_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/send/algorithm/template/host_nic/ins_temp_send_host_nic_dpu.cc

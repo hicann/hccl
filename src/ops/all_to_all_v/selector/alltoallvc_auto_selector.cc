@@ -163,15 +163,16 @@ SelectorStatus AlltoAllVCAutoSelector::SelectNdaAlgo(
     HCCL_INFO(
         "[AlltoAllVCAutoSelector] hccl algo op config: config opType:%d, level0:%u, level1:%u, level2:%u, level3:%u",
         opParam.opType, algos[0], algos[1], algos[2], algos[3]);
-    if (topoInfo->topoLevelNums > 1
-        && (topoInfo->level0Topo == Level0Shape::MESH_1D || topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS
-            || topoInfo->level0Topo == Level0Shape::CLOS)) {
-        selectAlgName = "DpuAllToAllVCSoleMeshNDA";
-        HCCL_DEBUG("[AlltoAllVCAutoSelector][%s] use algo [%s]", __func__, selectAlgName.c_str());
-        return SelectorStatus::MATCH;
+    if (topoInfo == nullptr || topoInfo->topoLevelNums < TOPO_LEVEL_NUM_2 || IsInputOutputOverlap(opParam)) {
+        return SelectorStatus::NOT_MATCH;
     }
-
-    return SelectorStatus::NOT_MATCH;
+    if (topoInfo->level0Topo != Level0Shape::MESH_1D && topoInfo->level0Topo != Level0Shape::MESH_1D_CLOS
+        && topoInfo->level0Topo != Level0Shape::CLOS) {
+        return SelectorStatus::NOT_MATCH;
+    }
+    selectAlgName = "DpuAllToAllVCSoleMeshNDA";
+    HCCL_DEBUG("[AlltoAllVCAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
+    return SelectorStatus::MATCH;
 }
 
 REGISTER_SELECTOR_BY_OPTYPE(HcclCMDType::HCCL_CMD_ALLTOALLVC, 18, AlltoAllVCAutoSelector);

@@ -282,6 +282,7 @@ add_library(hccl_aicpu_kernel SHARED
     ${HCCL_DEV_BASE}/src/ops/all_gather_v/algorithm/template/aicpu/ins_temp_dpu_all_gather_v_mesh.cc
 
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/executor/ins_v2_all_to_all_v_sole_executor.cc
+    ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/executor/ins_v2_all_to_all_v_serial_sole_executor.cc
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/executor/ins_v2_all_to_all_sequence_executor.cc
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/template/aicpu/ins_temp_all_to_all_v_mesh_1D.cc
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/template/aicpu/ins_temp_all_to_all_v_pairwise.cc
