@@ -435,7 +435,7 @@ TEST(ReduceScatterNhrDpuStepTest, BuildsStableStepsForPowerOfTwoAndNonPowerOfTwo
             u32 totalSlices = 0;
             for (u32 step = 0; step < expectedSteps; ++step) {
                 AicpuNHRStepInfo info{};
-                ASSERT_EQ(algorithm.GetStepInfo(step, expectedSteps, info), HCCL_SUCCESS);
+                ASSERT_EQ(algorithm.GetStepInfo(step, info), HCCL_SUCCESS);
                 totalSlices += info.nSlices;
                 EXPECT_EQ(info.step, step);
                 EXPECT_EQ(info.myRank, localRank);
@@ -456,8 +456,8 @@ TEST(ReduceScatterNhrDpuStepTest, BuildsStableStepsForPowerOfTwoAndNonPowerOfTwo
 
     InsTempReduceScatterNhrDpu algorithm(OpParam{}, 10, {{10, 20, 30, 40}});
     std::array<AicpuNHRStepInfo, 2> steps{};
-    ASSERT_EQ(algorithm.GetStepInfo(0, steps.size(), steps[0]), HCCL_SUCCESS);
-    ASSERT_EQ(algorithm.GetStepInfo(1, steps.size(), steps[1]), HCCL_SUCCESS);
+    ASSERT_EQ(algorithm.GetStepInfo(0, steps[0]), HCCL_SUCCESS);
+    ASSERT_EQ(algorithm.GetStepInfo(1, steps[1]), HCCL_SUCCESS);
     EXPECT_EQ(steps[0].toRank, 3);
     EXPECT_EQ(steps[0].fromRank, 1);
     EXPECT_EQ(steps[0].txSliceIdxs, (std::vector<u32>{3, 1}));
@@ -472,7 +472,7 @@ TEST(ReduceScatterNhrDpuStepTest, RejectsEmptyRanksAndUnknownLocalRank)
 {
     InsTempReduceScatterNhrDpu algorithm;
     AicpuNHRStepInfo step{};
-    EXPECT_EQ(algorithm.GetStepInfo(0, 0, step), HCCL_E_PARA);
+    EXPECT_EQ(algorithm.GetStepInfo(0, step), HCCL_E_PARA);
     EXPECT_EQ(algorithm.DPUKernelRun(TemplateDataParams{}, {}, 0, {}), HCCL_E_PARA);
     EXPECT_EQ(algorithm.DPUKernelRun(TemplateDataParams{}, {}, 0, {{}}), HCCL_E_PARA);
     EXPECT_EQ(algorithm.DPUKernelRun(TemplateDataParams{}, {}, 7, {{1, 3, 5}}), HCCL_E_PARA);

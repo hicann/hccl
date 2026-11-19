@@ -29,9 +29,10 @@ namespace {
 
         ASSERT_EQ(costs.size(), 1u);
         const CostCapture& capture = CostCalls();
-        // pod+CLOS 时模板自行合并前两个端口，桩侧必须收到合并值且 isPod 为 false（否则会再次折半）
+        // pod+CLOS 时模板自行合并前两个物理端口；isPod 仍需下传，由 CalcMeshParam 另行折算
+        // pod 上下行收敛比，二者不可互相替代。
         EXPECT_EQ(capture.meshPortNum, 5);
-        EXPECT_FALSE(capture.meshIsPod);
+        EXPECT_TRUE(capture.meshIsPod);
         EXPECT_EQ(capture.meshNetType, CommTopo::COMM_TOPO_CLOS);
         EXPECT_FLOAT_EQ(capture.meshN, param.dataRatio);
         EXPECT_EQ(capture.meshRankSize, param.rankSize);
@@ -48,6 +49,24 @@ namespace {
         EXPECT_EQ(capture.dpuSyncNum, 1);
         EXPECT_EQ(capture.dpuChannelNum, 2);
         EXPECT_EQ(capture.dpuSndRcvNum, 7);
+    }
+
+    TEST(NhrCostCoeffTest, PassesPodFlagForSinglePlanePodClos)
+    {
+        ResetStubState();
+        CalcCostCoeffParam param{};
+        param.rankSize = 4;
+        param.dataRatio = 0.25f;
+        param.netType = CommTopo::COMM_TOPO_CLOS;
+        param.portNum = {6};
+        param.isPod = true;
+
+        ASSERT_EQ(InsTempReduceScatterNhrDpu::CalcCostCoeff(param).size(), 1u);
+
+        // 单物理端口无聚合，但仍需下传 isPod：由 CalcMeshParam 按 pod 上下行收敛比折算（6/2=3）
+        EXPECT_EQ(CostCalls().meshPortNum, 6);
+        EXPECT_TRUE(CostCalls().meshIsPod);
+        EXPECT_EQ(CostCalls().meshEngine, EngineType::CPU);
     }
 
     TEST(NhrCostCoeffTest, KeepsFirstPortWhenNotPodClos)

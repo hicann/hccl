@@ -51,19 +51,29 @@ target_include_directories(reduce_scatter_nhr_dpu_test PRIVATE
 )
 
 file(GLOB _cann_arch_dirs LIST_DIRECTORIES true "${ASCEND_CANN_PACKAGE_PATH}/*-linux")
-foreach(_dir ${_cann_arch_dirs})
-    if(_dir MATCHES "/${CMAKE_SYSTEM_PROCESSOR}-linux$")
-        target_include_directories(reduce_scatter_nhr_dpu_test PRIVATE
-            ${_dir}/include
-            ${_dir}/include/hccl
-            ${_dir}/include/hcomm/ccu
-            ${_dir}/pkg_inc
-            ${_dir}/pkg_inc/hccl
-            ${_dir}/pkg_inc/base
-            ${_dir}/pkg_inc/hcomm/ccu
-        )
+if(_cann_arch_dirs)
+    # 按当前平台架构选择匹配的目录，避免多架构包时探测到别的架构的头文件
+    set(_cann_arch_dir "")
+    foreach(_dir ${_cann_arch_dirs})
+        if(_dir MATCHES "/${CMAKE_SYSTEM_PROCESSOR}-linux$")
+            set(_cann_arch_dir ${_dir})
+            break()
+        endif()
+    endforeach()
+    # 兜底：未匹配到则取第一个
+    if(NOT _cann_arch_dir)
+        list(GET _cann_arch_dirs 0 _cann_arch_dir)
     endif()
-    set(_ut_cann_ver_header "${_dir}/include/version/cann_version.h")
+    target_include_directories(reduce_scatter_nhr_dpu_test PRIVATE
+        ${_cann_arch_dir}/include
+        ${_cann_arch_dir}/include/hccl
+        ${_cann_arch_dir}/include/hcomm/ccu
+        ${_cann_arch_dir}/pkg_inc
+        ${_cann_arch_dir}/pkg_inc/hccl
+        ${_cann_arch_dir}/pkg_inc/base
+        ${_cann_arch_dir}/pkg_inc/hcomm/ccu
+    )
+    set(_ut_cann_ver_header "${_cann_arch_dir}/include/version/cann_version.h")
     if(EXISTS "${_ut_cann_ver_header}")
         file(STRINGS "${_ut_cann_ver_header}" _ut_cann_ver_line REGEX "^#define[ \t]+CANN_VERSION_NUM[ \t]+")
         if(_ut_cann_ver_line)
@@ -71,10 +81,9 @@ foreach(_dir ${_cann_arch_dirs})
                 _UT_CANN_VERSION_EXPR "${_ut_cann_ver_line}")
             math(EXPR _UT_CANN_VERSION_NUM "${_UT_CANN_VERSION_EXPR}" OUTPUT_FORMAT DECIMAL)
             target_compile_definitions(reduce_scatter_nhr_dpu_test PRIVATE CANN_VERSION_NUM=${_UT_CANN_VERSION_NUM})
-            break()
         endif()
     endif()
-endforeach()
+endif()
 
 # RHD DPU inter 模板与 guard 用例仅在 >= 9.0 段编译（对齐同 PR ST 侧
 # test/st/algorithm/utils/src/aicpu/CMakeLists.txt 的 _ST_CANN_VERSION_NUM 门控）：

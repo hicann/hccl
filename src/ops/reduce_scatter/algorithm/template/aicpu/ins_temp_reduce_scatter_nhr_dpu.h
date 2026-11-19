@@ -46,7 +46,7 @@ public:
         const u32 myRank, const std::vector<std::vector<uint32_t>>& subCommRanks) override;
 
 private:
-    HcclResult GetStepInfo(uint32_t step, uint32_t nSteps, AicpuNHRStepInfo& stepInfo);
+    HcclResult GetStepInfo(uint32_t step, AicpuNHRStepInfo& stepInfo);
     u32 GetRankFromMap(const uint32_t rankIdx);
     // stride 约定（reduce_scatter 框间步）归一化为 SplitData 表：槽位 j = j * outputSliceStride，
     // DPU 侧与 wrapper 即可走 SplitData 约定同一条路径。strideLayout 由 KernelRun 判定一次后下传；

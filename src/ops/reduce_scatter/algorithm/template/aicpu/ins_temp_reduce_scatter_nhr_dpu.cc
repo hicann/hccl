@@ -34,7 +34,7 @@ std::vector<CostModelParam> InsTempReduceScatterNhrDpu::CalcCostCoeff(CalcCostCo
     float D = 0.0f;
 
     CostModelManager::Global()->CalcMeshParam(
-        param.dataRatio, param.netType, portNum, param.rankSize, A, false, EngineType::CPU);
+        param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod, EngineType::CPU);
     CostModelManager::Global()->CalcLocalCopyParams(
         param.dataRatio * (1.0f + 1.0f / static_cast<float>(param.rankSize)), EngineType::AICPU, B);
     CostModelManager::Global()->CalcDpuLatencyParams(
@@ -90,6 +90,16 @@ HcclResult InsTempReduceScatterNhrDpu::NormalizeStrideLayout(
             HCCL_E_PARA);
         return HCCL_SUCCESS;
     }
+    // scratch 按 N 个 sliceSize 的紧密槽位申请，槽位间隔必须等于 sliceSize：
+    // 大于会越过 scratch 尾部，小于会造成槽位重叠，且都发生在 host 预拷贝阶段，须在此拦截
+    CHK_PRT_RET(
+        rawParams.sliceSize != 0 && rawParams.outputSliceStride != rawParams.sliceSize,
+        HCCL_ERROR(
+            "[InsTempReduceScatterNhrDpu][NormalizeStrideLayout] rank[%u] outputSliceStride[%llu] must equal "
+            "sliceSize[%llu] under stride layout.",
+            myRank_, static_cast<unsigned long long>(rawParams.outputSliceStride),
+            static_cast<unsigned long long>(rawParams.sliceSize)),
+        HCCL_E_PARA);
     // stride 约定归一化为 N 个等大片，槽位 j 偏移 = j * outputSliceStride
     workParams.allRankSliceSize.assign(templateRankSize_, rawParams.sliceSize);
     workParams.allRankProcessedDataCount.assign(templateRankSize_, rawParams.count);
@@ -118,11 +128,15 @@ HcclResult InsTempReduceScatterNhrDpu::KernelRun(
         return HCCL_E_INTERNAL;
     }
 
+    // repeatNum 缺省为 0 时预拷贝/规约/收尾三处循环均空跑并静默成功，入口统一归一到至少执行一次
+    TemplateDataParams rawParams = tempAlgParams;
+    rawParams.repeatNum = std::max<u64>(1, rawParams.repeatNum);
+
     // stride 约定先归一化为 SplitData 表，后续预拷贝/序列化/收尾统一按表寻址
-    TemplateDataParams workParams = tempAlgParams;
+    TemplateDataParams workParams = rawParams;
     // 是否 stride 布局在此判定一次并显式下传，避免预拷贝再按 rawParams 重算一遍
-    const bool strideLayout = tempAlgParams.allRankSliceSize.empty();
-    CHK_RET(NormalizeStrideLayout(tempAlgParams, workParams, strideLayout));
+    const bool strideLayout = rawParams.allRankSliceSize.empty();
+    CHK_RET(NormalizeStrideLayout(rawParams, workParams, strideLayout));
 
     TemplateDataParams dpuAlgParams = workParams;
     dpuAlgParams.dataType = param.DataDes.dataType;
@@ -131,7 +145,7 @@ HcclResult InsTempReduceScatterNhrDpu::KernelRun(
     if (templateResource.isDpuThreadEnabled) {
         // 新路径：预拷贝结果作为 DPU write-reduce 的累加初值，须先于 DPU 开工完成；
         // 随后主流通知DPU线程开工，把write-reduce任务下发到DPU线程，最后等其完工通知
-        CHK_RET(LocalDataCopy(tempAlgParams, workParams, strideLayout, templateResource));
+        CHK_RET(LocalDataCopy(rawParams, workParams, strideLayout, templateResource));
         CHK_RET(static_cast<HcclResult>(HcommThreadNotifyRecordOnThread(
             templateResource.threads[0], templateResource.dpuThread, HOST_DPU_THREAD_NOTIFY_IDX)));
         // 获取执行超时时间
@@ -153,7 +167,7 @@ HcclResult InsTempReduceScatterNhrDpu::KernelRun(
             return HCCL_E_INTERNAL;
         }
         // 预拷贝结果作为 DPU write-reduce 的累加初值，须先于 DPU 开工完成
-        CHK_RET(LocalDataCopy(tempAlgParams, workParams, strideLayout, templateResource));
+        CHK_RET(LocalDataCopy(rawParams, workParams, strideLayout, templateResource));
 
         if (HcommBatchModeEnd(param.algTag) != HCCL_SUCCESS) {
             HCCL_ERROR("[InsTempReduceScatterNhrDpu] failed set eager mode, tag is %s.", param.algTag);
@@ -201,7 +215,7 @@ HcclResult InsTempReduceScatterNhrDpu::KernelRun(
         CHK_RET(result);
     }
 
-    CHK_RET(PostLocalCopy(tempAlgParams, workParams, templateResource));
+    CHK_RET(PostLocalCopy(rawParams, workParams, templateResource));
 
     HCCL_INFO("[InsTempReduceScatterNhrDpu] Run End");
     return HcclResult::HCCL_SUCCESS;
@@ -227,9 +241,8 @@ HcclResult InsTempReduceScatterNhrDpu::DPUKernelRun(
  * @brief RS NHR step 几何：deltaRank 随步递增（与 AG 的 NHR 方向相反），
  *        发对端拥有的分片、收自己拥有的分片；tx/rx 分片集合按 deltaSliceIndex 递减步进。
  */
-HcclResult InsTempReduceScatterNhrDpu::GetStepInfo(uint32_t step, uint32_t nSteps, AicpuNHRStepInfo& stepInfo)
+HcclResult InsTempReduceScatterNhrDpu::GetStepInfo(uint32_t step, AicpuNHRStepInfo& stepInfo)
 {
-    (void)nSteps;
     CHK_PRT_RET(
         templateRankSize_ == 0, HCCL_ERROR("[InsTempReduceScatterNhrDpu][GetStepInfo] templateRankSize_ is zero."),
         HCCL_E_PARA);
@@ -307,7 +320,7 @@ HcclResult InsTempReduceScatterNhrDpu::RunNHR(
     // 几何与 rpt 无关，预计算一次供各重复块复用
     std::vector<AicpuNHRStepInfo> stepInfos(nSteps);
     for (uint32_t step = 0; step < nSteps; ++step) {
-        CHK_RET(GetStepInfo(step, nSteps, stepInfos[step]));
+        CHK_RET(GetStepInfo(step, stepInfos[step]));
         stepInfos[step].toRank = GetRankFromMap(stepInfos[step].toRank);
         stepInfos[step].fromRank = GetRankFromMap(stepInfos[step].fromRank);
         HCCL_DEBUG(

@@ -26,7 +26,7 @@ namespace {
     AicpuNHRStepInfo StepInfoOf(InsTempReduceScatterNhrDpu& tpl, u32 step)
     {
         AicpuNHRStepInfo info;
-        EXPECT_EQ(tpl.GetStepInfo(step, GetNHRStepNum(tpl.templateRankSize_), info), HCCL_SUCCESS);
+        EXPECT_EQ(tpl.GetStepInfo(step, info), HCCL_SUCCESS);
         return info;
     }
 
@@ -200,7 +200,7 @@ namespace {
         InsTempReduceScatterNhrDpu tpl;
         SetupTemplate(tpl, 7, {0, 2, 4, 6});
         AicpuNHRStepInfo info;
-        EXPECT_EQ(tpl.GetStepInfo(0, 2, info), HCCL_E_PARA);
+        EXPECT_EQ(tpl.GetStepInfo(0, info), HCCL_E_PARA);
     }
 
     TEST(NhrGeometryTest, ZeroRankSizeReturnsParaErrorInsteadOfDivideByZero)
@@ -208,7 +208,7 @@ namespace {
         InsTempReduceScatterNhrDpu tpl;
         tpl.myRank_ = 0;
         AicpuNHRStepInfo info;
-        EXPECT_EQ(tpl.GetStepInfo(0, 1, info), HCCL_E_PARA);
+        EXPECT_EQ(tpl.GetStepInfo(0, info), HCCL_E_PARA);
     }
 
     TEST(NhrGeometryTest, ReusedStepInfoDoesNotAccumulateSlices)
@@ -216,17 +216,16 @@ namespace {
         InsTempReduceScatterNhrDpu tpl;
         SetupTemplate(tpl, 0, MakeRankIds(4));
         AicpuNHRStepInfo info;
-        ASSERT_EQ(tpl.GetStepInfo(0, 2, info), HCCL_SUCCESS);
+        ASSERT_EQ(tpl.GetStepInfo(0, info), HCCL_SUCCESS);
         ASSERT_EQ(info.txSliceIdxs.size(), 2u);
-        ASSERT_EQ(tpl.GetStepInfo(1, 2, info), HCCL_SUCCESS);
+        ASSERT_EQ(tpl.GetStepInfo(1, info), HCCL_SUCCESS);
         EXPECT_EQ(info.txSliceIdxs.size(), 1u);
         EXPECT_EQ(info.rxSliceIdxs.size(), 1u);
     }
 
-    TEST(NhrGeometryTest, StepNumGuardMotivation)
+    TEST(NhrGeometryTest, StepNumForValidRankSizes)
     {
-        // GetNHRStepNum(0) 因无符号下溢返回 32，这是 GetStepInfo 必须显式做除 0 保护的原因
-        EXPECT_EQ(GetNHRStepNum(0), 32u);
+        // NHR 步数 = ceil(log2(rankSize))，rankSize=1 时无通信步
         EXPECT_EQ(GetNHRStepNum(1), 0u);
         EXPECT_EQ(GetNHRStepNum(2), 1u);
         EXPECT_EQ(GetNHRStepNum(3), 2u);

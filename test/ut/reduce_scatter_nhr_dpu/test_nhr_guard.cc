@@ -122,6 +122,35 @@ namespace {
         EXPECT_EQ(BatchModeCounts().startCount, 0u);
     }
 
+    TEST(NhrGuardTest, KernelRunRejectsStrideLargerThanSliceSize)
+    {
+        InsTempReduceScatterNhrDpu tpl = MakeTemplate();
+        const OpParam param = MakeOpParam();
+        TemplateDataParams params = MakeStrideParams();
+        params.outputSliceStride = params.sliceSize + 8; // 槽位间隔大于片长，最后一个槽位会越过 scratch 尾部
+        TemplateResource resource = MakeResource();
+        ResetStubState();
+
+        EXPECT_EQ(tpl.KernelRun(param, params, resource), HCCL_E_PARA);
+        // 必须在预拷贝与 batch 窗口之前拦截，避免越界写落盘
+        EXPECT_TRUE(CopyCalls().empty());
+        EXPECT_EQ(BatchModeCounts().startCount, 0u);
+    }
+
+    TEST(NhrGuardTest, KernelRunRejectsStrideSmallerThanSliceSize)
+    {
+        InsTempReduceScatterNhrDpu tpl = MakeTemplate();
+        const OpParam param = MakeOpParam();
+        TemplateDataParams params = MakeStrideParams();
+        params.outputSliceStride = params.sliceSize / 2; // 槽位间隔小于片长，相邻槽位重叠
+        TemplateResource resource = MakeResource();
+        ResetStubState();
+
+        EXPECT_EQ(tpl.KernelRun(param, params, resource), HCCL_E_PARA);
+        EXPECT_TRUE(CopyCalls().empty());
+        EXPECT_EQ(BatchModeCounts().startCount, 0u);
+    }
+
     TEST(NhrGuardTest, KernelRunFailsWhenBatchStartFails)
     {
         InsTempReduceScatterNhrDpu tpl = MakeTemplate();
@@ -355,6 +384,22 @@ namespace {
         // 预拷贝 N*repeatNum + 收尾回写 repeatNum
         EXPECT_EQ(CopyCalls().size(), static_cast<size_t>(kRankSize * params.repeatNum + params.repeatNum));
         // End 后立即背靠背 Start，收窄 eager 窗口
+        EXPECT_EQ(BatchModeCounts().startCount, 2u);
+        EXPECT_EQ(BatchModeCounts().endCount, 1u);
+    }
+
+    TEST(NhrGuardTest, KernelRunNormalizesZeroRepeatNumToOne)
+    {
+        InsTempReduceScatterNhrDpu tpl = MakeTemplate();
+        const OpParam param = MakeOpParam();
+        TemplateDataParams params = MakeStrideParams();
+        params.repeatNum = 0;
+        TemplateResource resource = MakeResource();
+        ResetStubState();
+
+        EXPECT_EQ(tpl.KernelRun(param, params, resource), HCCL_SUCCESS);
+        // repeatNum=0 入口归一为 1：预拷贝 N*1 + 收尾回写 1，避免三处循环空跑却静默成功
+        EXPECT_EQ(CopyCalls().size(), static_cast<size_t>(kRankSize + 1));
         EXPECT_EQ(BatchModeCounts().startCount, 2u);
         EXPECT_EQ(BatchModeCounts().endCount, 1u);
     }
