@@ -22,6 +22,7 @@
 #include "acl/acl_rt.h"
 #include "ccu_primitives_dl.hpp"
 #include "ccu_log.h"
+#include "sym_mem_gate.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -246,7 +247,7 @@ bool IsBarrierHostDpu(HcclComm comm);
 
 void CheckAndSetSymmetricMemory(OpParam& param);
 
-bool IsReduceOpSymMemDeterministic(const std::string& algName, const TopoInfoWithNetLayerDetails* topoInfo);
+// IsReduceOpSymMemDeterministic 声明见 sym_mem_gate.h（本文件已 include）。
 
 HcclResult RefreshSymmetricMemory(OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo);
 } // namespace ops_hccl

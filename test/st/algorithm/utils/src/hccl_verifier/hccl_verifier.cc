@@ -77,12 +77,13 @@ CheckBroadcast(HcclSim::AllRankTaskQueues& taskQueues, u32 rankSize, HcclDataTyp
 
 HcclResult CheckReduce(
     HcclSim::AllRankTaskQueues& taskQueues, u32 rankSize, HcclDataType dataType, u64 dataCount, HcclReduceOp reduceType,
-    u32 root)
+    u32 root, bool strictBufferContract)
 {
     Checker checker;
     TaskCheckOpSemantics opSemanticsChecker(rankSize, HcclCMDType::HCCL_CMD_REDUCE, dataType, dataCount);
     opSemanticsChecker.SetReduceType(reduceType);
     opSemanticsChecker.SetRoot(root);
+    opSemanticsChecker.SetStrictBufferContract(strictBufferContract);
     CHK_RET(checker.GenAndCheckGraph(taskQueues, opSemanticsChecker));
     return HCCL_SUCCESS;
 }

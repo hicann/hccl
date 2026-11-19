@@ -75,6 +75,7 @@ public:
     void SetSrcRank(RankId srcRank) { srcRank_ = srcRank; };
     void SetDstRank(RankId dstRank) { dstRank_ = dstRank; };
     void SetRoot(RankId root) { root_ = root; };
+    void SetStrictBufferContract(bool strictBufferContract) { strictBufferContract_ = strictBufferContract; };
     void SetVDataDes(VDataDesTag vDataDes) { vDataDes_ = vDataDes; }
     void SetAll2AllDataDes(All2AllDataDesTag all2AllDataDes) { all2AllDataDes_ = all2AllDataDes; }
 
@@ -120,6 +121,7 @@ private:
     RankId srcRank_;
     RankId dstRank_;
     RankId root_;
+    bool strictBufferContract_ = false;
     VDataDesTag vDataDes_;
     All2AllDataDesTag all2AllDataDes_;
 

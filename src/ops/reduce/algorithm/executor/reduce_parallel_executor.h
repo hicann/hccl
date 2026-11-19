@@ -110,6 +110,8 @@ private:
     std::array<TemplateResource, 4> tempAlgResArr_{};
     std::array<u64, dataSplitPart_> dataOffsetPerLoop_{0, 0};
     std::array<u64, dataSplitPart_> dataCountPerLoop_{0, 0};
+    u64 outputLoopBaseOff_{0};      // 对称路径下 root 最终 AG 阶段在 userOut 上的 loop 基址
+    bool rootOutputWritten_{false}; // 当前 loop 的最终 AG 是否确实落到 userOut
     std::vector<std::vector<u32>> temp0HierarchyInfo_;
     std::vector<std::vector<u32>> temp1HierarchyInfo_;
     double multipleDimensionSplitRatio_{0.5};

@@ -34,6 +34,15 @@
 namespace ops_hccl {
 constexpr u64 OMNI2D_UBX_REDUCE_DATA_SIZE = 128 * 1024 * 1024; // UBX机型ccu并行/流水算法数据量分界，与selector保持一致
 
+// ReduceParallel 编排常量：stageNum 固定 2（stage0=RS 折叠、stage1=AG 汇聚），每 stage 两个 step
+// （intra/inter 按 dataSliceIdx 交错）；(REDUCE_FINAL_AG_STAGE_IDX, REDUCE_FINAL_AG_STEP_IDX) 即 (1,1)
+// 为每片数据的最终 AG 收尾子步——root 直写落点与远端直访均锚定该子步。
+// 后续扩展 stageNum 或调整 step 顺序时，必须同步维护 rootOutputStage / enableRootDirectWrite 判定
+// 与 OrchestrateLoop 的 FastLaunch 计数分支。
+constexpr u32 REDUCE_PARALLEL_STAGE_NUM = 2;
+constexpr u32 REDUCE_FINAL_AG_STAGE_IDX = 1;
+constexpr u32 REDUCE_FINAL_AG_STEP_IDX = 1;
+
 constexpr int INT_0 = 0;
 constexpr int INT_1 = 1;
 constexpr int INT_2 = 2;
@@ -377,6 +386,13 @@ HcclResult ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgT
     CHK_PTR_NULL(resCtx.cclMem.addr);
     resCtx_ = resCtx;
     HCCL_INFO("[ReduceParallelExecutor][Orchestrate] threads_ size[%zu]", threads_.size());
+    supportSymmetricMemory_ = param.supportSymmetricMemory;
+    if (supportSymmetricMemory_) {
+        inputOffset_ = param.inputOffset;
+        outputOffset_ = param.outputOffset;
+        inputSymWindow_ = param.inputSymWindow;
+        outputSymWindow_ = param.outputSymWindow;
+    }
     if (param.engine != CommEngine::COMM_ENGINE_AIV && param.engine != CommEngine::COMM_ENGINE_CCU) {
         std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo;
         CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo));
@@ -479,7 +495,7 @@ HcclResult
 ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, AlgTemplate3>::PrepareResForStage2(
     u32 stage)
 {
-    u32 stageNum = 2;
+    const u32 stageNum = REDUCE_PARALLEL_STAGE_NUM;
     if (param_.engine == COMM_ENGINE_CCU) {
         tempAlgResArr_.at(stage * stageNum).ccuKernels.clear();
         tempAlgResArr_.at(stage * stageNum + 1).ccuKernels.clear();
@@ -532,9 +548,21 @@ ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, A
 {
     TemplateDataParams dataParams;
     bool isFirstStep = (stageIdx == 0 && stepIdx == 0);
+    // 对称路径：最终 AllGather 阶段在 root 上直接落到 userOut，省去 root 终局 LocalCopy。
+    // OrchestrateLoop 中 stageNum 固定为 2，stage1 的 stepIdx 按 0→1 顺序执行，
+    // 因此当前实现的最后一次 AG 子步骤为 (1,1)；若后续扩展 stageNum 需同步维护该判定。
+    const bool rootOutputStage = param_.supportSymmetricMemory && myRank_ == root_
+                                 && stageIdx == REDUCE_FINAL_AG_STAGE_IDX && stepIdx == REDUCE_FINAL_AG_STEP_IDX;
+    // (1,1) 的 inter AG NHR 子步全 rank 启用远端直访：AG NHR 模板内按 Reduce root-only 规则分派——
+    // 非 root 对端直写 root 的 userOut（remoteOutputGraphMode + root 布局偏移）、root 每步直收 userOut，
+    // root 侧不经 CCL 中转（旁路 LAST_STEP_READ 与并行 PostLocalCopy）。
+    // intra AG Mesh1D（isInter=false）维持 read 直落 userOut，不启用；
+    // (1,0) 子步（每片数据的第一段 AG）为中转数据，同样不启用。
+    const bool enableRootDirectWrite = param_.supportSymmetricMemory && stageIdx == REDUCE_FINAL_AG_STAGE_IDX
+                                       && stepIdx == REDUCE_FINAL_AG_STEP_IDX && isInter;
 
     dataParams.buffInfo.inBuffType = isFirstStep ? BufferType::INPUT : BufferType::HCCL_BUFFER;
-    dataParams.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
+    dataParams.buffInfo.outBuffType = rootOutputStage ? BufferType::OUTPUT : BufferType::HCCL_BUFFER;
     dataParams.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
 
     // 数据在inputBuffer上的起始偏移量，仅用于本次loop第一步firstStep时，要从inputBuffer上取数据
@@ -561,8 +589,14 @@ ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, A
 
     dataParams.buffInfo.inputPtr = isFirstStep ? param_.inputPtr : resCtx_.cclMem.addr;
     dataParams.buffInfo.inputSize = isFirstStep ? param_.inputSize : resCtx_.cclMem.size;
-    dataParams.buffInfo.outputPtr = resCtx_.cclMem.addr;
-    dataParams.buffInfo.outputSize = resCtx_.cclMem.size;
+    // Mesh1D intra 组（rootOutputStage 且非 inter）维持折指针编址（root 为 read 直落，无远端编址）；
+    // inter NHR 组改由下方 enableRootDirectWrite 统一为「偏移含 loop 进度、指针不折」编址，
+    // 使非 root 的远端直写偏移与 root 本地落点严格一致（多轮 loop 下不错位）。
+    dataParams.buffInfo.outputPtr = (rootOutputStage && !isInter) ?
+                                        static_cast<void*>(static_cast<u8*>(param_.outputPtr) + outputLoopBaseOff_) :
+                                        resCtx_.cclMem.addr;
+    dataParams.buffInfo.outputSize
+        = (rootOutputStage && !isInter) ? (param_.outputSize - outputLoopBaseOff_) : resCtx_.cclMem.size;
     dataParams.buffInfo.hcclBuff = resCtx_.cclMem;
     dataParams.buffInfo.hcclBuffSize = resCtx_.cclMem.size;
 
@@ -588,12 +622,25 @@ ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, A
         dataParams.buffInfo.inBuffBaseOff = dataOffset;
         dataParams.buffInfo.outBuffBaseOff = dataOffset;
     }
+    if (enableRootDirectWrite) {
+        // root-only 直写统一编址：全 rank 把 loop 进度叠加进 outBuffBaseOff，使非 root 直写 root 的
+        // 远端偏移与 root 本地落点共用同一含进度的偏移；root 的 outputPtr 恢复裸指针。
+        // outputSize 对全 rank 统一取 param_.outputSize：非 root 直写 root userOut 时也须以 root 的
+        // 输出边界做越界校验（review #1），而非 cclMem.size。
+        dataParams.buffInfo.outBuffBaseOff += outputLoopBaseOff_;
+        dataParams.buffInfo.outputSize = param_.outputSize;
+        if (myRank_ == root_) {
+            dataParams.buffInfo.outputPtr = param_.outputPtr;
+        }
+    }
     dataParams.inputSliceStride = dataParams.sliceSize;
     dataParams.outputSliceStride = dataParams.sliceSize;
 
     dataParams.repeatNum = 1;
     dataParams.inputRepeatStride = 0;
     dataParams.outputRepeatStride = 0;
+    dataParams.root = param_.root;
+    dataParams.enableRemoteMemAccess = enableRootDirectWrite;
 
     return dataParams;
 }
@@ -700,8 +747,19 @@ ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, A
         u64 currProcessedCount = currCountPart0 + currCountPart1;
         dataOffsetPerLoop_.at(0) = processedCount * dataTypeSize_;
         dataOffsetPerLoop_.at(1) = dataOffsetPerLoop_.at(0) + dataCountPerLoop_.at(0) * dataTypeSize_;
+        outputLoopBaseOff_ = processedCount * dataTypeSize_;
+        rootOutputWritten_ = false;
+        const u64 loopOutputSize = currProcessedCount * dataTypeSize_;
+        CHK_PRT_RET(
+            param_.supportSymmetricMemory
+                && (outputLoopBaseOff_ > param_.outputSize || loopOutputSize > param_.outputSize - outputLoopBaseOff_),
+            HCCL_ERROR(
+                "[ReduceParallelExecutor][OrchestrateLoop] outputLoopBaseOff_[%llu] + loop size[%llu] exceeds "
+                "outputSize[%llu]",
+                outputLoopBaseOff_, loopOutputSize, param_.outputSize),
+            HcclResult::HCCL_E_PARA);
 
-        u32 stageNum = 2;
+        const u32 stageNum = REDUCE_PARALLEL_STAGE_NUM;
         for (u32 stageIdx = 0; stageIdx < stageNum; stageIdx++) {
             // 计算算法模板所需资源
             CHK_RET(PrepareResForStage(stageIdx));
@@ -722,7 +780,9 @@ ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, A
                     } else if (stageIdx == 1 && stepIdx == 0) {
                         ccuKernelLaunchNumAGIntra1_ = tempAlgResArr_.at(INT_2).submitInfos.size();
                         ccuKernelLaunchNumAGInter0_ = tempAlgResArr_.at(INT_3).submitInfos.size();
-                    } else if (stageIdx == 1 && stepIdx == 1 && param_.opMode != OpMode::OFFLOAD) {
+                    } else if (
+                        stageIdx == REDUCE_FINAL_AG_STAGE_IDX && stepIdx == REDUCE_FINAL_AG_STEP_IDX
+                        && param_.opMode != OpMode::OFFLOAD) {
                         ccuKernelLaunchNumAGIntra0_
                             = tempAlgResArr_.at(INT_2).submitInfos.size() - ccuKernelLaunchNumAGIntra1_;
                         ccuKernelLaunchNumAGInter1_
@@ -733,7 +793,12 @@ ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, A
 #endif
             }
         }
-        if (myRank_ == root_) {
+        // 对称最终 AG 的两个模板都以 outputPtr 为落点：Mesh1D 走 Read 写回 output；
+        // NHR 启用 root-only 直写——对端 push 直写 root userOut、root 每步直收，均不再经 root CCL。
+        if (myRank_ == root_ && param_.supportSymmetricMemory && rootOutputWritten_) {
+            HCCL_INFO("[ReduceParallelExecutor][OrchestrateLoop] symmetric root skips final LocalCopy");
+        }
+        if (myRank_ == root_ && !(param_.supportSymmetricMemory && rootOutputWritten_)) {
             const DataSlice srcSlice(resCtx_.cclMem.addr, 0, currProcessedCount * dataTypeSize_);
             const DataSlice dstSlice(
                 param_.outputPtr, processedCount * dataTypeSize_, currProcessedCount * dataTypeSize_);
@@ -779,6 +844,9 @@ HcclResult ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgT
     CHK_RET(algTemplatePtrArr_.at(stageIdx).at(isInter)->KernelRun(
         param_, dataParams,
         tempAlgResArr_.at(stageIdx == 0 ? (stepIdx == dataSliceIdx ? 0 : 1) : (stepIdx == dataSliceIdx ? 3 : 2))));
+    if (dataParams.buffInfo.outBuffType == BufferType::OUTPUT) {
+        rootOutputWritten_ = true;
+    }
     return HCCL_SUCCESS;
 }
 

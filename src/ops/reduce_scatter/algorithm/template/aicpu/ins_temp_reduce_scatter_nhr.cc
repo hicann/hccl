@@ -138,7 +138,9 @@ HcclResult InsTempReduceScatterNHR::KernelRun(
     channels_ = templateResource.channels;
     dataType_ = param.DataDes.dataType;
     dataTypeSize_ = DATATYPE_SIZE_TABLE[dataType_];
-    supportSymmetricMemAccess_ = param.supportSymmetricMemory;
+    // Reduce 仅注册 output 侧时 inputSymWindow 为空，RS 阶段必须回退 CCL，
+    // 避免使用空 input 窗口或污染输入。
+    supportSymmetricMemAccess_ = param.supportSymmetricMemory && param.inputSymWindow != nullptr;
 
     bool isPcieProtocol = IsPcieProtocol(channels_); // 判断是否存在pcie链路
     isDmaRead_ = isPcieProtocol;                     // 是否使用Read模式

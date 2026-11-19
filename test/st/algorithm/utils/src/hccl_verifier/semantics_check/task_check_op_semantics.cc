@@ -725,7 +725,7 @@ HcclResult TaskCheckOpSemantics::Execute()
     } else if (opType_ == HcclCMDType::HCCL_CMD_BROADCAST) {
         ret = TaskCheckBroadcastSemantics(allRankMemSemantics_, dataSize_, root_);
     } else if (opType_ == HcclCMDType::HCCL_CMD_REDUCE) {
-        ret = TaskCheckReduceSemantics(allRankMemSemantics_, dataSize_, reduceType_, root_);
+        ret = TaskCheckReduceSemantics(allRankMemSemantics_, dataSize_, reduceType_, root_, strictBufferContract_);
     } else if (opType_ == HcclCMDType::HCCL_CMD_SCATTER) {
         ret = TaskCheckScatterSemantics(allRankMemSemantics_, dataSize_, root_);
     } else if (opType_ == HcclCMDType::HCCL_CMD_BATCH_SEND_RECV) {

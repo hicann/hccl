@@ -119,7 +119,9 @@ u64 InsTempReduceScatterMesh1D::CalcScratchMultiple(BufferType inBuffType, Buffe
 HcclResult InsTempReduceScatterMesh1D::KernelRun(
     const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource)
 {
-    supportSymmetricMemAccess_ = param.supportSymmetricMemory;
+    // Reduce 仅注册 output 侧时 inputSymWindow 为空，RS 阶段必须回退 CCL，
+    // 避免使用空 input 窗口或污染输入。
+    supportSymmetricMemAccess_ = param.supportSymmetricMemory && param.inputSymWindow != nullptr;
     if (tempAlgParams.sliceSize == 0 && tempAlgParams.tailSize == 0) {
         HCCL_DEBUG(
             "[InsTempReduceScatterMesh1D] myRank[%u] sliceSize and tailSize are 0, skip reduce scatter.", myRank_);

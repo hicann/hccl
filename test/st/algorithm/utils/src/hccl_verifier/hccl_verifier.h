@@ -109,7 +109,7 @@ CheckBroadcast(HcclSim::AllRankTaskQueues& taskQueues, u32 rankSize, HcclDataTyp
  */
 HcclResult CheckReduce(
     HcclSim::AllRankTaskQueues& taskQueues, u32 rankSize, HcclDataType dataType, u64 dataCount, HcclReduceOp reduceType,
-    u32 root);
+    u32 root, bool strictBufferContract = false);
 
 /**
  * @brief 检查Scatter操作的语义是否正确

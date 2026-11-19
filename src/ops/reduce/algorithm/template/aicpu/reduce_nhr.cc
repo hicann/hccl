@@ -56,6 +56,43 @@ void ReduceNHR::SetRoot(u32 root) const
     return;
 }
 
+bool ReduceNHR::IsRootAlgRank(u32 algRank) const
+{
+    return algRank < subCommRanks_[0].size() && subCommRanks_[0][algRank] == root_;
+}
+
+void* ReduceNHR::GetLocalWorkspacePtr() const
+{
+    if (rootUsesOutputWorkspace_ && myRank_ == root_) {
+        return buffInfo_.outputPtr;
+    }
+    return buffInfo_.hcclBuff.addr;
+}
+
+u64 ReduceNHR::GetLocalWorkspaceBaseOff() const
+{
+    if (rootUsesOutputWorkspace_ && myRank_ == root_) {
+        return buffInfo_.outBuffBaseOff;
+    }
+    return buffInfo_.hcclBuffBaseOff;
+}
+
+void* ReduceNHR::GetRemoteWorkspacePtr(const ChannelInfo& channel, u32 remoteAlgRank) const
+{
+    if (rootUsesOutputWorkspace_ && IsRootAlgRank(remoteAlgRank)) {
+        return channel.remoteOutputGraphMode.addr;
+    }
+    return channel.remoteCclMem.addr;
+}
+
+u64 ReduceNHR::GetRemoteWorkspaceBaseOff(u32 remoteAlgRank) const
+{
+    if (rootUsesOutputWorkspace_ && IsRootAlgRank(remoteAlgRank)) {
+        return buffInfo_.outBuffBaseOff;
+    }
+    return buffInfo_.hcclBuffBaseOff;
+}
+
 HcclResult ReduceNHR::CalcRes(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     AlgResourceRequest& resourceRequest)
@@ -116,6 +153,12 @@ ReduceNHR::KernelRun(const OpParam& param, const TemplateDataParams& tempAlgPara
 
     thread_ = templateResource.threads.at(0);
     buffInfo_ = tempAlgParams.buffInfo;
+    // 对称内存下 root 的工作区改到 userOut；与 executor 的 rootOutputStage（outBuffType=OUTPUT）对齐。
+    rootUsesOutputWorkspace_ = param.supportSymmetricMemory && buffInfo_.outBuffType != BufferType::HCCL_BUFFER;
+    CHK_PRT_RET(
+        rootUsesOutputWorkspace_ && myRank_ == root_ && buffInfo_.outputPtr == nullptr,
+        HCCL_ERROR("[ReduceNHR][KernelRun] root output ptr is null, localRank[%u], root[%u]", myRank_, root_),
+        HcclResult::HCCL_E_INTERNAL);
 
     bool isPcieProtocol = IsPcieProtocol(templateResource.channels); // 判断是否存在pcie链路
     isDmaRead_ = isPcieProtocol;                                     // 是否使用Read模式
@@ -190,7 +233,18 @@ HcclResult ReduceNHR::PreCopy(const TemplateDataParams& tempAlgParams)
     reduceInBuffType_ = BufferType::HCCL_BUFFER;
     reduceInBuffBaseOff_ = buffInfo.hcclBuffBaseOff;
 
-    if (buffInfo.inBuffType != BufferType::HCCL_BUFFER) {
+    if (rootUsesOutputWorkspace_ && myRank_ == root_) {
+        // 对称内存：root 工作区改到 userOut，省去 CCL 中转与 PostCopy；
+        // PostCopy 对对称 root 会提前返回，无需更新 reduceInBuff*/reduceOutBuff*。
+        if (buffInfo.inBuffType != BufferType::HCCL_BUFFER) {
+            HCCL_INFO("[ReduceNHR][PreCopy] symmetric root copy from userIn to userOut");
+            void* const src = static_cast<void*>(static_cast<u8*>(buffInfo.inputPtr) + buffInfo.inBuffBaseOff);
+            void* const dst = static_cast<void*>(static_cast<u8*>(buffInfo.outputPtr) + buffInfo.outBuffBaseOff);
+            CHK_RET(static_cast<HcclResult>(HcommLocalCopyOnThread(thread_, dst, src, sliceSize)));
+        } else {
+            HCCL_INFO("[ReduceNHR][PreCopy] symmetric root skip precopy");
+        }
+    } else if (buffInfo.inBuffType != BufferType::HCCL_BUFFER) {
         HCCL_INFO("[ReduceNHR][PreCopy] Opbase copy from userIn to scratchBuffer");
         void* const src = static_cast<void*>(static_cast<u8*>(buffInfo.inputPtr) + buffInfo.inBuffBaseOff);
         void* const dst = static_cast<void*>(static_cast<u8*>(buffInfo.hcclBuff.addr) + buffInfo.hcclBuffBaseOff);
@@ -222,21 +276,46 @@ HcclResult ReduceNHR::RunReduce(const std::map<u32, std::vector<ChannelInfo>>& c
         const ChannelInfo& channelRecv = channels.at(subCommRanks_.at(0).at(stepInfo.fromRank)).at(0);
         const ChannelInfo& channelSend = channels.at(subCommRanks_.at(0).at(stepInfo.toRank)).at(0);
 
+        void* const localPtr = GetLocalWorkspacePtr();
+        const u64 localBaseOff = GetLocalWorkspaceBaseOff();
+        void* const sendPtr = GetRemoteWorkspacePtr(channelSend, stepInfo.toRank);
+        const u64 sendBaseOff = GetRemoteWorkspaceBaseOff(stepInfo.toRank);
+        void* const recvPtr = GetRemoteWorkspacePtr(channelRecv, stepInfo.fromRank);
+        const u64 recvBaseOff = GetRemoteWorkspaceBaseOff(stepInfo.fromRank);
+        if (rootUsesOutputWorkspace_ && IsRootAlgRank(stepInfo.toRank) && sendPtr == nullptr) {
+            HCCL_ERROR(
+                "[ReduceNHR][RunReduce] remote root output addr is null, localRank[%u], remoteRank[%u]", myRank_,
+                subCommRanks_.at(0).at(stepInfo.toRank));
+            return HcclResult::HCCL_E_INTERNAL;
+        }
+        if (rootUsesOutputWorkspace_ && IsRootAlgRank(stepInfo.fromRank) && recvPtr == nullptr) {
+            HCCL_ERROR(
+                "[ReduceNHR][RunReduce] remote root output addr is null, localRank[%u], remoteRank[%u]", myRank_,
+                subCommRanks_.at(0).at(stepInfo.fromRank));
+            return HcclResult::HCCL_E_INTERNAL;
+        }
+
         std::vector<DataSlice> txSrcSlices;
         std::vector<DataSlice> txDstSlices;
         std::vector<DataSlice> rxSrcSlices;
         std::vector<DataSlice> rxDstSlices;
 
+        // 硬性不变量：同一步内各 rx slice 取自 sliceInfoVec_ 的不同分片，root/local 目标区间互不重叠；
+        // 因此 root 直写 userOut 后 SendRecvBatchWriteReduce 的融合归约加法序仍然确定。
         // 在 inBuff 上进行 ReduceScatter 操作
         for (u32 i = 0; i < stepInfo.nSlices; i++) {
-            u64 txOffset = sliceInfoVec_[stepInfo.txSliceIdxs[i]][0].offset + buffInfo_.hcclBuffBaseOff;
-            u64 txSize = sliceInfoVec_[stepInfo.txSliceIdxs[i]][0].size;
-            u64 rxOffset = sliceInfoVec_[stepInfo.rxSliceIdxs[i]][0].offset + buffInfo_.hcclBuffBaseOff;
-            u64 rxSize = sliceInfoVec_[stepInfo.rxSliceIdxs[i]][0].size;
-            DataSlice txSrcSlice = DataSlice(buffInfo_.hcclBuff.addr, txOffset, txSize, txSize / dataTypeSize);
-            DataSlice txDstSlice = DataSlice(channelSend.remoteCclMem.addr, txOffset, txSize, txSize / dataTypeSize);
-            DataSlice rxSrcSlice = DataSlice(channelRecv.remoteCclMem.addr, rxOffset, rxSize, rxSize / dataTypeSize);
-            DataSlice rxDstSlice = DataSlice(buffInfo_.hcclBuff.addr, rxOffset, rxSize, rxSize / dataTypeSize);
+            const u64 txSliceOff = sliceInfoVec_[stepInfo.txSliceIdxs[i]][0].offset;
+            const u64 txSize = sliceInfoVec_[stepInfo.txSliceIdxs[i]][0].size;
+            const u64 rxSliceOff = sliceInfoVec_[stepInfo.rxSliceIdxs[i]][0].offset;
+            const u64 rxSize = sliceInfoVec_[stepInfo.rxSliceIdxs[i]][0].size;
+            const u64 txSrcOffset = txSliceOff + localBaseOff;
+            const u64 txDstOffset = txSliceOff + sendBaseOff;
+            const u64 rxSrcOffset = rxSliceOff + recvBaseOff;
+            const u64 rxDstOffset = rxSliceOff + localBaseOff;
+            DataSlice txSrcSlice = DataSlice(localPtr, txSrcOffset, txSize, txSize / dataTypeSize);
+            DataSlice txDstSlice = DataSlice(sendPtr, txDstOffset, txSize, txSize / dataTypeSize);
+            DataSlice rxSrcSlice = DataSlice(recvPtr, rxSrcOffset, rxSize, rxSize / dataTypeSize);
+            DataSlice rxDstSlice = DataSlice(localPtr, rxDstOffset, rxSize, rxSize / dataTypeSize);
             txSrcSlices.push_back(txSrcSlice);
             txDstSlices.push_back(txDstSlice);
             rxSrcSlices.push_back(rxSrcSlice);
@@ -277,20 +356,43 @@ HcclResult ReduceNHR::RunGather(const std::map<u32, std::vector<ChannelInfo>>& c
         const ChannelInfo& channelRecv = channels.at(subCommRanks_.at(0).at(stepInfo.fromRank)).at(0);
         const ChannelInfo& channelSend = channels.at(subCommRanks_.at(0).at(stepInfo.toRank)).at(0);
 
+        void* const localPtr = GetLocalWorkspacePtr();
+        const u64 localBaseOff = GetLocalWorkspaceBaseOff();
+        void* const sendPtr = GetRemoteWorkspacePtr(channelSend, stepInfo.toRank);
+        const u64 sendBaseOff = GetRemoteWorkspaceBaseOff(stepInfo.toRank);
+        void* const recvPtr = GetRemoteWorkspacePtr(channelRecv, stepInfo.fromRank);
+        const u64 recvBaseOff = GetRemoteWorkspaceBaseOff(stepInfo.fromRank);
+        if (rootUsesOutputWorkspace_ && IsRootAlgRank(stepInfo.toRank) && sendPtr == nullptr) {
+            HCCL_ERROR(
+                "[ReduceNHR][RunGather] remote root output addr is null, localRank[%u], remoteRank[%u]", myRank_,
+                subCommRanks_.at(0).at(stepInfo.toRank));
+            return HcclResult::HCCL_E_INTERNAL;
+        }
+        if (rootUsesOutputWorkspace_ && IsRootAlgRank(stepInfo.fromRank) && recvPtr == nullptr) {
+            HCCL_ERROR(
+                "[ReduceNHR][RunGather] remote root output addr is null, localRank[%u], remoteRank[%u]", myRank_,
+                subCommRanks_.at(0).at(stepInfo.fromRank));
+            return HcclResult::HCCL_E_INTERNAL;
+        }
+
         std::vector<DataSlice> txSrcSlices;
         std::vector<DataSlice> txDstSlices;
         std::vector<DataSlice> rxSrcSlices;
         std::vector<DataSlice> rxDstSlices;
         for (u32 i = 0; i < stepInfo.nSlices; i++) {
-            u64 txOffset = sliceInfoVec_[stepInfo.txSliceIdxs[i]][0].offset + buffInfo_.hcclBuffBaseOff;
-            u64 txSize = sliceInfoVec_[stepInfo.txSliceIdxs[i]][0].size;
-            u64 rxOffset = sliceInfoVec_[stepInfo.rxSliceIdxs[i]][0].offset + buffInfo_.hcclBuffBaseOff;
-            u64 rxSize = sliceInfoVec_[stepInfo.rxSliceIdxs[i]][0].size;
+            const u64 txSliceOff = sliceInfoVec_[stepInfo.txSliceIdxs[i]][0].offset;
+            const u64 txSize = sliceInfoVec_[stepInfo.txSliceIdxs[i]][0].size;
+            const u64 rxSliceOff = sliceInfoVec_[stepInfo.rxSliceIdxs[i]][0].offset;
+            const u64 rxSize = sliceInfoVec_[stepInfo.rxSliceIdxs[i]][0].size;
+            const u64 txSrcOffset = txSliceOff + localBaseOff;
+            const u64 txDstOffset = txSliceOff + sendBaseOff;
+            const u64 rxSrcOffset = rxSliceOff + recvBaseOff;
+            const u64 rxDstOffset = rxSliceOff + localBaseOff;
 
-            txSrcSlices.push_back(DataSlice(buffInfo_.hcclBuff.addr, txOffset, txSize, txSize / dataTypeSize));
-            txDstSlices.push_back(DataSlice(channelSend.remoteCclMem.addr, txOffset, txSize, txSize / dataTypeSize));
-            rxSrcSlices.push_back(DataSlice(channelRecv.remoteCclMem.addr, rxOffset, rxSize, rxSize / dataTypeSize));
-            rxDstSlices.push_back(DataSlice(buffInfo_.hcclBuff.addr, rxOffset, rxSize, rxSize / dataTypeSize));
+            txSrcSlices.push_back(DataSlice(localPtr, txSrcOffset, txSize, txSize / dataTypeSize));
+            txDstSlices.push_back(DataSlice(sendPtr, txDstOffset, txSize, txSize / dataTypeSize));
+            rxSrcSlices.push_back(DataSlice(recvPtr, rxSrcOffset, rxSize, rxSize / dataTypeSize));
+            rxDstSlices.push_back(DataSlice(localPtr, rxDstOffset, rxSize, rxSize / dataTypeSize));
         }
 
         TxRxChannels sendRecvChannels(channelSend, channelRecv);
@@ -320,6 +422,10 @@ HcclResult ReduceNHR::PostCopy(const TemplateDataParams& tempAlgParams) const
     }
     // PostCopy 仅在 OPBASE 并且在 root 上执行（root 收到完整结果后写回用户 out）
     const BuffInfo& buffInfo = tempAlgParams.buffInfo;
+    if (rootUsesOutputWorkspace_ && myRank_ == root_) {
+        HCCL_DEBUG("[ReduceNHR][PostCopy] symmetric root already in userOut, skip");
+        return HcclResult::HCCL_SUCCESS;
+    }
     if (myRank_ != root_) {
         HCCL_DEBUG("[ReduceNHR][PostCopy] not root, skip postcopy rank[%d]", myRank_);
         return HcclResult::HCCL_SUCCESS;

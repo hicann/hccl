@@ -16,7 +16,8 @@
 namespace HcclSim {
 
 HcclResult TaskCheckReduceSemantics(
-    std::map<RankId, RankMemorySemantics>& allRankMemSemantics, u64 dataSize, HcclReduceOp reduceType, RankId root)
+    std::map<RankId, RankMemorySemantics>& allRankMemSemantics, u64 dataSize, HcclReduceOp reduceType, RankId root,
+    bool strictBufferContract)
 {
     u32 rankSize = allRankMemSemantics.size();
     if (rankSize == 0) {
@@ -85,6 +86,46 @@ HcclResult TaskCheckReduceSemantics(
             "size is %llu",
             root, totalSize, dataSize);
         return HcclResult::HCCL_E_PARA;
+    }
+
+    // [CHK_RED_002/003] 严格缓冲区契约（默认关闭，仅 AICPU 语义域用例 opt-in）：
+    // - 非 root rank 的 recvBuf 不得产生任何写入语义（对称路径红线，见设计文档 §7/§8）；
+    // - sendBuf 不被污染（各 rank INPUT 语义块来源必须恒为自身初始输入）。
+    // 注意：非对称路径（HostDPU 等）的 API 契约从不承诺非 root recvBuf 内容，引擎将其
+    // 用作暂存属合法行为，故本断言仅对显式声明的 AICPU 域启用。
+    if (strictBufferContract) {
+        for (auto& rankSem : allRankMemSemantics) {
+            if (rankSem.first == root) {
+                continue;
+            }
+            if (!rankSem.second[BufferType::OUTPUT].empty()) {
+                const auto& firstBlock = *rankSem.second[BufferType::OUTPUT].begin();
+                HCCL_ERROR(
+                    "[rankId:%u]non-root output buffer should never be written, but got %zu semantic block(s), first "
+                    "block is %s",
+                    rankSem.first, rankSem.second[BufferType::OUTPUT].size(), firstBlock.Describe().c_str());
+                return HcclResult::HCCL_E_PARA;
+            }
+        }
+        for (auto& rankSem : allRankMemSemantics) {
+            for (auto& ele : rankSem.second[BufferType::INPUT]) {
+                if (ele.srcBufs.size() != 1) {
+                    HCCL_ERROR(
+                        "[rankId:%u]input buffer semantic should keep single self source, but got %zu source(s), cur "
+                        "buffer semantic is %s",
+                        rankSem.first, ele.srcBufs.size(), ele.Describe().c_str());
+                    return HcclResult::HCCL_E_PARA;
+                }
+                const SrcBufDes& src = *ele.srcBufs.begin();
+                if (src.rankId != rankSem.first || src.bufType != BufferType::INPUT) {
+                    HCCL_ERROR(
+                        "[rankId:%u]input buffer semantic source (rank %u, bufType %d) is not self INPUT, input "
+                        "polluted, cur buffer semantic is %s",
+                        rankSem.first, src.rankId, static_cast<int>(src.bufType), ele.Describe().c_str());
+                    return HcclResult::HCCL_E_PARA;
+                }
+            }
+        }
     }
 
     return HcclResult::HCCL_SUCCESS;

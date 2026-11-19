@@ -108,7 +108,7 @@ HcclResult InsTempReduceScatterMesh1DMeshChunk::KernelRun(
         templateRankSize_ == 0, HCCL_ERROR("[InsTempReduceScatterMesh1DMeshChunk] templateRankSize_ is 0"),
         HCCL_E_INTERNAL);
     CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], rankIdx_));
-    supportSymmetricMemAccess_ = param.supportSymmetricMemory;
+    supportSymmetricMemAccess_ = param.supportSymmetricMemory && param.inputSymWindow != nullptr;
     RankSliceInfo sliceInfoVec;
     CHK_RET(CalcSliceInfoVec(tempAlgParams.sliceSize, sliceInfoVec));
     HCCL_INFO("[InsTempReduceScatterMesh1DMeshChunk] Run Start");

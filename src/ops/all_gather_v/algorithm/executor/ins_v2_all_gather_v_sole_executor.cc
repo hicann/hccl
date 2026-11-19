@@ -58,6 +58,13 @@ HcclResult InsV2AllGatherVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrat
     maxTmpMemSize_ = resCtx.cclMem.size;
     // 给channels_和threads_赋值
     threads_ = resCtx.threads;
+    supportSymmetricMemory_ = param.supportSymmetricMemory;
+    if (supportSymmetricMemory_) {
+        inputOffset_ = param.inputOffset;
+        outputOffset_ = param.outputOffset;
+        inputSymWindow_ = param.inputSymWindow;
+        outputSymWindow_ = param.outputSymWindow;
+    }
     if (param.engine != CommEngine::COMM_ENGINE_AIV && param.engine != CommEngine::COMM_ENGINE_CCU) {
         CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));
     }
@@ -110,7 +117,7 @@ HcclResult InsV2AllGatherVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrat
     tempAlgParams.repeatNum = 1;
     tempAlgParams.inputRepeatStride = 0;
     tempAlgParams.outputRepeatStride = 0;
-    tempAlgParams.enableRemoteMemAccess = param.opMode == OpMode::OFFLOAD;
+    tempAlgParams.enableRemoteMemAccess = param.opMode == OpMode::OFFLOAD || param.supportSymmetricMemory;
 
     // 从零数组中获取counts和displs
     // 强制类型转换
@@ -141,17 +148,24 @@ HcclResult InsV2AllGatherVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrat
         maxDataSizePerLoop = transportBoundDataSize;
     }
     u64 maxCountPerLoop = maxDataSizePerLoop / dataTypeSize_;
-    CHK_PRT_RET(
-        maxCountPerLoop == 0, HCCL_ERROR("[InsV2AllGatherVSoleExecutor][OrchestrateLoop] maxCountPerLoop is 0"),
-        HCCL_E_INTERNAL);
 
     // 计算loopTimes
     u64 maxSendDataCount = 0;
     for (u64 j = 0; j < rankSize_; j++) {
         maxSendDataCount = std::max(maxSendDataCount, counts[j]);
     }
+    if (param.supportSymmetricMemory && maxSendDataCount > 0) {
+        // 对称路径一次传完，不受 cclBuffer 与 UB_MAX_DATA_SIZE 限制
+        maxCountPerLoop = maxSendDataCount;
+    }
+    CHK_PRT_RET(
+        maxCountPerLoop == 0, HCCL_ERROR("[InsV2AllGatherVSoleExecutor][OrchestrateLoop] maxCountPerLoop is 0"),
+        HCCL_E_INTERNAL);
     // 全0 counts时无数据需要搬运, loopTimes为0直接空过, 防止u64下溢
     u64 loopTimes = (maxSendDataCount == 0) ? 0 : (1 + ((maxSendDataCount - 1) / maxCountPerLoop));
+    if (param.supportSymmetricMemory) {
+        loopTimes = (maxSendDataCount == 0) ? 0 : 1;
+    }
     // 带V算子统计所有Rank的processedDataCount
     std::vector<u64> allRankProcessedDataCount(rankSize_, 0);
     tempAlgParams.sliceSize = 0;

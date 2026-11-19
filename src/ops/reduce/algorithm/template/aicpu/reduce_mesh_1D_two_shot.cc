@@ -80,11 +80,7 @@ u64 ReduceMesh1DTwoShot::CalcScratchMultiple(BufferType inBuffType, BufferType o
 {
     (void)inBuffType;
     (void)outBuffType;
-    u64 scratchMultiple = 0;
-    if (!enableRemoteMemAccess_) {
-        scratchMultiple = templateRankSize_;
-    }
-    return scratchMultiple;
+    return templateRankSize_;
 }
 
 HcclResult ReduceMesh1DTwoShot::KernelRun(
@@ -125,7 +121,6 @@ HcclResult ReduceMesh1DTwoShot::KernelRun(
     count_ = tempAlgParams.count;
     dataType_ = param.DataDes.dataType;
     threadNum_ = templateRankSize_ > 1 ? templateRankSize_ : 1;
-    enableRemoteMemAccess_ = tempAlgParams.enableRemoteMemAccess;
     GetNotifyIdxMainToSub(notifyIdxMainToSub_);
     GetNotifyIdxSubToMain(notifyIdxSubToMain_);
 
@@ -192,9 +187,6 @@ HcclResult ReduceMesh1DTwoShot::SendRecvDataToPeers(
         }
 
         if (remoteIdx == myIdx_) {
-            if (enableRemoteMemAccess_) {
-                continue; // 图模式跳过本地拷贝到CCL Buffer
-            }
             DataSlice copySrcSlice(localInBuffPtr, inBuffBaseOffset + mySliceOffSet, sendSliceSize, sendSliceCount);
             DataSlice copyDstSlice(
                 localHcclBuffPtr, hcclBuffBaseOffset + recvDstSliceOffset, sendSliceSize, sendSliceCount);
@@ -206,25 +198,17 @@ HcclResult ReduceMesh1DTwoShot::SendRecvDataToPeers(
             u32 remoteRank = rankList_.at(remoteIdx);
             const ChannelInfo& sendRecvChannel = channels.at(remoteRank).at(0);
 
-            // 图模式下 inputBuffer -> inputBuffer, 否则为 inputBuffer -> hcclBuff
-            void* remoteInBuffPtr = (!enableRemoteMemAccess_) ? sendRecvChannel.remoteCclMem.addr :
-                                                                sendRecvChannel.remoteInputGraphMode.addr;
-            void* remoteDstBuffPtr = (!enableRemoteMemAccess_) ? sendRecvChannel.remoteCclMem.addr :
-                                                                 sendRecvChannel.remoteInputGraphMode.addr;
-            void* localDstBuffPtr = (!enableRemoteMemAccess_) ? localHcclBuffPtr : localInBuffPtr;
-
-            u64 sendDstOffset = (!enableRemoteMemAccess_) ? sendDstSliceOffset + hcclBuffBaseOffset :
-                                                            sendDstSliceOffset + inBuffBaseOffset;
-            u64 recvDstOffset = (!enableRemoteMemAccess_) ? recvDstSliceOffset + hcclBuffBaseOffset :
-                                                            recvDstSliceOffset + inBuffBaseOffset;
-
             DataSlice sendSrcSlice(localInBuffPtr, inBuffBaseOffset + sendSliceOffset, sendSliceSize, sendSliceCount);
-            DataSlice sendDstSlice(remoteDstBuffPtr, sendDstOffset, sendSliceSize, sendSliceCount);
+            DataSlice sendDstSlice(
+                sendRecvChannel.remoteCclMem.addr, sendDstSliceOffset + hcclBuffBaseOffset, sendSliceSize,
+                sendSliceCount);
             std::vector<DataSlice> sendSrcSlicesList{sendSrcSlice};
             std::vector<DataSlice> sendDstSlicesList{sendDstSlice};
 
-            DataSlice recvSrcSlice(remoteInBuffPtr, inBuffBaseOffset + mySliceOffSet, recvSliceSize, recvSliceCount);
-            DataSlice recvDstSlice(localDstBuffPtr, recvDstOffset, recvSliceSize, recvSliceCount);
+            DataSlice recvSrcSlice(
+                sendRecvChannel.remoteCclMem.addr, inBuffBaseOffset + mySliceOffSet, recvSliceSize, recvSliceCount);
+            DataSlice recvDstSlice(
+                localHcclBuffPtr, recvDstSliceOffset + hcclBuffBaseOffset, recvSliceSize, recvSliceCount);
             std::vector<DataSlice> recvSrcSlicesList{recvSrcSlice};
             std::vector<DataSlice> recvDstSlicesList{recvDstSlice};
 
@@ -244,11 +228,8 @@ HcclResult ReduceMesh1DTwoShot::SendRecvDataToPeers(
 HcclResult ReduceMesh1DTwoShot::DoLocalReduce(
     const TemplateDataParams& tempAlgParam, const OpParam& param, const std::vector<ThreadHandle>& threads)
 {
-    // 图模式下在Input上进行reduce操作，否则在hcclBuff上进行reduce操作
-    void* localBuffPtr
-        = (!enableRemoteMemAccess_) ? tempAlgParam.buffInfo.hcclBuff.addr : tempAlgParam.buffInfo.inputPtr;
-    u64 localBuffBaseOffset
-        = (!enableRemoteMemAccess_) ? tempAlgParam.buffInfo.hcclBuffBaseOff : tempAlgParam.buffInfo.inBuffBaseOff;
+    void* localBuffPtr = tempAlgParam.buffInfo.hcclBuff.addr;
+    u64 localBuffBaseOffset = tempAlgParam.buffInfo.hcclBuffBaseOff;
 
     const u64 recvSliceSize = sliceInfoList_.at(myIdx_).size;
     const u64 recvSliceCount = sliceInfoList_.at(myIdx_).count;
@@ -324,8 +305,8 @@ HcclResult ReduceMesh1DTwoShot::GatherLocalData(
     const TemplateDataParams& tempAlgParam, const std::vector<ThreadHandle>& threads) const
 {
     LocalSliceInfo info = GetLocalSliceInfo(tempAlgParam);
-    void* localBuffPtr = (!enableRemoteMemAccess_) ? info.localHcclBuffPtr : info.localInBuffPtr;
-    u64 localBuffBaseOffset = (!enableRemoteMemAccess_) ? info.hcclBuffBaseOffset : info.inBuffBaseOffset;
+    void* localBuffPtr = info.localHcclBuffPtr;
+    u64 localBuffBaseOffset = info.hcclBuffBaseOffset;
 
     if (info.sliceSize == 0) {
         return HCCL_SUCCESS;
@@ -344,10 +325,8 @@ HcclResult ReduceMesh1DTwoShot::GatherRemoteData(
     const TemplateDataParams& tempAlgParam, const std::map<u32, std::vector<ChannelInfo>>& channels,
     const std::vector<ThreadHandle>& threads)
 {
-    // 图模式下 remoteInputBuff -> localOutputBuff, 否则为 remoteHcclBuff -> localOutputBuff
     u64 outBuffBaseOffset = tempAlgParam.buffInfo.outBuffBaseOff;
-    u64 remoteBaseOffset
-        = (!enableRemoteMemAccess_) ? tempAlgParam.buffInfo.hcclBuffBaseOff : tempAlgParam.buffInfo.inBuffBaseOff;
+    u64 remoteBaseOffset = tempAlgParam.buffInfo.hcclBuffBaseOff;
     void* localOutBuffPtr = tempAlgParam.buffInfo.outputPtr;
 
     for (u32 remoteIdx = 0; remoteIdx < templateRankSize_; remoteIdx++) {
@@ -361,9 +340,8 @@ HcclResult ReduceMesh1DTwoShot::GatherRemoteData(
         }
         u64 remoteSrcOffset = curSize * static_cast<u64>(remoteIdx);
         const ChannelInfo& channel = channels.at(subCommRanks_.at(0).at(remoteIdx)).at(0);
-        void* remoteBuffPtr = (!enableRemoteMemAccess_) ? channel.remoteCclMem.addr : channel.remoteInputGraphMode.addr;
 
-        DataSlice recvSrcSlice(remoteBuffPtr, remoteBaseOffset + remoteSrcOffset, curSize, curCount);
+        DataSlice recvSrcSlice(channel.remoteCclMem.addr, remoteBaseOffset + remoteSrcOffset, curSize, curCount);
         DataSlice recvDstSlice(
             localOutBuffPtr, outBuffBaseOffset + sliceInfoList_.at(remoteIdx).offset, curSize, curCount);
         const SlicesList recvSlicesList({recvSrcSlice}, {recvDstSlice});
@@ -383,8 +361,8 @@ HcclResult ReduceMesh1DTwoShot::SendToRoot(
     if (info.sliceSize == 0) {
         return HCCL_SUCCESS;
     }
-    void* localBufferPtr = (!enableRemoteMemAccess_) ? info.localHcclBuffPtr : info.localInBuffPtr;
-    u64 localBuffBaseOffset = (!enableRemoteMemAccess_) ? info.hcclBuffBaseOffset : info.inBuffBaseOffset;
+    void* localBufferPtr = info.localHcclBuffPtr;
+    u64 localBuffBaseOffset = info.hcclBuffBaseOffset;
 
     DataSlice sendSrcSlice(
         localBufferPtr, localBuffBaseOffset + info.sliceSize * static_cast<u64>(myIdx_), info.sliceSize,

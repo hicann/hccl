@@ -174,6 +174,15 @@ TEST_F(ST_REDUCE_AICPU_TEST, st_reduce_aicpu_2level_16rank_int64_sum_root13_auto
     RunReduceTest(topoMeta, 1024, HcclDataType::HCCL_DATA_TYPE_INT64, HcclReduceOp::HCCL_REDUCE_SUM, 13);
 }
 
+// CHK_RED_002/003: 中间root下校验非root recvBuf零写入与sendBuf零污染。
+// 断言内嵌于 TaskCheckReduceSemantics 对全部Reduce用例生效, 本用例为其显式载体(root矩阵补8)。
+TEST_F(ST_REDUCE_AICPU_TEST, st_reduce_aicpu_2level_16rank_int64_sum_root8_nonroot_unwritten_test)
+{
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 1, 2, 8);
+    RunReduceTest(topoMeta, 1024, HcclDataType::HCCL_DATA_TYPE_INT64, HcclReduceOp::HCCL_REDUCE_SUM, 8);
+}
+
 // ST_RD_2L_012: 三级32rank维持原路由选Sole(新算法attrs两级门禁被拒)
 TEST_F(ST_REDUCE_AICPU_TEST, st_reduce_aicpu_3level_32rank_int64_sum_auto_test)
 {
@@ -213,4 +222,48 @@ TEST_F(ST_REDUCE_AICPU_TEST, st_reduce_aicpu_2level_16rank_int64_sum_count1_auto
     TopoMeta topoMeta;
     GenTopoMeta(topoMeta, 1, 2, 8);
     RunReduceTest(topoMeta, 1, HcclDataType::HCCL_DATA_TYPE_INT64, HcclReduceOp::HCCL_REDUCE_SUM, 0);
+}
+
+// ST_RED_SYM_004 gate: 非白名单算法SoleMesh强制选路, 对称门禁按确定性白名单否决(恒回退CCL), 结果正确
+TEST_F(ST_REDUCE_AICPU_TEST, st_reduce_aicpu_2level_16rank_fp32_sum_solemesh_gate_test)
+{
+    setenv("HCCL_ALGO", "reduce:sole{mesh}", 1);
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 1, 2, 8);
+    RunReduceTest(topoMeta, 1024, HcclDataType::HCCL_DATA_TYPE_FP32, HcclReduceOp::HCCL_REDUCE_SUM, 0);
+}
+
+// ST_RED_SYM_004 gate: 非白名单算法TwoShot强制选路(b7440772死代码清理回归对象), 恒回退CCL, 结果正确
+TEST_F(ST_REDUCE_AICPU_TEST, st_reduce_aicpu_2level_16rank_fp32_sum_twoshot_gate_test)
+{
+    setenv("HCCL_ALGO", "reduce:sole{meshtwoshot}", 1);
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 1, 2, 8);
+    RunReduceTest(topoMeta, 1024, HcclDataType::HCCL_DATA_TYPE_FP32, HcclReduceOp::HCCL_REDUCE_SUM, 0);
+}
+
+// ST_COMM_SYM_003: 同comm连续两次同shape调用, task cache/资源复用路径正确性(合并任务图checker)
+TEST_F(ST_REDUCE_AICPU_TEST, st_reduce_aicpu_2level_16rank_fp32_sum_twice_call_cache_test)
+{
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 1, 2, 8);
+    RunReduceTestTwice(topoMeta, 1024, HcclDataType::HCCL_DATA_TYPE_FP32, HcclReduceOp::HCCL_REDUCE_SUM, 0);
+}
+
+// ST_RED_SYM_003 gate: 3级16rank(2pod×2srv×4rank)强制选路ParallelNHRNHR, 对称路径正确性验证
+// (替代32rank真机验证——16 rank ST拓扑即可满足ParallelNHRNHR的3级+UBOe+对称选路条件)
+TEST_F(ST_REDUCE_AICPU_TEST, st_reduce_aicpu_3level_16rank_fp32_sum_parallel_nhrnhr_gate_test)
+{
+    setenv("HCCL_ALGO", "reduce:parallel{nhr,nhr}", 1);
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 2, 2, 4); // 2pod×2srv×4rank=16卡, topoLevelNums=3
+    RunReduceTest(topoMeta, 1024, HcclDataType::HCCL_DATA_TYPE_FP32, HcclReduceOp::HCCL_REDUCE_SUM, 0);
+}
+
+// ST_RED_SYM_003 gate auto: 3级16rank自适应选路(ParallelNHRNHR应被选中)
+TEST_F(ST_REDUCE_AICPU_TEST, st_reduce_aicpu_3level_16rank_fp32_sum_auto_test)
+{
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 2, 2, 4);
+    RunReduceTest(topoMeta, 1024, HcclDataType::HCCL_DATA_TYPE_FP32, HcclReduceOp::HCCL_REDUCE_SUM, 0);
 }

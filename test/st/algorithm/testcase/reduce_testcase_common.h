@@ -122,7 +122,55 @@ RunReduceTest(const TopoMeta& topoMeta, u64 recvCount, HcclDataType dataType, Hc
     }
 
     auto taskQueues = SimTaskQueue::Global()->GetAllRankTaskQueues();
-    HcclResult res = CheckReduce(taskQueues, rankSize, dataType, recvCount, reduceOp, root);
+    // AICPU 语义域 opt-in 严格缓冲区契约：非 root recvBuf 零写入 + sendBuf 零污染
+    // （HostDPU 等非对称实现按 API 契约不承诺非 root recvBuf 内容，不启用本断言）
+    HcclResult res = CheckReduce(taskQueues, rankSize, dataType, recvCount, reduceOp, root, true);
+    EXPECT_TRUE(res == HCCL_SUCCESS);
+
+    SimWorld::Global()->Deinit();
+}
+
+// ST_COMM_SYM_003: 同一comm连续两次调用同shape算子, 验证task cache/资源复用路径不破坏正确性。
+// 两次调用的任务图在进程级SimTaskQueue上累积, checker按合并视图校验(重复写同区间的语义块合并)。
+static inline void
+RunReduceTestTwice(const TopoMeta& topoMeta, u64 recvCount, HcclDataType dataType, HcclReduceOp reduceOp, uint32_t root)
+{
+    SimWorld::Global()->Init(topoMeta, HcclDevType::DEV_TYPE_950);
+    setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
+    setenv("HCCL_INDEPENDENT_OP", "1", 1);
+
+    std::vector<std::thread> threads;
+    u32 rankSize = GetRankSize(topoMeta);
+    for (int rankId = 0; rankId < rankSize; ++rankId) {
+        threads.emplace_back([=]() {
+            aclrtSetDevice(rankId);
+            aclrtStream stream = nullptr;
+            aclrtCreateStream(&stream);
+
+            HcclComm comm = nullptr;
+            CHK_RET(HcclCommInitClusterInfo("./ranktable.json", rankId, &comm));
+
+            void* sendBuf = nullptr;
+            void* recvBuf = nullptr;
+            u64 sendBufSize = recvCount * GetDataTypeSize(dataType) * rankSize;
+            u64 recvBufSize = recvCount * GetDataTypeSize(dataType);
+            aclrtMalloc(&sendBuf, sendBufSize, static_cast<aclrtMemMallocPolicy>(BUFFER_INPUT_MARK));
+            aclrtMalloc(&recvBuf, recvBufSize, static_cast<aclrtMemMallocPolicy>(BUFFER_OUTPUT_MARK));
+
+            CHK_RET(HcclReduce(sendBuf, recvBuf, recvCount, dataType, reduceOp, root, comm, stream));
+            CHK_RET(HcclReduce(sendBuf, recvBuf, recvCount, dataType, reduceOp, root, comm, stream));
+
+            CHK_RET(HcclCommDestroy(comm));
+            return HCCL_SUCCESS;
+        });
+    }
+
+    for (auto& thread : threads) {
+        thread.join();
+    }
+
+    auto taskQueues = SimTaskQueue::Global()->GetAllRankTaskQueues();
+    HcclResult res = CheckReduce(taskQueues, rankSize, dataType, recvCount, reduceOp, root, true);
     EXPECT_TRUE(res == HCCL_SUCCESS);
 
     SimWorld::Global()->Deinit();

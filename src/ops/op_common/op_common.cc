@@ -4412,11 +4412,19 @@ HcclResult SingleRankProc(HcclComm comm, OpParam& param)
         return HcclResult::HCCL_SUCCESS;
     }
     u64 len{0};
+    u64 copyDstOffset{0};
     if (param.opType == HcclCMDType::HCCL_CMD_ALLTOALL || param.opType == HcclCMDType::HCCL_CMD_ALLTOALLV
         || param.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC) {
         len = DATATYPE_SIZE_TABLE[param.all2AllVDataDes.sendType]
               * *(static_cast<const u64*>(param.all2AllVDataDes.sendCounts));
-    } else if (param.opType == HCCL_CMD_ALLGATHER_V || param.opType == HCCL_CMD_REDUCE_SCATTER_V) {
+    } else if (param.opType == HcclCMDType::HCCL_CMD_ALLGATHER_V) {
+        // 单rank自片落 recvBuf 的 displs[0] 区间：契约允许 displs[0] != 0 的空洞/非零起点布局。
+        // 公共路径防御：counts/displs 可能为空（非 AGV 入口构造的 OpParam），判空后退化取 0。
+        const u64* counts = static_cast<const u64*>(param.vDataDes.counts);
+        const u64* displs = static_cast<const u64*>(param.vDataDes.displs);
+        len = counts != nullptr ? DATATYPE_SIZE_TABLE[param.vDataDes.dataType] * counts[0] : 0;
+        copyDstOffset = displs != nullptr ? DATATYPE_SIZE_TABLE[param.vDataDes.dataType] * displs[0] : 0;
+    } else if (param.opType == HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V) {
         len = DATATYPE_SIZE_TABLE[param.vDataDes.dataType] * *(static_cast<const u64*>(param.vDataDes.counts));
     } else {
         len = DATATYPE_SIZE_TABLE[param.DataDes.dataType] * param.DataDes.count;
@@ -4444,7 +4452,8 @@ HcclResult SingleRankProc(HcclComm comm, OpParam& param)
             HCCL_ERROR("%s call strncpy_s failed, param.algTag %s, return %d.", __func__, param.algTag, sRet),
             HCCL_E_MEMORY);
         CHK_RET(HcclDfxRegOpInfoByCommId(param.commName, reinterpret_cast<void*>(&hcclDfxOpInfo)));
-        CHK_RET(static_cast<HcclResult>(HcommLocalCopyOnThread(cpuTsThread, param.outputPtr, param.inputPtr, len)));
+        void* copyDst = static_cast<u8*>(param.outputPtr) + copyDstOffset;
+        CHK_RET(static_cast<HcclResult>(HcommLocalCopyOnThread(cpuTsThread, copyDst, param.inputPtr, len)));
     }
     CHK_RET(HcclProfilingReportOp(comm, beginTime));
     return HcclResult::HCCL_SUCCESS;
@@ -5158,58 +5167,9 @@ bool IsBarrierHostDpu(HcclComm comm)
     return false;
 }
 
-// AllReduce/ReduceScatter 共用的对称内存限制（与算子入口 Selector 后保持一致）：
-// AIV 对称路径是 UB 本地归约、不走 Reduce64 的 int64 原子加模拟，AR/RS 均已实例化 int64，故放行；
-// AICPU_TS 的 int64 依赖 GM 原子加，仍排除。
-// uint64 基线不支持、fp64 未实例化、PROD 的本地归约未实现，三者一律排除。
-static bool IsReduceOpSymMemAllowed(const OpParam& param)
-{
-    HcclDataType dataType
-        = param.opType == HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V ? param.vDataDes.dataType : param.DataDes.dataType;
-    if (param.engine == CommEngine::COMM_ENGINE_AIV) {
-        return param.reduceType != HcclReduceOp::HCCL_REDUCE_PROD
-               && param.DataDes.dataType != HcclDataType::HCCL_DATA_TYPE_FP64
-               && param.DataDes.dataType != HcclDataType::HCCL_DATA_TYPE_UINT64;
-    } else {
-        return dataType != HcclDataType::HCCL_DATA_TYPE_INT64 && dataType != HcclDataType::HCCL_DATA_TYPE_UINT64
-               && dataType != HcclDataType::HCCL_DATA_TYPE_FP64 && param.reduceType != HcclReduceOp::HCCL_REDUCE_PROD;
-    }
-}
-
-// 对称内存规约确定性门禁：SoleNHR 为单模板单棵全 rank 蝶形树，多级仅改变链路层、规约顺序仍固定，
-// 不受 topoLevelNums 限制，故先于拓扑级数检查放行；其余多级算法 L0/L1 两棵树参与规约，确定性未验证；
-// 单级白名单算法均由单一模板完成规约、规约写者按步序固定，确定性成立。
-// AllReduce/ReduceScatter对称内存的规约确定性门禁：
-// 仅放行规约顺序确定的算法；多级拓扑下 L1 NHR 模板也参与规约，一并禁用。
-bool IsReduceOpSymMemDeterministic(const std::string& algName, const TopoInfoWithNetLayerDetails* topoInfo)
-{
-    if (algName == "AicpuAllReduceSoleNHR" || algName == "AicpuReduceScatterSoleNHR") {
-        return true;
-    }
-    if (topoInfo->topoLevelNums != TOPO_LEVEL_NUM_1) {
-        // 多级否决仅针对分层算法
-        return false;
-    }
-    return algName == "AicpuReduceScatterPipeLineMeshNHR" || algName == "AicpuAllReducePipeLineMeshNHR"
-           || algName == "AicpuAllReduceSoleMeshChunkTwoShot" || algName == "AicpuReduceScatterSoleMeshChunk"
-           || algName == "AicpuReduceScatterConcurMeshNHR" || algName == "AicpuAllReduceConcurMeshTwoShotNHR"
-           || algName == "AicpuReduceScatterVSoleMeshChunk" || algName == "AivAllReduceSoleMeshTwoShot"
-           || algName == "AivReduceScatterSoleMesh";
-}
-
-// 仅 Scatter 跳过 input 侧探测（API 结构原因：非 root sendBuf 可空/虚值）。
-// 其余算子（含 RSV）双侧照常探测：只要输入输出有数据即要求两侧均注册对称窗口，
-// 保持通用注册契约（当前模板未消费 input 窗口不等于后续新增算法不需要）。
-static bool NeedSymMemInputSide(HcclCMDType opType) { return opType != HcclCMDType::HCCL_CMD_SCATTER; }
-
-// 与CheckAndSetSymmetricMemory的探测范围一致：每一侧需要探测的buffer都拿到了对称窗口才算有效
-static bool IsSymMemWindowValid(const OpParam& param)
-{
-    bool inputValid = !NeedSymMemInputSide(param.opType) || param.inputPtr == nullptr || param.inputSize == 0
-                      || param.inputSymWindow != nullptr;
-    bool outputValid = param.outputPtr == nullptr || param.outputSize == 0 || param.outputSymWindow != nullptr;
-    return inputValid && outputValid;
-}
+// 对称内存门禁的纯逻辑函数（IsReduceOpSymMemAllowed / IsReduceOpSymMemDeterministic /
+// NeedSymMemInputSide / IsSymMemWindowValid）拆分至 sym_mem_gate.cc，便于 UT 以最小闭包编入。
+// 上游 Concurrent AR/RS、RSV/Scatter 及 UBX/AIV 白名单已同步至 sym_mem_gate.cc。
 
 // 对端取址要求「通信域 rank 能换算成 LSA WorldTeam memberId」：host 按
 // baseVa + offset + memberId*stride 计算对端 VA，多层/子团队下存在不在 LSA team 内的 rank，取址必然错误。
@@ -5416,6 +5376,9 @@ HcclResult RefreshSymmetricMemory(OpParam& param, const TopoInfoWithNetLayerDeta
                          && (symMemAllowedUBX || symMemAllowedServer);
     if (symMemAllowed) {
         switch (param.opType) {
+            case HcclCMDType::HCCL_CMD_ALLGATHER_V:
+                symMemAllowed = std::string(param.algName) == "AicpuAllGatherVSoleMesh";
+                break;
             case HcclCMDType::HCCL_CMD_ALLGATHER:
             case HcclCMDType::HCCL_CMD_BROADCAST:
             case HcclCMDType::HCCL_CMD_ALLTOALL:
@@ -5423,13 +5386,17 @@ HcclResult RefreshSymmetricMemory(OpParam& param, const TopoInfoWithNetLayerDeta
             case HcclCMDType::HCCL_CMD_SCATTER:
                 break;
             case HcclCMDType::HCCL_CMD_ALLREDUCE:
-                symMemAllowed
-                    = IsReduceOpSymMemAllowed(param) && IsReduceOpSymMemDeterministic(param.algName, topoInfo);
+                symMemAllowed = IsReduceOpSymMemAllowed(param)
+                                && IsReduceOpSymMemDeterministic(param.algName, topoInfo, param.opType);
                 break;
             case HcclCMDType::HCCL_CMD_REDUCE_SCATTER:
             case HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V:
                 symMemAllowed = IsReduceOpSymMemAllowed(param) && param.inputPtr != param.outputPtr
-                                && IsReduceOpSymMemDeterministic(param.algName, topoInfo);
+                                && IsReduceOpSymMemDeterministic(param.algName, topoInfo, param.opType);
+                break;
+            case HcclCMDType::HCCL_CMD_REDUCE:
+                symMemAllowed = IsReduceOpSymMemAllowed(param) && param.inputPtr != param.outputPtr
+                                && IsReduceOpSymMemDeterministic(param.algName, topoInfo, param.opType);
                 break;
             default:
                 symMemAllowed = false;
@@ -5472,28 +5439,46 @@ void CheckAndSetSymmetricMemory(OpParam& param)
     size_t inputOffset = 0;
     size_t outputOffset = 0;
 
-    // 仅 Scatter 跳过 input 侧探测（API 结构原因，见 NeedSymMemInputSide）；其余算子（含 RSV）
-    // 双侧照常探测，对称窗口注册不区分读/写语义，input 窗口由使用它的模板消费
+    // 仅 Scatter 与 Reduce 跳过 input 侧探测：Scatter 非 root sendBuf 可空/虚值（API 结构原因）；
+    // Reduce 只写 root 的 output 窗口、不应额外要求注册 sendBuf。其余算子（含 RSV）双侧照常探测。
     if (NeedSymMemInputSide(param.opType) && param.inputPtr != nullptr && param.inputSize > 0) {
         HcclResult ret
             = HcclCommSymWinGet(param.hcclComm, param.inputPtr, param.inputSize, &param.inputSymWindow, &inputOffset);
         if (ret != HCCL_SUCCESS || param.inputSymWindow == nullptr) {
+            param.inputSymWindow = nullptr;
+            param.inputOffset = 0;
+            // 防参数复用残留：input 侧探测失败早退时同步复位 output 侧窗口与开关，
+            // 避免上一轮的 output 窗口残留被 IsSymMemWindowValid 误判为有效。
+            param.outputSymWindow = nullptr;
+            param.outputOffset = 0;
+            param.supportSymmetricMemory = false;
             HCCL_INFO(
                 "[%s] input[%p], size[%llu] does not support symmetric memory, ret[%d]", __func__, param.inputPtr,
                 param.inputSize, ret);
             return;
         }
+    } else {
+        // Reduce 等仅探测 output 的算子：显式清空，避免复用参数时残留上次 input 窗口。
+        param.inputSymWindow = nullptr;
+        param.inputOffset = 0;
     }
 
     if (param.outputPtr != nullptr && param.outputSize > 0) {
         HcclResult ret = HcclCommSymWinGet(
             param.hcclComm, param.outputPtr, param.outputSize, &param.outputSymWindow, &outputOffset);
         if (ret != HCCL_SUCCESS || param.outputSymWindow == nullptr) {
+            param.outputSymWindow = nullptr;
+            param.outputOffset = 0;
+            // 防参数复用残留：output 侧探测失败同样复位开关，与 input 侧失败分支保持对称
+            param.supportSymmetricMemory = false;
             HCCL_INFO(
                 "[%s] output[%p], size[%llu] does not support symmetric memory, ret[%d]", __func__, param.outputPtr,
                 param.outputSize, ret);
             return;
         }
+    } else {
+        param.outputSymWindow = nullptr;
+        param.outputOffset = 0;
     }
     param.supportSymmetricMemory = true;
     if (param.engine == CommEngine::COMM_ENGINE_AIV && !IsSymWinLsaCovered(param)) {

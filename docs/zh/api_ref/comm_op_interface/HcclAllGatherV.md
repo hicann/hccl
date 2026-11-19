@@ -92,6 +92,8 @@ HcclResult HcclAllGatherV(void *sendBuf, uint64_t sendCount, void *recvBuf, cons
 ## 约束说明
 
 - 所有rank的recvCounts、recvDispls、dataType均应相同。
+- 对称内存零拷贝模式：当所有rank的sendBuf与recvBuf均已注册对称内存窗口，且算法、拓扑、数据类型满足条件时，各rank可直接读写对端user buffer；要求全rank全部注册或全不注册，禁止部分rank注册。探测失败时自动回退CCL路径。
+- 各rank的接收区间[recvDispls[i], recvDispls[i]+recvCounts[i])不得重叠（recvDispls无单调性要求，允许乱序布局）；recvBuf至少需容纳max(recvDispls[i]+recvCounts[i])个dataType元素。
 <!-- npu="A3" id15 -->
 - 针对Atlas A3系列产品，仅支持单Server场景。
 <!-- end id15 -->

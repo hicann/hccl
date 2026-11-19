@@ -79,6 +79,14 @@ private:
         const ChannelInfo& channelSend, const ChannelInfo& channelRecv, const AicpuNHRStepInfo& stepInfo,
         const u32& channelIdx, StepBuildMode mode, std::vector<DataSlice>& txSrcSlices,
         std::vector<DataSlice>& txDstSlices, std::vector<DataSlice>& rxSrcSlices, std::vector<DataSlice>& rxDstSlices);
+    HcclResult BuildRootOnlyStepSlices(
+        const ChannelInfo& channelSend, const ChannelInfo& channelRecv, const AicpuNHRStepInfo& stepInfo,
+        const u32& channelIdx, std::vector<DataSlice>& txSrcSlices, std::vector<DataSlice>& txDstSlices,
+        std::vector<DataSlice>& rxSrcSlices, std::vector<DataSlice>& rxDstSlices);
+    // root 直写范围防御：对端窗口只回填地址不回填大小，用本地 outputSize 兜底校验直写不越界。
+    HcclResult CheckRootOutputRange(u64 offset, u64 size, u64 outputSize, u32 remoteRank) const;
+    // root 对端 userOut 地址防御：对称路径下该地址由基类 RestoreChannelMap 注入，为空即异常。
+    HcclResult CheckRemoteRootOutputAddr(void* addr, u32 remoteRank) const;
     HcclResult RunStepNHR(
         const std::vector<ThreadHandle>& threads, const std::map<u32, std::vector<ChannelInfo>>& channels,
         const u32& channelIdx, u32 step, u32 nSteps, bool& postLocalCopyLaunched);
@@ -109,6 +117,11 @@ private:
     bool readLastStepToOutput_{false};
     bool skipOwnSliceCopy_{false};
     bool isOutputCclBuff_{false};
+    // Reduce 并行终局 AG 的 root-only 直写模式：全网仅 root 的 userOut 是合法落点，
+    // 与全网对称 AG（enableRemoteMemAccess 且全员 output 有效）区分，按角色分派地址。
+    // root 保持 userRank 语义：inter 层 subCommRanks 为局部视图（含本 rank 与跨框对端），
+    // 仅含 root 自身与其对端的条目，故按 userRank 直接比较，不做 algRank 换算。
+    bool reduceRootOnly_{false};
     std::vector<u32> lastStepReadSliceIdxs_;
     u64 dataTypeSize_{0};
     u32 maxChannelsPerRank_ = 1;

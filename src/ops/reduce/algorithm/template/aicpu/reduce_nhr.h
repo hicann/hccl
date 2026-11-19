@@ -62,6 +62,12 @@ private:
     getTxRxSlices(const AicpuNHRStepInfo& stepInfo, const std::map<u32, std::vector<ChannelInfo>>& channels);
     HcclResult getMyAlgRank();
 
+    bool IsRootAlgRank(u32 algRank) const;
+    void* GetLocalWorkspacePtr() const;
+    u64 GetLocalWorkspaceBaseOff() const;
+    void* GetRemoteWorkspacePtr(const ChannelInfo& channel, u32 remoteAlgRank) const;
+    u64 GetRemoteWorkspaceBaseOff(u32 remoteAlgRank) const;
+
     ThreadHandle thread_;
     BuffInfo buffInfo_;
     u64 processSize_{0};
@@ -74,6 +80,7 @@ private:
     u64 reduceOutBuffBaseOff_ = 0;
     RankSliceInfo sliceInfoVec_;
     bool isDmaRead_{false};
+    bool rootUsesOutputWorkspace_{false};
 };
 
 } // namespace ops_hccl

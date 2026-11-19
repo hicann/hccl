@@ -171,6 +171,15 @@ HcclResult InsTempAllGatherNHR::KernelRun(
     dataType_ = param.DataDes.dataType;
     enableRemoteMemAccess_ = tempAlgParams.enableRemoteMemAccess;
     isOutputCclBuff_ = (tempAlgParams.buffInfo.outBuffType == BufferType::HCCL_BUFFER);
+    // Reduce 并行终局 AG 的 root-only 直写模式：executor 仅在 Reduce 的最终 inter AG 子步置
+    // enableRemoteMemAccess，此处按 opType 区分全网对称 AG。root 为 userRank 语义直接比较，
+    // 不做 algRank 换算：inter 层 subCommRanks 为局部视图，root 仅存在于其自身与对端的条目中。
+    reduceRootOnly_ = param.opType == HcclCMDType::HCCL_CMD_REDUCE && enableRemoteMemAccess_;
+    if (reduceRootOnly_) {
+        HCCL_INFO(
+            "[InsTempAllGatherNHR] reduce root-only direct write enabled, rank[%u], root[%llu]", myRank_,
+            tempAlgParams.root);
+    }
 
     bool isPcieProtocol = IsPcieProtocol(templateResource.channels); // 判断是否存在pcie链路
     isDmaRead_ = isPcieProtocol;                                     // 是否使用Read模式
@@ -276,6 +285,12 @@ HcclResult InsTempAllGatherNHR::BuildStepSlices(
     const u32& channelIdx, StepBuildMode mode, std::vector<DataSlice>& txSrcSlices, std::vector<DataSlice>& txDstSlices,
     std::vector<DataSlice>& rxSrcSlices, std::vector<DataSlice>& rxDstSlices)
 {
+    // root-only 直写与 LAST_STEP_READ_TO_OUTPUT 互斥（前者要求 enableRemoteMemAccess，后者要求在
+    // 关闭态），故可在分派前独立裁剪，避免通用路径与 Reduce 专属寻址策略混叠。
+    if (reduceRootOnly_) {
+        return BuildRootOnlyStepSlices(
+            channelSend, channelRecv, stepInfo, channelIdx, txSrcSlices, txDstSlices, rxSrcSlices, rxDstSlices);
+    }
     const u32 dataTypeSize = DATATYPE_SIZE_TABLE[dataType_];
     void* sendCclBuffAddr = channelSend.remoteCclMem.addr;
     void* recvCclBuffAddr = channelRecv.remoteCclMem.addr;
@@ -310,6 +325,102 @@ HcclResult InsTempAllGatherNHR::BuildStepSlices(
             }
         }
     }
+    return HCCL_SUCCESS;
+}
+
+HcclResult InsTempAllGatherNHR::BuildRootOnlyStepSlices(
+    const ChannelInfo& channelSend, const ChannelInfo& channelRecv, const AicpuNHRStepInfo& stepInfo,
+    const u32& channelIdx, std::vector<DataSlice>& txSrcSlices, std::vector<DataSlice>& txDstSlices,
+    std::vector<DataSlice>& rxSrcSlices, std::vector<DataSlice>& rxDstSlices)
+{
+    const u32 dataTypeSize = DATATYPE_SIZE_TABLE[dataType_];
+    const u64 outputSize = tempAlgParams_.buffInfo.outputSize;
+    void* const sendCclBuffAddr = channelSend.remoteCclMem.addr;
+    void* const recvCclBuffAddr = channelRecv.remoteCclMem.addr;
+    void* const rootOutSendAddr = channelSend.remoteOutputGraphMode.addr;
+    void* const rootOutRecvAddr = channelRecv.remoteOutputGraphMode.addr;
+    // root 为 userRank 语义：局部视图下仅 root 自身与其跨框对端判定为 root 相关角色。
+    const bool iAmRoot = (myRank_ == static_cast<u32>(tempAlgParams_.root));
+    const bool sendToRoot = (GetRankFromMap(stepInfo.toRank) == tempAlgParams_.root);
+    const bool recvFromRoot = (GetRankFromMap(stepInfo.fromRank) == tempAlgParams_.root);
+
+    for (u32 rpt = 0; rpt < tempAlgParams_.repeatNum; ++rpt) {
+        for (u32 i = 0; i < stepInfo.nSlices; ++i) {
+            SliceCalcInfo info = CalcSliceInfo(stepInfo, rpt, i, channelIdx);
+            // 非 root 侧（outBuffType==HCCL_BUFFER）的 scratch 布局，与其自身 CalcSliceInfo 编址一致
+            const u64 peerScratchBase
+                = tempAlgParams_.buffInfo.hcclBuffBaseOff + rpt * tempAlgParams_.outputRepeatStride;
+            const u64 txPeerCclOff
+                = peerScratchBase + tempAlgParams_.outputSliceStride * info.txIdx + info.txPartialOffset;
+            const u64 rxPeerCclOff
+                = peerScratchBase + tempAlgParams_.outputSliceStride * info.rxIdx + info.rxPartialOffset;
+            if (iAmRoot) {
+                // 对端窗口只回填地址不回填大小，用本地 outputSize 兜底校验直写范围
+                CHK_RET(CheckRootOutputRange(info.txOutOff, info.txSliceSize, outputSize, myRank_));
+                CHK_RET(CheckRootOutputRange(info.rxOutOff, info.rxSliceSize, outputSize, myRank_));
+                txSrcSlices.emplace_back(
+                    tempAlgParams_.buffInfo.outputPtr, info.txOutOff, info.txSliceSize,
+                    info.txSliceSize / dataTypeSize);
+                txDstSlices.emplace_back(
+                    sendCclBuffAddr, txPeerCclOff, info.txSliceSize, info.txSliceSize / dataTypeSize);
+                rxSrcSlices.emplace_back(
+                    recvCclBuffAddr, rxPeerCclOff, info.rxSliceSize, info.rxSliceSize / dataTypeSize);
+                rxDstSlices.emplace_back(
+                    tempAlgParams_.buffInfo.outputPtr, info.rxOutOff, info.rxSliceSize,
+                    info.rxSliceSize / dataTypeSize);
+            } else {
+                txSrcSlices.emplace_back(
+                    tempAlgParams_.buffInfo.hcclBuff.addr, info.txScratchOff, info.txSliceSize,
+                    info.txSliceSize / dataTypeSize);
+                if (sendToRoot) {
+                    CHK_RET(CheckRemoteRootOutputAddr(rootOutSendAddr, GetRankFromMap(stepInfo.toRank)));
+                    // 非 root 直写 root userOut 也须以 root 的输出边界做越界校验（review #1）
+                    CHK_RET(CheckRootOutputRange(
+                        info.txOutOff, info.txSliceSize, outputSize, GetRankFromMap(stepInfo.toRank)));
+                    txDstSlices.emplace_back(
+                        rootOutSendAddr, info.txOutOff, info.txSliceSize, info.txSliceSize / dataTypeSize);
+                } else {
+                    txDstSlices.emplace_back(
+                        sendCclBuffAddr, info.txScratchOff, info.txSliceSize, info.txSliceSize / dataTypeSize);
+                }
+                if (recvFromRoot) {
+                    CHK_RET(CheckRemoteRootOutputAddr(rootOutRecvAddr, GetRankFromMap(stepInfo.fromRank)));
+                    rxSrcSlices.emplace_back(
+                        rootOutRecvAddr, info.rxOutOff, info.rxSliceSize, info.rxSliceSize / dataTypeSize);
+                } else {
+                    rxSrcSlices.emplace_back(
+                        recvCclBuffAddr, info.rxScratchOff, info.rxSliceSize, info.rxSliceSize / dataTypeSize);
+                }
+                rxDstSlices.emplace_back(
+                    tempAlgParams_.buffInfo.hcclBuff.addr, info.rxScratchOff, info.rxSliceSize,
+                    info.rxSliceSize / dataTypeSize);
+            }
+        }
+    }
+    return HCCL_SUCCESS;
+}
+
+HcclResult InsTempAllGatherNHR::CheckRootOutputRange(u64 offset, u64 size, u64 outputSize, u32 remoteRank) const
+{
+    CHK_PRT_RET(
+        offset + size > outputSize,
+        HCCL_ERROR(
+            "[InsTempAllGatherNHR][BuildRootOnlyStepSlices] direct write offset out of range, rank[%u], "
+            "remoteRank[%u], offset[%llu], size[%llu], outputSize[%llu]",
+            myRank_, remoteRank, offset, size, outputSize),
+        HcclResult::HCCL_E_INTERNAL);
+    return HCCL_SUCCESS;
+}
+
+HcclResult InsTempAllGatherNHR::CheckRemoteRootOutputAddr(void* addr, u32 remoteRank) const
+{
+    CHK_PRT_RET(
+        addr == nullptr,
+        HCCL_ERROR(
+            "[InsTempAllGatherNHR][BuildRootOnlyStepSlices] remote root output addr is null, rank[%u], "
+            "remoteRank[%u]",
+            myRank_, remoteRank),
+        HcclResult::HCCL_E_INTERNAL);
     return HCCL_SUCCESS;
 }
 
@@ -477,6 +588,11 @@ HcclResult InsTempAllGatherNHR::LocalDataCopy(const std::vector<ThreadHandle>& t
         u64 sliceCount = partialSliceSize / dataTypeSize;
 
         if (enableRemoteMemAccess_) {
+            if (reduceRootOnly_ && myRank_ != static_cast<u32>(tempAlgParams_.root)) {
+                // root-only 模式：非 root 的自片保留在 CCL 输入布局（tx 源即 CCL），无需预拷；
+                // 其 outOff 编址含 loop 进度，照拷会越出 CCL 复用布局。
+                continue;
+            }
             const u64 outBaseOff = tempAlgParams_.buffInfo.outBuffBaseOff + rpt * tempAlgParams_.outputRepeatStride;
             const u64 outOff = tempAlgParams_.outputSliceStride * myAlgRank + outBaseOff + partialOffset;
             if (tempAlgParams_.buffInfo.inputPtr == tempAlgParams_.buffInfo.outputPtr && inOff == outOff) {

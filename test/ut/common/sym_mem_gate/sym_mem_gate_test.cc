@@ -79,27 +79,36 @@ TEST_F(SymMemGateTest, DeterministicSoleNhrNotLimitedByLevelNums)
 {
     // SoleNHR 为单模板单棵全 rank 蝶形树，多级仅改变链路层，先于级数检查放行
     topo_.topoLevelNums = 3;
-    EXPECT_TRUE(IsReduceOpSymMemDeterministic("AicpuAllReduceSoleNHR", &topo_));
-    EXPECT_TRUE(IsReduceOpSymMemDeterministic("AicpuReduceScatterSoleNHR", &topo_));
+    EXPECT_TRUE(IsReduceOpSymMemDeterministic("AicpuAllReduceSoleNHR", &topo_, HcclCMDType::HCCL_CMD_ALLREDUCE));
+    EXPECT_TRUE(
+        IsReduceOpSymMemDeterministic("AicpuReduceScatterSoleNHR", &topo_, HcclCMDType::HCCL_CMD_REDUCE_SCATTER));
 }
 
 TEST_F(SymMemGateTest, DeterministicWhitelistOnSingleLevel)
 {
-    EXPECT_TRUE(IsReduceOpSymMemDeterministic("AicpuReduceScatterPipeLineMeshNHR", &topo_));
-    EXPECT_TRUE(IsReduceOpSymMemDeterministic("AicpuAllReducePipeLineMeshNHR", &topo_));
-    EXPECT_TRUE(IsReduceOpSymMemDeterministic("AicpuAllReduceSoleMeshChunkTwoShot", &topo_));
-    EXPECT_TRUE(IsReduceOpSymMemDeterministic("AicpuReduceScatterSoleMeshChunk", &topo_));
-    EXPECT_TRUE(IsReduceOpSymMemDeterministic("AicpuReduceScatterVSoleMeshChunk", &topo_));
+    EXPECT_TRUE(IsReduceOpSymMemDeterministic(
+        "AicpuReduceScatterPipeLineMeshNHR", &topo_, HcclCMDType::HCCL_CMD_REDUCE_SCATTER));
+    EXPECT_TRUE(
+        IsReduceOpSymMemDeterministic("AicpuAllReducePipeLineMeshNHR", &topo_, HcclCMDType::HCCL_CMD_ALLREDUCE));
+    EXPECT_TRUE(
+        IsReduceOpSymMemDeterministic("AicpuAllReduceSoleMeshChunkTwoShot", &topo_, HcclCMDType::HCCL_CMD_ALLREDUCE));
+    EXPECT_TRUE(
+        IsReduceOpSymMemDeterministic("AicpuReduceScatterSoleMeshChunk", &topo_, HcclCMDType::HCCL_CMD_REDUCE_SCATTER));
+    EXPECT_TRUE(IsReduceOpSymMemDeterministic(
+        "AicpuReduceScatterVSoleMeshChunk", &topo_, HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V));
 }
 
 TEST_F(SymMemGateTest, DeterministicRejectsMultiLevelAndUnknown)
 {
     topo_.topoLevelNums = 2;
-    EXPECT_FALSE(IsReduceOpSymMemDeterministic("AicpuReduceScatterVSoleMeshChunk", &topo_));
-    EXPECT_FALSE(IsReduceOpSymMemDeterministic("AicpuReduceScatterSoleMeshChunk", &topo_));
+    EXPECT_FALSE(IsReduceOpSymMemDeterministic(
+        "AicpuReduceScatterVSoleMeshChunk", &topo_, HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V));
+    EXPECT_FALSE(
+        IsReduceOpSymMemDeterministic("AicpuReduceScatterSoleMeshChunk", &topo_, HcclCMDType::HCCL_CMD_REDUCE_SCATTER));
     // 既有 RSV SoleMesh 不在白名单（确定性折叠依赖 CCL 每源一槽，维持拒绝）
-    EXPECT_FALSE(IsReduceOpSymMemDeterministic("AicpuReduceScatterVSoleMesh", &topo_));
-    EXPECT_FALSE(IsReduceOpSymMemDeterministic("AicpuUnknownAlg", &topo_));
+    EXPECT_FALSE(
+        IsReduceOpSymMemDeterministic("AicpuReduceScatterVSoleMesh", &topo_, HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V));
+    EXPECT_FALSE(IsReduceOpSymMemDeterministic("AicpuUnknownAlg", &topo_, HcclCMDType::HCCL_CMD_REDUCE_SCATTER));
 }
 
 // ---------------- RefreshSymmetricMemory：opType 白名单与门禁矩阵 ----------------
@@ -360,5 +369,132 @@ TEST_F(SymMemGateTest, CheckAndSetInputProbeFailKeepsZeroCopyOff)
     CheckAndSetSymmetricMemory(param_);
     EXPECT_FALSE(param_.supportSymmetricMemory);
     EXPECT_TRUE(param_.symMemChecked);
+}
+
+// ============ 函数级门禁矩阵（AGV/Reduce 与 RSV/Scatter 零拷贝共用）============
+
+namespace {
+    TopoInfoWithNetLayerDetails MakeGateTopo(u32 levelNums)
+    {
+        TopoInfoWithNetLayerDetails topo;
+        topo.topoLevelNums = levelNums;
+        topo.level0Topo = Level0Shape::MESH_1D;
+        return topo;
+    }
+
+    OpParam MakeReduceGateParam(HcclDataType dataType, HcclReduceOp reduceOp)
+    {
+        OpParam param;
+        param.opType = HcclCMDType::HCCL_CMD_REDUCE;
+        param.DataDes.dataType = dataType;
+        param.reduceType = reduceOp;
+        return param;
+    }
+} // namespace
+
+// AR/RS/RSV 白名单算法按 topoLevelNums 放行/否决（3 参数 opType 分派）
+TEST(SymMemGatePureTest, DeterministicArRsRsvMatrix)
+{
+    TopoInfoWithNetLayerDetails topo1 = MakeGateTopo(TOPO_LEVEL_NUM_1);
+    TopoInfoWithNetLayerDetails topo2 = MakeGateTopo(TOPO_LEVEL_NUM_2);
+
+    EXPECT_TRUE(IsReduceOpSymMemDeterministic("AicpuAllReduceSoleNHR", &topo1, HcclCMDType::HCCL_CMD_ALLREDUCE));
+    EXPECT_TRUE(IsReduceOpSymMemDeterministic("AicpuAllReduceSoleNHR", &topo2, HcclCMDType::HCCL_CMD_ALLREDUCE));
+    EXPECT_TRUE(
+        IsReduceOpSymMemDeterministic("AicpuReduceScatterSoleNHR", &topo2, HcclCMDType::HCCL_CMD_REDUCE_SCATTER));
+    EXPECT_TRUE(IsReduceOpSymMemDeterministic(
+        "AicpuReduceScatterVSoleMeshChunk", &topo1, HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V));
+    EXPECT_FALSE(IsReduceOpSymMemDeterministic("AicpuAllReduceSoleMesh", &topo1, HcclCMDType::HCCL_CMD_ALLREDUCE));
+    EXPECT_FALSE(
+        IsReduceOpSymMemDeterministic("AicpuReduceScatterSoleMesh", &topo1, HcclCMDType::HCCL_CMD_REDUCE_SCATTER));
+}
+
+// Reduce 白名单仅多级算法、单级早退
+TEST(SymMemGatePureTest, ReduceDeterministicMatrix)
+{
+    TopoInfoWithNetLayerDetails topo1 = MakeGateTopo(TOPO_LEVEL_NUM_1);
+    TopoInfoWithNetLayerDetails topo2 = MakeGateTopo(TOPO_LEVEL_NUM_2);
+
+    EXPECT_FALSE(IsReduceOpSymMemDeterministic("AicpuReduceSoleNHR", &topo1, HcclCMDType::HCCL_CMD_REDUCE));
+    EXPECT_FALSE(IsReduceOpSymMemDeterministic("AicpuReduceSoleMesh", &topo1, HcclCMDType::HCCL_CMD_REDUCE));
+    EXPECT_TRUE(IsReduceOpSymMemDeterministic("AicpuReduceSoleNHR", &topo2, HcclCMDType::HCCL_CMD_REDUCE));
+    EXPECT_TRUE(IsReduceOpSymMemDeterministic("AicpuReduceParallelMeshNHR", &topo2, HcclCMDType::HCCL_CMD_REDUCE));
+    EXPECT_TRUE(IsReduceOpSymMemDeterministic("AicpuReduceParallelNHRNHR", &topo2, HcclCMDType::HCCL_CMD_REDUCE));
+    EXPECT_FALSE(IsReduceOpSymMemDeterministic("AicpuReduceSoleNHRAicpuReduce", &topo2, HcclCMDType::HCCL_CMD_REDUCE));
+    EXPECT_FALSE(
+        IsReduceOpSymMemDeterministic("AicpuReduceSequenceMeshConcurNHRNHR", &topo2, HcclCMDType::HCCL_CMD_REDUCE));
+}
+
+// 防御分支——空 topo 与非归约类 opType
+TEST(SymMemGatePureTest, DeterministicDefensiveBranches)
+{
+    TopoInfoWithNetLayerDetails topo2 = MakeGateTopo(TOPO_LEVEL_NUM_2);
+    EXPECT_FALSE(IsReduceOpSymMemDeterministic("AicpuAllReduceSoleNHR", nullptr, HcclCMDType::HCCL_CMD_ALLREDUCE));
+    EXPECT_FALSE(IsReduceOpSymMemDeterministic("AicpuAllGatherVSoleMesh", &topo2, HcclCMDType::HCCL_CMD_ALLGATHER_V));
+    EXPECT_FALSE(IsReduceOpSymMemDeterministic("AicpuBroadcastSoleNHR", &topo2, HcclCMDType::HCCL_CMD_BROADCAST));
+}
+
+// 64bit 数据类型与 PROD 规约门禁（函数级）
+TEST(SymMemGatePureTest, DataTypeAndReduceOpGate)
+{
+    EXPECT_TRUE(
+        IsReduceOpSymMemAllowed(MakeReduceGateParam(HcclDataType::HCCL_DATA_TYPE_FP32, HcclReduceOp::HCCL_REDUCE_SUM)));
+    EXPECT_FALSE(IsReduceOpSymMemAllowed(
+        MakeReduceGateParam(HcclDataType::HCCL_DATA_TYPE_INT64, HcclReduceOp::HCCL_REDUCE_SUM)));
+    EXPECT_FALSE(IsReduceOpSymMemAllowed(
+        MakeReduceGateParam(HcclDataType::HCCL_DATA_TYPE_UINT64, HcclReduceOp::HCCL_REDUCE_SUM)));
+    EXPECT_FALSE(
+        IsReduceOpSymMemAllowed(MakeReduceGateParam(HcclDataType::HCCL_DATA_TYPE_FP64, HcclReduceOp::HCCL_REDUCE_MAX)));
+    EXPECT_FALSE(IsReduceOpSymMemAllowed(
+        MakeReduceGateParam(HcclDataType::HCCL_DATA_TYPE_INT32, HcclReduceOp::HCCL_REDUCE_PROD)));
+}
+
+// 单边探测语义：仅 Scatter 与 Reduce 跳过 input 侧
+TEST(SymMemGatePureTest, NeedSymMemInputSideSemantics)
+{
+    EXPECT_FALSE(NeedSymMemInputSide(HcclCMDType::HCCL_CMD_REDUCE));
+    EXPECT_FALSE(NeedSymMemInputSide(HcclCMDType::HCCL_CMD_SCATTER));
+    EXPECT_TRUE(NeedSymMemInputSide(HcclCMDType::HCCL_CMD_ALLGATHER_V));
+    EXPECT_TRUE(NeedSymMemInputSide(HcclCMDType::HCCL_CMD_ALLREDUCE));
+    EXPECT_TRUE(NeedSymMemInputSide(HcclCMDType::HCCL_CMD_REDUCE_SCATTER));
+    EXPECT_TRUE(NeedSymMemInputSide(HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V));
+    EXPECT_TRUE(NeedSymMemInputSide(HcclCMDType::HCCL_CMD_BROADCAST));
+}
+
+// 窗口有效性矩阵——Reduce 仅看 output 侧、其余双侧、空数据侧视为有效
+TEST(SymMemGatePureTest, SymMemWindowValidMatrix)
+{
+    OpParam reduceParam;
+    reduceParam.opType = HcclCMDType::HCCL_CMD_REDUCE;
+    reduceParam.inputPtr = reinterpret_cast<void*>(0x1000);
+    reduceParam.inputSize = 1024;
+    reduceParam.inputSymWindow = nullptr;
+    reduceParam.outputPtr = reinterpret_cast<void*>(0x2000);
+    reduceParam.outputSize = 1024;
+    reduceParam.outputSymWindow = reinterpret_cast<void*>(0x3000);
+    EXPECT_TRUE(IsSymMemWindowValid(reduceParam));
+    reduceParam.outputSymWindow = nullptr;
+    EXPECT_FALSE(IsSymMemWindowValid(reduceParam));
+
+    OpParam agvParam;
+    agvParam.opType = HcclCMDType::HCCL_CMD_ALLGATHER_V;
+    agvParam.inputPtr = reinterpret_cast<void*>(0x1000);
+    agvParam.inputSize = 1024;
+    agvParam.inputSymWindow = nullptr;
+    agvParam.outputPtr = reinterpret_cast<void*>(0x2000);
+    agvParam.outputSize = 4096;
+    agvParam.outputSymWindow = reinterpret_cast<void*>(0x3000);
+    EXPECT_FALSE(IsSymMemWindowValid(agvParam));
+    agvParam.inputPtr = nullptr;
+    EXPECT_TRUE(IsSymMemWindowValid(agvParam));
+    agvParam.inputPtr = reinterpret_cast<void*>(0x1000);
+    agvParam.inputSize = 0;
+    agvParam.inputSymWindow = nullptr;
+    EXPECT_TRUE(IsSymMemWindowValid(agvParam));
+
+    OpParam zeroOut = agvParam;
+    zeroOut.outputSize = 0;
+    zeroOut.outputSymWindow = nullptr;
+    EXPECT_TRUE(IsSymMemWindowValid(zeroOut));
 }
 } // namespace

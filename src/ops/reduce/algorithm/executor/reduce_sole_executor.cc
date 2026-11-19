@@ -121,6 +121,13 @@ HcclResult ReduceSoleExecutor<AlgTopoMatch, AlgTemplate>::Orchestrate(
     maxTmpMemSize_ = resCtx.cclMem.size;
     // 给channels_和threads_赋值
     threads_ = resCtx.threads;
+    supportSymmetricMemory_ = param.supportSymmetricMemory;
+    if (supportSymmetricMemory_) {
+        inputOffset_ = param.inputOffset;
+        outputOffset_ = param.outputOffset;
+        inputSymWindow_ = param.inputSymWindow;
+        outputSymWindow_ = param.outputSymWindow;
+    }
     if (param.engine != CommEngine::COMM_ENGINE_AIV && param.engine != CommEngine::COMM_ENGINE_CCU) {
         CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));
         HCCL_DEBUG("[ReduceSoleExecutor][Orchestrate] info[0].size():%zu", remoteRankToChannelInfo_[0].size());

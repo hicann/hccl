@@ -51,6 +51,7 @@ private:
     HcclResult LocalDataCopy(const std::vector<ThreadHandle>& threads);
     HcclResult PostLocalCopy(const std::vector<ThreadHandle>& threads);
     TemplateDataParams tempAlgParams_;
+    bool supportSymmetricMemory_{false};
 };
 
 } // namespace ops_hccl

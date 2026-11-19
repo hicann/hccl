@@ -12,6 +12,7 @@
 #include "op_common_ops.h"
 #include <algorithm>
 #include <future>
+#include <limits>
 #include <map>
 #include <string>
 
@@ -192,6 +193,96 @@ HcclResult CheckAllGatherVRecvAndGetRank(
     return HCCL_SUCCESS;
 }
 
+struct AllGatherVDisplsError {
+    u32 rank{0};
+    const char* reason{"none"};
+};
+
+// displs 布局校验：零长度 rank 不占输出区间，其 displs 值不参与布局约束
+// （与 MPI_Allgatherv 语义一致），完全跳过；非零区间的 [start, end) 必须互不重叠
+// （无单调性要求，允许乱序布局，SE 决策删除单调不减约束保持 API 兼容面）。
+static HcclResult
+CheckAllGatherVDisplsLayout(const u64* counts, const u64* displs, u32 rankSize, AllGatherVDisplsError& err)
+{
+    // 收集非零区间 [start, end)，并记录原始 rank 下标：零长度 rank 被跳过，
+    // 重叠上报必须回到原始 rank（否则零长度 rank 会令报错下标错位）。
+    struct DisplsInterval {
+        u64 start;
+        u64 end;
+        u32 rank;
+    };
+    std::vector<DisplsInterval> intervals;
+    for (u32 i = 0; i < rankSize; ++i) {
+        if (counts[i] == 0) {
+            continue;
+        }
+        const u64 end = displs[i] + counts[i];
+        if (end < displs[i]) {
+            HCCL_ERROR("[AllGatherV] recvDispls[%u]=%llu + recvCounts[%u]=%llu overflows", i, displs[i], i, counts[i]);
+            err = {i, "recvDispls + recvCounts overflows"};
+            return HCCL_E_PARA;
+        }
+        intervals.push_back({displs[i], end, i});
+    }
+    // 两两比较（rankSize ≤ 64，O(n²) 开销可忽略）
+    for (size_t a = 0; a < intervals.size(); ++a) {
+        for (size_t b = a + 1; b < intervals.size(); ++b) {
+            if (intervals[a].start < intervals[b].end && intervals[b].start < intervals[a].end) {
+                HCCL_ERROR(
+                    "[AllGatherV] recvDispls intervals [%llu,%llu) and [%llu,%llu) overlap", intervals[a].start,
+                    intervals[a].end, intervals[b].start, intervals[b].end);
+                err = {intervals[b].rank, "recvDispls intervals overlap"};
+                return HCCL_E_PARA;
+            }
+        }
+    }
+    return HCCL_SUCCESS;
+}
+
+// 计算 outputSize：真实最大落点为 max(displs[i] + counts[i])（零长度 rank 无落点、不计入），并校验乘法溢出。
+static HcclResult CalcAllGatherVOutputSize(
+    const u64* counts, const u64* displs, u32 rankSize, u64 perDataSize, u64& outputSize, AllGatherVDisplsError& err)
+{
+    outputSize = 0;
+    for (u32 i = 0; i < rankSize; ++i) {
+        if (counts[i] == 0) {
+            continue;
+        }
+        const u64 endCount = displs[i] + counts[i];
+        if (endCount < displs[i] || endCount > std::numeric_limits<u64>::max() / perDataSize) {
+            HCCL_ERROR(
+                "[AllGatherV] recvDispls[%u]=%llu + recvCounts[%u]=%llu exceeds size limit (perDataSize=%llu)", i,
+                displs[i], i, counts[i], perDataSize);
+            err = {i, "recvDispls + recvCounts overflows"};
+            return HCCL_E_PARA;
+        }
+        outputSize = std::max(outputSize, endCount * perDataSize);
+    }
+    return HCCL_SUCCESS;
+}
+
+// 计算并校验 AllGatherV 的 outputSize：仅校验非空区间互不重叠、允许乱序/空洞（SE 决策无单调性约束），且不能溢出。
+static HcclResult CalcAndCheckAllGatherVOutputSize(
+    const void* recvCounts, const void* recvDispls, u32 rankSize, u64 perDataSize, u64& outputSize,
+    AllGatherVDisplsError& err)
+{
+    if (recvCounts == nullptr || recvDispls == nullptr) {
+        err = {0, "recvCounts or recvDispls is nullptr"};
+        return HCCL_E_PTR;
+    }
+    if (perDataSize == 0) {
+        err = {0, "perDataSize is 0"};
+        return HCCL_E_PARA;
+    }
+    const u64* counts = reinterpret_cast<const u64*>(recvCounts);
+    const u64* displs = reinterpret_cast<const u64*>(recvDispls);
+    HcclResult ret = CheckAllGatherVDisplsLayout(counts, displs, rankSize, err);
+    if (ret != HCCL_SUCCESS) {
+        return ret;
+    }
+    return CalcAllGatherVOutputSize(counts, displs, rankSize, perDataSize, outputSize, err);
+}
+
 HcclResult AllGatherVOutPlace(
     void* sendBuf, void* recvBuf, uint64_t sendCount, const void* recvCounts, const void* recvDispls,
     HcclDataType dataType, HcclComm comm, aclrtStream stream, const std::string& tag)
@@ -202,13 +293,15 @@ HcclResult AllGatherVOutPlace(
     u32 perDataSize = DATATYPE_SIZE_TABLE[dataType];
     u64 inputSize = sendCount * perDataSize; // all gather v 每个rank上一份数据
     u64 outputSize = 0;
-    const u64* u64RecvCount = reinterpret_cast<const u64*>(recvCounts);
-    const u64* u64RecvDispls = reinterpret_cast<const u64*>(recvDispls);
-    for (u64 i = 0; i < userRankSize; i++) {
-        outputSize = (outputSize > (u64RecvDispls[i] + u64RecvCount[i]) * perDataSize) ?
-                         outputSize :
-                         (u64RecvDispls[i] + u64RecvCount[i]) * perDataSize;
-    } // 结果为最大的displs加recvcount，非紧凑displs时大于counts总和，作为output实际写入extent
+    AllGatherVDisplsError displsErr{};
+    HcclResult calcRet
+        = CalcAndCheckAllGatherVOutputSize(recvCounts, recvDispls, userRankSize, perDataSize, outputSize, displsErr);
+    if (calcRet != HCCL_SUCCESS) {
+        HCCL_ERROR(
+            "[AllGatherV] invalid recvCounts/recvDispls, rank[%u], reason[%s], ret[%d]", displsErr.rank,
+            displsErr.reason, calcRet);
+        return calcRet;
+    }
 
     // 申请OpParam参数结构体内存
     u64 varMemSize = (userRankSize + userRankSize) * sizeof(u64);
@@ -243,6 +336,8 @@ HcclResult AllGatherVOutPlace(
     param.outputPtr = recvBuf;
     const void* temp = recvCounts;
     param.vDataDes.counts = const_cast<void*>(temp);
+    // 供 SingleRankProc 单rank路径读取 displs[0] 落位（契约允许 displs[0] != 0 的空洞布局）
+    param.vDataDes.displs = const_cast<void*>(recvDispls);
 
     // 带V算子的参数
     param.varMemSize = varMemSize;
@@ -273,6 +368,14 @@ HcclResult AllGatherVOutPlace(
     std::string algName;
     std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
     CHK_RET(Selector(comm, param, topoInfo, algName));
+
+    // 与RefreshSymmetricMemory的ALLGATHER_V白名单同条件：仅SoleMesh在单级MESH_1D上有对称收益，
+    // 探测后symMemChecked置位，HcclExecOp内白名单兜底只按窗口有效性恢复，不重复探测。
+    if (GetHcommVersion() >= CANN_VERSION(9, 1, 0) && param.opMode == OpMode::OPBASE
+        && param.engine == CommEngine::COMM_ENGINE_AICPU_TS && topoInfo->level0Topo == Level0Shape::MESH_1D
+        && !topoInfo->level0PcieMix && algName == "AicpuAllGatherVSoleMesh") {
+        CheckAndSetSymmetricMemory(param);
+    }
 
     CHK_RET(HcclExecOp(comm, param, topoInfo, algName));
     HCCL_INFO("Execute AllGatherVOutPlace success.");
@@ -309,13 +412,15 @@ HcclResult AllGatherVOutPlaceGraphMode(
     u32 perDataSize = DATATYPE_SIZE_TABLE[dataType];
     u64 inputSize = sendCount * perDataSize; // all gather v 每个rank上一份数据
     u64 outputSize = 0;
-    const u64* u64RecvCount = reinterpret_cast<const u64*>(recvCounts);
-    const u64* u64RecvDispls = reinterpret_cast<const u64*>(recvDispls);
-    for (u64 i = 0; i < userRankSize; i++) {
-        outputSize = (outputSize > (u64RecvDispls[i] + u64RecvCount[i]) * perDataSize) ?
-                         outputSize :
-                         (u64RecvDispls[i] + u64RecvCount[i]) * perDataSize;
-    } // 结果为最大的displs加recvcount
+    AllGatherVDisplsError displsErr{};
+    HcclResult calcRet
+        = CalcAndCheckAllGatherVOutputSize(recvCounts, recvDispls, userRankSize, perDataSize, outputSize, displsErr);
+    if (calcRet != HCCL_SUCCESS) {
+        HCCL_ERROR(
+            "[AllGatherV] invalid recvCounts/recvDispls, rank[%u], reason[%s], ret[%d]", displsErr.rank,
+            displsErr.reason, calcRet);
+        return calcRet;
+    }
     u64 varMemSize = (userRankSize + userRankSize) * sizeof(u64);
     void* paramMem = malloc(sizeof(OpParam) + varMemSize);
     if (!paramMem) {
@@ -343,6 +448,7 @@ HcclResult AllGatherVOutPlaceGraphMode(
     param.stream = stream, param.opMode = OpMode::OFFLOAD, param.inputPtr = sendBuf, param.inputSize = inputSize,
     param.outputPtr = recvBuf, param.outputSize = outputSize, param.vDataDes.dataType = dataType,
     param.varMemSize = varMemSize, param.vDataDes.counts = const_cast<void*>(temp);
+    param.vDataDes.displs = const_cast<void*>(recvDispls);
     // 从源内存地址按字节直接拷贝数据到目标地址
     std::vector<u64> merged(userRankSize + userRankSize);
     const uint64_t* countsPtr = reinterpret_cast<const uint64_t*>(recvCounts);
