@@ -50,6 +50,12 @@ export HCCL_RDMA_QP_PORT_CONFIG_PATH=/home/tmp
 
     环境变量HCCL_RDMA_QP_PORT_CONFIG_PATH \> 环境变量HCCL_RDMA_QPS_PER_CONNECTION。
 
+<!-- npu="950" id7 -->
+- 针对Ascend 950PR&950DT系列产品，当用户使用Host侧RoCE网卡时，有如下约束：
+
+    单独配置HCCL_RDMA_QP_PORT_CONFIG_PATH且指定的配置文件中配置为1个源端口时，创建的QP数量以RoCE网卡支持的总线路径数量为准。
+<!-- end id7 -->
+
 <!-- npu="A3,910b" id6 -->
 - 针对Atlas A3系列产品与Atlas A2系列产品，QP相关配置还可以通过hccn_tool工具设置，hccn_tool工具配置与该环境变量的优先级如下：
 
