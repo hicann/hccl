@@ -4,7 +4,9 @@
 
 当通信域的创建方式为“基于root节点信息创建”时，可以通过该环境变量指定Host网卡起始端口号。配置后，HCCL以“起始端口 + 物理设备ID”为基础计算各NPU使用的端口，该部分端口同时用于集群信息收集与控制面建链，实际占用端口数量与产品形态及单机NPU数量相关。
 
-该环境变量需要配置为整数，取值范围为\[1024,65520\]，请确保分配的端口未被占用。
+当通信域的创建方式为“基于多root节点信息分组创建”时，可以通过该环境变量指定Host网卡起始端口号。配置后，HCCL以“起始端口 + 物理设备ID”和“起始端口 + 物理设备ID + 32”为基础计算各NPU使用的端口，前者用于集群信息收集与控制面建链，实际占用端口数量与产品形态及单机NPU数量相关，后者是通信域创建过程中root间mesh建链额外使用的端口，其中32为root间mesh端口相对组内服务端口的固定偏移量（用于错开两类端口区间，避免端口重叠）。“基于多root节点信息分组创建”的创建方式对应HcclGetRootInfoScalable与HcclCommInitRootInfoScalable接口，具体用法参见[HcclGetRootInfoScalable](https://gitcode.com/cann/hcomm/blob/master/docs/zh/api_ref/comm_mgr_c/HcclGetRootInfoScalable.md)。
+
+该环境变量需要配置为整数，取值范围为\[1024,65520\]，请确保分配的端口未被占用。多root场景下，还需保证“起始端口 + 物理设备ID + 32”不超过65535（即实际可用上限为65503 - 物理设备ID）。
 
 ## 配置示例
 
@@ -26,6 +28,12 @@ export HCCL_IF_BASE_PORT=50000
 
     ```bash
     sysctl -w net.ipv4.ip_local_reserved_ports=50000-50031
+    ```
+
+- 当通信域的创建方式为“基于多root节点信息分组创建”时，仅在HCCL_IF_BASE_PORT生效（即未配置HCCL_HOST_SOCKET_PORT_RANGE）时，还会使用“起始端口 + 物理设备ID + 32”的端口，需要将预留范围的上界增加32个端口；未配置HCCL_IF_BASE_PORT时，root间mesh端口仍在默认端口范围内分配，无需额外扩展。若配置了HCCL_HOST_SOCKET_PORT_RANGE，Host侧端口以该范围为准，mesh端口从该范围中分配，不再叠加偏移。例如，用HCCL_IF_BASE_PORT指定起始端口为50000时，需要预留50000-50063端口：
+
+    ```bash
+    sysctl -w net.ipv4.ip_local_reserved_ports=50000-50063
     ```
 
 ## 产品支持情况
