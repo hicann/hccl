@@ -25,6 +25,8 @@
 #include "topo_match_base_v2.h"
 #include "topo_match_two_level.h"
 #include <type_traits>
+#include <memory>
+#include "ins_v2_all_reduce_sequence_rhd_tail.h"
 
 namespace ops_hccl {
 
@@ -55,6 +57,59 @@ public:
 
 protected:
     /* *************** 算法编排 *************** */
+    // 单次编排的局部状态，不跨算子保留模板或参数。
+    template <typename InsAlgTemplate>
+    struct TemplateStage {
+        std::shared_ptr<InsAlgTemplate> algorithm;
+        TemplateDataParams params;
+        TemplateResource resource;
+    };
+
+    struct LoopContext {
+        ArSeqRhdTail tail;
+        TemplateStage<InsAlgTemplate0> rsIntra;
+        TemplateStage<InsAlgTemplate1> rsInter;
+        TemplateStage<InsAlgTemplate2> agInter;
+        TemplateStage<InsAlgTemplate3> agIntra;
+        u64 maxCountPerLoop{0};
+        u64 loopTimes{0};
+        u32 totalRankAlign{0};
+        HcclMem cclInMem{};
+        HcclMem cclOutMem{};
+    };
+
+    struct LoopState {
+        u64 loop{0};
+        u64 processedDataCount{0};
+        u64 currDataCount{0};
+        u64 validDataCount{0};
+        u64 chunkCount{0};
+        u64 chunkSize{0};
+        u64 subSliceCount{0};
+        u64 subSliceSize{0};
+    };
+
+    HcclResult PrepareLoopContext(const OpParam& param, const AlgResourceCtxSerializable& resCtx, LoopContext& ctx);
+    HcclResult PrepareRhdLoop(const OpParam& param, LoopContext& ctx);
+    HcclResult RunRhdReduceScatterIntra(const OpParam& param, LoopContext& ctx, LoopState& state);
+    HcclResult RunRhdReduceScatterInter(const OpParam& param, LoopContext& ctx, LoopState& state);
+    HcclResult RunRhdAllGatherInter(
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, LoopContext& ctx, LoopState& state);
+    HcclResult RunRhdAllGatherIntra(
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, LoopContext& ctx, LoopState& state);
+    HcclResult RunRhdLoop(const OpParam& param, const AlgResourceCtxSerializable& resCtx, LoopContext& ctx);
+    // ===== 默认（非 RHD）执行路径 =====
+    // 走此路径的两类情形：
+    //   1) 注册绑定的模板不是 RHD 族（Mesh / NHR / MeshMesh 等既有算法），默认选路或显式配置选中该注册；
+    //   2) 显式配置的 RHD 未通过准入（层级数与配置形态不符 / L0 非对称 / dtype、PROD 不支持等），
+    //      选路打印 WARNING 后回退自动选路，由既有算法注册执行——即"回退执行"落在此路径。
+    // 与 RunRhd* 的差异：按各模板既有参数契约填参（stride/sliceSize 或 SplitData 的 allRank*），
+    // 不做 RHD 的 σ 布局、rhdSkipPost/skipPrePhase 及代表侧桥接处理。
+    HcclResult RunDefaultReduceScatterIntra(const OpParam& param, LoopContext& ctx, LoopState& state);
+    HcclResult RunDefaultReduceScatterInter(const OpParam& param, LoopContext& ctx, LoopState& state);
+    HcclResult RunDefaultAllGatherInter(const OpParam& param, LoopContext& ctx, LoopState& state);
+    HcclResult RunDefaultAllGatherIntra(const OpParam& param, LoopContext& ctx, LoopState& state);
+    HcclResult RunDefaultLoop(const OpParam& param, LoopContext& ctx);
     HcclResult OrchestrateLoop(const OpParam& param, const AlgResourceCtxSerializable& resCtx);
     HcclResult InitCommInfo(
         const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,

@@ -286,3 +286,23 @@ TEST_F(ST_ALL_REDUCE_DPU_TEST, forced_3level_dpu_4x4x2_fp32_256)
     HcclReduceOp reduceOp = HcclReduceOp::HCCL_REDUCE_SUM;
     RunAllReduceOmniPipeDPU(topoMeta, dataCount, dataType, reduceOp);
 }
+
+// ========== RHD（递归折半倍增）显式配置二级形态（HostDPU）==========
+// allreduce:sequence{level0=meshconcur,level1=rhd}：L0 框内 MeshConcur、L1 跨框 DPU RHD。
+// 命中 DpuAllReduceSequenceMeshConcurRHD；数据正确性由 CheckAllReduce 断言，
+// 算法命中证据由 VM checker 的 --expect-algo 用例承载（CI ST 不解析算法名）。
+// rhd_001：d1=6 非 2 次幂且 count 非整除（%12=8）——层内前后处理 + 尾块 staging 生效。
+TEST_F(ST_ALL_REDUCE_DPU_TEST, st_all_reduce_dpu_rhd_tail_nondivisible)
+{
+    setenv("HCCL_ALGO", "allreduce:sequence{level0=meshconcur,level1=rhd}", 1);
+    TopoMeta topoMeta{{{0, 1}, {0, 1}, {0, 1}, {0, 1}, {0, 1}, {0, 1}}};
+    RunAllReduceOmniPipeDPU(topoMeta, 262144 + 4, HcclDataType::HCCL_DATA_TYPE_FP32, HcclReduceOp::HCCL_REDUCE_SUM);
+}
+
+// rhd_002：d1=4 2 次幂且 count 整除——纯主体路径（无尾块 staging）。
+TEST_F(ST_ALL_REDUCE_DPU_TEST, st_all_reduce_dpu_rhd_divisible)
+{
+    setenv("HCCL_ALGO", "allreduce:sequence{level0=meshconcur,level1=rhd}", 1);
+    TopoMeta topoMeta{{{0, 1}, {0, 1}, {0, 1}, {0, 1}}};
+    RunAllReduceOmniPipeDPU(topoMeta, 262144, HcclDataType::HCCL_DATA_TYPE_FP32, HcclReduceOp::HCCL_REDUCE_SUM);
+}

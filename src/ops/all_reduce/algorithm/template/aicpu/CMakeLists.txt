@@ -12,13 +12,10 @@ set(src_list
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_all_reduce_mesh_1D_one_shot.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_all_reduce_mesh_1D_two_shot.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_all_reduce_nhr.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_all_reduce_hd.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_all_reduce_aicpu_reduce_nhr.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_all_reduce_mesh_1D_two_shot_mesh_chunk.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_all_gather_mesh_1D_intra.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_reduce_scatter_mesh_1D_intra.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_reduce_scatter_hd.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_all_gather_hd.cc
 )
 if(NOT HCCL_CANN_COMPAT_850)
     list(APPEND src_list

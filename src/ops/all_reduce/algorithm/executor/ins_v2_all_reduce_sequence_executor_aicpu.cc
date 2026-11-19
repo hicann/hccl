@@ -18,6 +18,9 @@
 #include "ins_temp_reduce_scatter_mesh_1D.h"
 #include "ins_temp_reduce_scatter_aicpu_reduce_nhr_pcie.h"
 #include "ins_temp_all_gather_mesh_1D.h"
+#include "ins_v2_all_reduce_sequence_rhd_tail.h"
+#include "ins_temp_reduce_scatter_rhd.h"
+#include "ins_temp_all_gather_rhd.h"
 
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
@@ -585,7 +588,15 @@ InsV2AllReduceSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplat
     OrchestrateLoop(const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
     HCCL_INFO("[InsV2AllReduceSequenceExecutorAicpu][OrchestrateLoop] Start");
-    scratchBlockSize_ = resCtx.cclMem.size / CCL_MEM_HALF_DIVISOR;
+    const u32 totalRankAlign = rankSizeLevel0_ * rankSizeLevel1_;
+    // RHD 尾块隔离：非整除 count 时在 workspace 尾部预留两块 rank-align tile，
+    // 并把收缩后的 cclMem 传给所有模板参数与尺寸计算（整除时 helper 直接返回，零影响）。
+    AlgResourceCtxSerializable loopResCtx = resCtx;
+    ArSeqRhdTail rhdTail{};
+    if constexpr (IsRhdTemplate<InsAlgTemplate1>::value) {
+        CHK_RET(ArSeqRhdPrepareTailWorkspace(dataCount_, totalRankAlign, dataTypeSize_, loopResCtx.cclMem, rhdTail));
+    }
+    scratchBlockSize_ = loopResCtx.cclMem.size / CCL_MEM_HALF_DIVISOR;
     engine_ = param.engine;
 
     TemplateDataParams tempAlgParamsStepOne;   // 框内ReduceScatter的模板参数
@@ -594,7 +605,7 @@ InsV2AllReduceSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplat
     TemplateDataParams tempAlgParamsStepFour;  // 框内AllGather的模板参数
     // 填充buff类型和buff指针参数
     GenBaseTempAlgParams(
-        param, resCtx, tempAlgParamsStepOne, tempAlgParamsStepTwo, tempAlgParamsStepThree, tempAlgParamsStepFour);
+        param, loopResCtx, tempAlgParamsStepOne, tempAlgParamsStepTwo, tempAlgParamsStepThree, tempAlgParamsStepFour);
 
     // 构建四个template
     std::shared_ptr<InsAlgTemplate0> algTemplateStepOne
@@ -640,7 +651,6 @@ InsV2AllReduceSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplat
     outCclBuffOffset_ = 0;
     inCclBuffOffset_ = outCclBuffSize_;
     u64 maxCountPerLoop = 0;
-    u32 totalRankAlign = rankSizeLevel0_ * rankSizeLevel1_;
     if (param.engine == CommEngine::COMM_ENGINE_CCU) {
         maxCountPerLoop = scratchBlockSize_ / HCCL_MIN_SLICE_ALIGN * HCCL_MIN_SLICE_ALIGN / dataTypeSize_
                           / totalRankAlign * totalRankAlign;
@@ -650,68 +660,167 @@ InsV2AllReduceSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplat
         maxCountPerLoop = inCclBuffOffset_ / HCCL_MIN_SLICE_ALIGN * HCCL_MIN_SLICE_ALIGN / dataTypeSize_
                           / totalRankAlign * totalRankAlign;
     }
-    // 计算loopTimes
-    u64 loopTimes = dataCount_ / maxCountPerLoop + static_cast<u64>(dataCount_ % maxCountPerLoop != 0);
+    // loopTimes 沿用各分支既有口径；RHD 分支在循环内按尾块 plan 重新计数。
+    u64 loopTimes = 0;
     u64 processedDataCount = 0;
-    if (param.supportSymmetricMemory) {
-        loopTimes = 1;
-        tempAlgParamsStepOne.buffInfo.outputPtr = param.inputPtr;
-        tempAlgParamsStepOne.buffInfo.outBuffType = BufferType::INPUT;
-        tempAlgParamsStepTwo.buffInfo.inputPtr = param.inputPtr;
-        tempAlgParamsStepTwo.buffInfo.inBuffType = BufferType::INPUT;
-        tempAlgParamsStepTwo.buffInfo.outputPtr = param.inputPtr;
-        tempAlgParamsStepTwo.buffInfo.outBuffType = BufferType::INPUT;
-        tempAlgParamsStepThree.buffInfo.inputPtr = param.outputPtr;
-        tempAlgParamsStepThree.buffInfo.inBuffType = BufferType::OUTPUT;
-        tempAlgParamsStepThree.buffInfo.outputPtr = param.outputPtr;
-        tempAlgParamsStepThree.buffInfo.outBuffType = BufferType::OUTPUT;
-        tempAlgParamsStepFour.buffInfo.inputPtr = param.outputPtr;
-        tempAlgParamsStepFour.buffInfo.inBuffType = BufferType::OUTPUT;
-        tempAlgParamsStepThree.enableRemoteMemAccess = true;
-        tempAlgParamsStepFour.enableRemoteMemAccess = true;
-        HCCL_INFO("[InsV2AllReduceSequenceExecutorAicpu][OrchestrateLoop] %s: symmetric memory enabled", param.algName);
-    }
-    for (u64 loop = 0; loop < loopTimes; loop++) {
-        u64 currDataCount = (loop == loopTimes - 1) ? dataCount_ - processedDataCount :
-                                                      maxCountPerLoop; // 判断是最后一轮，就处理尾块长度
-        // ----------- Step1:框内ReduceScatter数据搬运 -----------
-        // 框内的数据偏移和搬运计算
-        GenTempAlgParamsStepOne(loop, currDataCount, processedDataCount, tempAlgParamsStepOne);
-        CHK_RET(algTemplateStepOne->KernelRun(param, tempAlgParamsStepOne, templateResourceStepOne));
+    if constexpr (IsRhdTemplate<InsAlgTemplate1>::value) {
+        // 尾块预留收缩后 workspace 可能变小；归零时无法推进单轮，直接报错而非除零。
+        CHK_PRT_RET(
+            maxCountPerLoop == 0,
+            HCCL_ERROR(
+                "[InsV2AllReduceSequenceExecutorAicpu] maxCountPerLoop is 0, cclBuffSize[%llu], dataTypeSize[%llu].",
+                static_cast<u64>(loopResCtx.cclMem.size), static_cast<u64>(dataTypeSize_)),
+            HcclResult::HCCL_E_INTERNAL);
+        // L1 RS/AG 使用均匀分片，scratch 与输入隔离，AG 输出与 scratch 同区同基址。
+        // RS 跳过 POST、AG 跳过 PRE，由代表本地桥接被合并方份额，最终经 AG POST 回传。
+        // 每轮只跑 totalRankAlign 对齐前缀；末尾余量单独一轮 staged 到隔离 tile，对齐 DPU 方案。
+        // AICPU 路径不支持对称内存。
+        CHK_PRT_RET(
+            param.supportSymmetricMemory,
+            HCCL_ERROR(
+                "[%s] algName[%s] RHD sequence not support symmetric memory, fallback by reselecting HCCL_ALGO.",
+                __func__, param.algName),
+            HcclResult::HCCL_E_NOT_SUPPORT);
+        u64 loop = 0;
+        while (processedDataCount < dataCount_) {
+            const ArSeqRhdLoopPlan plan
+                = ArSeqRhdPlanLoop(dataCount_ - processedDataCount, maxCountPerLoop, totalRankAlign);
+            if (plan.paddedTail) {
+                CHK_RET(ArSeqRhdStageTail(param, rhdTail, processedDataCount, plan.validCount, threads_[0]));
+            }
+            // Step1：框内 MeshConcur ReduceScatter。
+            GenTempAlgParamsStepOne(loop, plan.currDataCount, processedDataCount, tempAlgParamsStepOne);
+            if (plan.paddedTail) {
+                tempAlgParamsStepOne.buffInfo.inputPtr = rhdTail.storage.addr;
+                tempAlgParamsStepOne.buffInfo.inBuffType = BufferType::HCCL_BUFFER;
+                tempAlgParamsStepOne.buffInfo.inBuffBaseOff = rhdTail.inputOffset;
+            }
+            CHK_RET(algTemplateStepOne->KernelRun(param, tempAlgParamsStepOne, templateResourceStepOne));
 
-        // ----------- Step2:框间ReduceScatter数据搬运 -----------
-        // 框间的数据偏移和搬运量计算
-        GenTempAlgParamsStepTwo(
-            loop, currDataCount, tempAlgParamsStepOne.sliceSize, tempAlgParamsStepOne.tailSize, processedDataCount,
-            tempAlgParamsStepTwo);
-        CHK_RET(algTemplateStepTwo->KernelRun(param, tempAlgParamsStepTwo, templateResourceStepTwo));
+            // Step2：框间 RHD ReduceScatter，跳过 POST。
+            u64 chunkCount = plan.currDataCount / rankSizeLevel0_; // 本 rank L0 份额（均匀）
+            u64 subSliceCount = chunkCount / rankSizeLevel1_;      // L1 均匀子份额
+            u64 subSliceSize = subSliceCount * dataTypeSize_;
+            tempAlgParamsStepTwo.count = chunkCount;
+            tempAlgParamsStepTwo.sliceSize = subSliceSize;
+            tempAlgParamsStepTwo.tailSize = subSliceSize;
+            tempAlgParamsStepTwo.inputSliceStride = subSliceSize;
+            tempAlgParamsStepTwo.outputSliceStride = subSliceSize;
+            tempAlgParamsStepTwo.buffInfo.inBuffBaseOff = 0;                  // 输入 = ccl-out 本 rank chunk
+            tempAlgParamsStepTwo.buffInfo.outBuffBaseOff = 0;                 // 输出子份额落 [myIdx*SS]
+            tempAlgParamsStepTwo.buffInfo.hcclBuffBaseOff = inCclBuffOffset_; // scratch = ccl-in（与输入隔离）
+            tempAlgParamsStepTwo.repeatNum = 1;
+            tempAlgParamsStepTwo.inputRepeatStride = 0;
+            tempAlgParamsStepTwo.outputRepeatStride = 0;
+            tempAlgParamsStepTwo.rhdSkipPost = true;
+            HCCL_INFO(
+                "[InsV2AllReduceSequenceExecutorAicpu] loop [%llu] RHD StepTwo chunkCount[%llu] subSliceCount[%llu] "
+                "subSliceSize[%llu] inBuffBaseOff[%llu] hcclBuffBaseOff[%llu] paddedTail[%u]",
+                loop, chunkCount, subSliceCount, subSliceSize, tempAlgParamsStepTwo.buffInfo.inBuffBaseOff,
+                tempAlgParamsStepTwo.buffInfo.hcclBuffBaseOff, static_cast<u32>(plan.paddedTail));
+            CHK_RET(algTemplateStepTwo->KernelRun(param, tempAlgParamsStepTwo, templateResourceStepTwo));
 
-        // 对称内存路径：RS 完成后 input[mySlice] 已是归约结果，拷贝到 output[mySlice] 供 AG 阶段使用
-        if (param.supportSymmetricMemory && currDataCount > 0) {
-            u64 mySliceSize = (rankIdxLevel1_ == rankSizeLevel1_ - 1) ? tempAlgParamsStepTwo.tailSize :
-                                                                        tempAlgParamsStepTwo.sliceSize;
-            u64 mySliceOffset
-                = tempAlgParamsStepTwo.buffInfo.inBuffBaseOff + rankIdxLevel1_ * tempAlgParamsStepTwo.sliceSize;
-            DataSlice copySrcSlice(param.inputPtr, mySliceOffset, mySliceSize, mySliceSize / dataTypeSize_);
-            DataSlice copyDstSlice(param.outputPtr, mySliceOffset, mySliceSize, mySliceSize / dataTypeSize_);
-            CHK_RET(LocalCopy(threads_[0], copySrcSlice, copyDstSlice));
+            // 将被合并方份额放入代表的 AG owner 槽。
+            CHK_RET(ArSeqRhdBridgeMergedShare(
+                static_cast<u32>(rankSizeLevel1_), static_cast<u32>(rankIdxLevel1_), subSliceSize, subSliceCount,
+                loopResCtx.cclMem.addr, inCclBuffOffset_, loopResCtx.cclMem.addr, 0, threads_[0]));
+
+            // Step3：框间 RHD AllGather，跳过 PRE，输出与 scratch 共用网格。
+            tempAlgParamsStepThree.count = chunkCount;
+            tempAlgParamsStepThree.sliceSize = subSliceSize;
+            tempAlgParamsStepThree.tailSize = subSliceSize;
+            tempAlgParamsStepThree.inputSliceStride = subSliceSize;
+            tempAlgParamsStepThree.outputSliceStride = subSliceSize;
+            tempAlgParamsStepThree.buffInfo.inBuffBaseOff = 0;  // 我的子份额在 [myIdx*SS]（Step2 输出同位）
+            tempAlgParamsStepThree.buffInfo.outBuffBaseOff = 0; // 汇聚网格 [owner*SS]（out 与 hccl 同区同基）
+            tempAlgParamsStepThree.buffInfo.hcclBuffBaseOff = 0;
+            tempAlgParamsStepThree.repeatNum = 1;
+            tempAlgParamsStepThree.inputRepeatStride = 0;
+            tempAlgParamsStepThree.outputRepeatStride = 0;
+            tempAlgParamsStepThree.skipPrePhase = true;
+            CHK_RET(algTemplateStepThree->KernelRun(param, tempAlgParamsStepThree, templateResourceStepThree));
+
+            // Step4：框内 MeshConcur AllGather，回写用户输出（尾块先落隔离 tile，再回拷有效字节）。
+            GenTempAlgParamsStepFour(
+                loop, plan.currDataCount, processedDataCount, tempAlgParamsStepOne.sliceSize,
+                tempAlgParamsStepOne.tailSize, 0, tempAlgParamsStepFour);
+            if (plan.paddedTail) {
+                tempAlgParamsStepFour.buffInfo.outputPtr = rhdTail.storage.addr;
+                tempAlgParamsStepFour.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
+                tempAlgParamsStepFour.buffInfo.outBuffBaseOff = rhdTail.outputOffset;
+            }
+            CHK_RET(algTemplateStepFour->KernelRun(param, tempAlgParamsStepFour, templateResourceStepFour));
+            if (plan.paddedTail) {
+                CHK_RET(ArSeqRhdCopyTailOutput(param, rhdTail, processedDataCount, plan.validCount, threads_[0]));
+            }
+
+            processedDataCount += plan.validCount;
+            loop++;
         }
+        loopTimes = loop; // FastLaunch 计数口径与实际轮数一致
+    } else {
+        loopTimes = dataCount_ / maxCountPerLoop + static_cast<u64>(dataCount_ % maxCountPerLoop != 0);
+        if (param.supportSymmetricMemory) {
+            loopTimes = 1;
+            tempAlgParamsStepOne.buffInfo.outputPtr = param.inputPtr;
+            tempAlgParamsStepOne.buffInfo.outBuffType = BufferType::INPUT;
+            tempAlgParamsStepTwo.buffInfo.inputPtr = param.inputPtr;
+            tempAlgParamsStepTwo.buffInfo.inBuffType = BufferType::INPUT;
+            tempAlgParamsStepTwo.buffInfo.outputPtr = param.inputPtr;
+            tempAlgParamsStepTwo.buffInfo.outBuffType = BufferType::INPUT;
+            tempAlgParamsStepThree.buffInfo.inputPtr = param.outputPtr;
+            tempAlgParamsStepThree.buffInfo.inBuffType = BufferType::OUTPUT;
+            tempAlgParamsStepThree.buffInfo.outputPtr = param.outputPtr;
+            tempAlgParamsStepThree.buffInfo.outBuffType = BufferType::OUTPUT;
+            tempAlgParamsStepFour.buffInfo.inputPtr = param.outputPtr;
+            tempAlgParamsStepFour.buffInfo.inBuffType = BufferType::OUTPUT;
+            tempAlgParamsStepThree.enableRemoteMemAccess = true;
+            tempAlgParamsStepFour.enableRemoteMemAccess = true;
+            HCCL_INFO(
+                "[InsV2AllReduceSequenceExecutorAicpu][OrchestrateLoop] %s: symmetric memory enabled", param.algName);
+        }
+        for (u64 loop = 0; loop < loopTimes; loop++) {
+            u64 currDataCount = (loop == loopTimes - 1) ? dataCount_ - processedDataCount :
+                                                          maxCountPerLoop; // 判断是最后一轮，就处理尾块长度
+            // ----------- Step1:框内ReduceScatter数据搬运 -----------
+            // 框内的数据偏移和搬运计算
+            GenTempAlgParamsStepOne(loop, currDataCount, processedDataCount, tempAlgParamsStepOne);
+            CHK_RET(algTemplateStepOne->KernelRun(param, tempAlgParamsStepOne, templateResourceStepOne));
 
-        // ----------- Step3:框间AllGather数据搬运 -----------
-        // 框间的数据偏移和搬运量计算
-        GenTempAlgParamsStepThree(
-            loop, currDataCount, tempAlgParamsStepTwo.sliceSize, tempAlgParamsStepTwo.tailSize,
-            tempAlgParamsStepTwo.buffInfo.inBuffBaseOff, tempAlgParamsStepThree);
-        CHK_RET(algTemplateStepThree->KernelRun(param, tempAlgParamsStepThree, templateResourceStepThree));
+            // ----------- Step2:框间ReduceScatter数据搬运 -----------
+            // 框间的数据偏移和搬运量计算
+            GenTempAlgParamsStepTwo(
+                loop, currDataCount, tempAlgParamsStepOne.sliceSize, tempAlgParamsStepOne.tailSize, processedDataCount,
+                tempAlgParamsStepTwo);
+            CHK_RET(algTemplateStepTwo->KernelRun(param, tempAlgParamsStepTwo, templateResourceStepTwo));
 
-        // ----------- Step4:框内AllGather数据搬运 -----------
-        // 框内的数据偏移和搬运计算
-        GenTempAlgParamsStepFour(
-            loop, currDataCount, processedDataCount, tempAlgParamsStepOne.sliceSize, tempAlgParamsStepOne.tailSize,
-            tempAlgParamsStepTwo.buffInfo.inBuffBaseOff, tempAlgParamsStepFour);
-        CHK_RET(algTemplateStepFour->KernelRun(param, tempAlgParamsStepFour, templateResourceStepFour));
+            // 对称内存路径：RS 完成后 input[mySlice] 已是归约结果，拷贝到 output[mySlice] 供 AG 阶段使用
+            if (param.supportSymmetricMemory && currDataCount > 0) {
+                u64 mySliceSize = (rankIdxLevel1_ == rankSizeLevel1_ - 1) ? tempAlgParamsStepTwo.tailSize :
+                                                                            tempAlgParamsStepTwo.sliceSize;
+                u64 mySliceOffset
+                    = tempAlgParamsStepTwo.buffInfo.inBuffBaseOff + rankIdxLevel1_ * tempAlgParamsStepTwo.sliceSize;
+                DataSlice copySrcSlice(param.inputPtr, mySliceOffset, mySliceSize, mySliceSize / dataTypeSize_);
+                DataSlice copyDstSlice(param.outputPtr, mySliceOffset, mySliceSize, mySliceSize / dataTypeSize_);
+                CHK_RET(LocalCopy(threads_[0], copySrcSlice, copyDstSlice));
+            }
 
-        processedDataCount += currDataCount;
+            // ----------- Step3:框间AllGather数据搬运 -----------
+            // 框间的数据偏移和搬运量计算
+            GenTempAlgParamsStepThree(
+                loop, currDataCount, tempAlgParamsStepTwo.sliceSize, tempAlgParamsStepTwo.tailSize,
+                tempAlgParamsStepTwo.buffInfo.inBuffBaseOff, tempAlgParamsStepThree);
+            CHK_RET(algTemplateStepThree->KernelRun(param, tempAlgParamsStepThree, templateResourceStepThree));
+
+            // ----------- Step4:框内AllGather数据搬运 -----------
+            // 框内的数据偏移和搬运计算
+            GenTempAlgParamsStepFour(
+                loop, currDataCount, processedDataCount, tempAlgParamsStepOne.sliceSize, tempAlgParamsStepOne.tailSize,
+                tempAlgParamsStepTwo.buffInfo.inBuffBaseOff, tempAlgParamsStepFour);
+            CHK_RET(algTemplateStepFour->KernelRun(param, tempAlgParamsStepFour, templateResourceStepFour));
+
+            processedDataCount += currDataCount;
+        }
     }
 
 #ifndef AICPU_COMPILE
@@ -895,6 +1004,23 @@ REGISTER_ALG_ATTRS(
     // 不能用 supportedDataTypes 白名单(纯 dtype 过滤会先挡掉非 64bit 的 PROD)
     op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
         return Is64BitDataType(opParam.DataDes.dataType) || opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD;
+    };);
+
+// 二级 AICPU RHD：L0 MeshConcur，L1 RHD；仅显式配置 HCCL_ALGO 时参与选路。
+REGISTER_EXECUTOR_BY_FOUR_TEMPS(
+    HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceSequenceMeshConcurRHD, InsV2AllReduceSequenceExecutorAicpu,
+    TopoMatchTwoLevel, InsTempReduceScatterMesh1DZAxisDetour, InsTempReduceScatterRHD, InsTempAllGatherRHD,
+    InsTempAllGatherMesh1D1DZAxisDetour);
+REGISTER_ALG_ATTRS(
+    AicpuAllReduceSequenceMeshConcurRHD, topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
+    topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
+    // 允许 level0 退化为单 rank 的拓扑通过 Level1Nhr 硬过滤。
+    topo.isSupportLevel1Nhr = true;
+    op.isSupportProd = false;
+    op.unsupportedDataTypes
+    = {HcclDataType::HCCL_DATA_TYPE_INT64, HcclDataType::HCCL_DATA_TYPE_UINT64, HcclDataType::HCCL_DATA_TYPE_FP64};
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails*) -> bool {
+        return false;
     };);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 

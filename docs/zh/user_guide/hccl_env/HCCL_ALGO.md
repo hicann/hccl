@@ -53,9 +53,7 @@ export HCCL_ALGO="<ExecutorType>{level0=<algoType>,level1=<algoType>};not(<Execu
       - MeshMultiJetty（meshmultijetty）：多Jetty Mesh算法，对每个对端建多条channel（每个channel一个jetty），数据按jetty切片在多端口上聚合并发，可用于每对rank有多个物理端口的AllToAll/AllToAllV算子。
       - NHRMultiJetty（nhrmultijetty）：多Jetty NHR算法，对每个对端建立多条channel（每个channel一个jetty），数据按jetty切片在多端口上聚合并发，适合每对rank有多个物理端口的NHR通信。
       - NHRAicpuReduce（nhraicpureduce）：先按NHR式log2(N)步减半交换收集数据，再使用AICPU标量归约保证正确性；适用于常规NHR/mesh模板不支持的数据类型（INT64/UINT64/FP64及PROD归约等）的NHR算法变体。
-      - HDAicpuReduce（hdaicpureduce）：ReduceScatter的HD递归折半算法（AICPU引擎），log2(N)步XOR配对交换、步内归约在DMA传输侧完成；要求通信域rank数为2的整数次幂，仅显式配置时参与选路（默认选路不变）。
-      - HD（hd）：跨机层（level1）HD递归折半算法（AICPU引擎），level0机内走mesh、level1按log2(N)步折半交换并归约；要求该层rank数为2的整数次幂，仅显式配置时参与选路（默认选路不变）。
-      - RHD（rhd）：递归折半倍增算法（Recursive Halving-Doubling，AICPU与HostDPU双引擎），通信步数少（对数复杂度），且每步传输的是地址连续的大块数据（合并发送，传输任务数按log量级缩减，大规模组网下任务下发与完成开销显著降低）；2的整数次幂时log2(N)步倍增交换、行为与HD一致，非2的整数次幂时经PRE/POST前后处理支持（part1两两配对、配对代表代持：ReduceScatter/AllGather为份额段拉取+全量段代表发送，Scatter为后处理一次辅助交换，前处理为root本地的σ布局整理、不产生跨rank交换），层内独立支持任意rank数。仅显式配置时参与选路（默认选路不变），要求level0为MESH_1D，须写执行器链式形态：`reducescatter:sequence{level0=meshconcur,level1=rhd}`（二级）或`reducescatter:sequence{level0=meshconcur,level1=rhd,level2=rhd}`（三级）、`allgather:sequence{level0=mesh,level1=rhd}`（二/三级同理）、`scatter:sequence{level0=meshconcur,level1=rhd}`。ReduceScatter侧不支持FP64/INT64/UINT64（UNSUPPORTED_64BIT，64位类型由NHRAicpuReduce覆盖），不支持PROD归约（PROD由NHRAicpuReduce覆盖）。裸值`rhd`等价`sole{rhd}`而库不提供Sole RHD（单机由既有Sole算法覆盖），不产生选路效果。
+      - RHD（rhd）：递归折半倍增算法（Recursive Halving-Doubling，支持AICPU与HostDPU），支持Scatter、ReduceScatter、AllGather和AllReduce。通信步数为对数量级，每步每对端构造地址连续的大块传输，减少大规模组网下的任务下发与完成开销。2的整数次幂规模按log2(N)步交换；非2的整数次幂规模通过配对代表和辅助交换支持。仅显式配置时参与选路，默认自适应选路不变。
 
     - 若不指定`level`，`<algoType>`默认按照算法层级从低到高匹配。例如{Mesh, NHR}，代表level0使用Mesh算法，level1使用NHR算法。
 

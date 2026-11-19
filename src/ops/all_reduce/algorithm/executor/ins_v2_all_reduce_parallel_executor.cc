@@ -11,10 +11,8 @@
 #include "ins_v2_all_reduce_parallel_executor.h"
 #include "all_reduce_parallel_scratch.h"
 #include "ins_temp_all_gather_nhr.h"
-#include "ins_temp_all_gather_hd.h"
 #include "ins_temp_all_gather_mesh_1D.h"
 #include "ins_temp_reduce_scatter_nhr.h"
-#include "ins_temp_reduce_scatter_hd.h"
 #include "ins_temp_reduce_scatter_mesh_1D.h"
 #include "alg_data_trans_wrapper.h"
 #include "topo_match_multilevel.h"
@@ -1558,20 +1556,6 @@ REGISTER_ALG_ATTRS(
     // 对称内存场景由PipeLineUBX参选，本算法不参与候选
     op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails*) -> bool {
         return !opParam.supportSymmetricMemory;
-    });
-
-// HD（Halving-Doubling）框间算法：框内 Mesh + 框间 HD 四模板组合，仅 HCCL_ALGO 显式指定时可选，
-// 框间维度 2^N 硬门控在 TopoMatchTwoLevel。
-// topoCustomCheck 恒 false 仅作用于默认选路（软策略）：未配置 HCCL_ALGO 时 HD 被过滤、默认选路零变化；
-// 显式配置打 preferred(+1) 后软策略跳过该检查，两级拓扑仍可选中
-REGISTER_EXECUTOR_BY_FOUR_TEMPS(
-    HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceParallelMeshHD, InsAllReduceParallelExecutor, TopoMatchTwoLevel,
-    InsTempReduceScatterMesh1D, InsTempReduceScatterHD, InsTempAllGatherMesh1D, InsTempAllGatherHD);
-REGISTER_ALG_ATTRS(
-    AicpuAllReduceParallelMeshHD, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
-    topo.maxTopoLevelNum = 3; op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT;
-    topo.isSupportLevel0PcieMix = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails*) -> bool {
-        return false;
     });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 

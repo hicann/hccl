@@ -16,6 +16,7 @@
 #include "alg_param.h"
 #include "channel.h"
 #include "coll_alg_v2_exec_registry.h"
+#include "template_utils.h"
 
 namespace ops_hccl {
 

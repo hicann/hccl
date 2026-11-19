@@ -14,7 +14,6 @@
 #include "ins_temp_all_reduce_mesh_1D_one_shot.h"
 #include "ins_temp_all_reduce_mesh_1D_two_shot.h"
 #include "ins_temp_all_reduce_nhr.h"
-#include "ins_temp_all_reduce_hd.h"
 #include "ins_temp_all_reduce_mesh_1D_two_shot_mesh_chunk.h"
 #include "ins_temp_all_reduce_aicpu_reduce_nhr.h"
 #include "topo_match_one_level.h"
@@ -455,21 +454,6 @@ REGISTER_ALG_ATTRS(
     op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
         return Is64BitDataType(opParam.DataDes.dataType) || opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD;
     });
-
-// HD（Halving-Doubling）全域算法：仅 HCCL_ALGO 显式指定时可选，2^N rank 数硬门控在 TopoMatchOneLevel。
-// topoCustomCheck 恒 false 仅作用于默认选路（软策略）：未配置 HCCL_ALGO 时 HD 被过滤、默认选路零变化；
-// 显式配置打 preferred(+1) 后软策略跳过该检查，单级 MESH_1D 等 HD 主场景仍可选中
-REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceSoleHD, InsV2AllReduceSoleExecutor, TopoMatchOneLevel,
-    InsTempAllReduceHD);
-REGISTER_ALG_ATTRS(
-    AicpuAllReduceSoleHD, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS | LEVEL0_TOPO_MESH_1D_CLOS;
-    topo.isSupportLevel1Nhr = true; topo.isSupportLevel0PcieMix = true; op.isSupportProd = false;
-    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails*) -> bool {
-        return false;
-    };
-    op.unsupportedDataTypes
-    = {HcclDataType::HCCL_DATA_TYPE_INT64, HcclDataType::HCCL_DATA_TYPE_UINT64, HcclDataType::HCCL_DATA_TYPE_FP64});
 
 #ifndef AICPU_COMPILE
 REGISTER_EXEC_V2(

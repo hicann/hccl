@@ -102,3 +102,18 @@ target_link_libraries(omnipipe_executor_utils_test PRIVATE
 )
 
 run_llt_test(TARGET omnipipe_executor_utils_test TASK_NUM 1)
+
+# AllReduce RHD tail staging: workspace reservation, loop planning, staged tail copy.
+add_executable(all_reduce_rhd_tail_test ${CMAKE_CURRENT_SOURCE_DIR}/all_reduce_rhd_tail_test.cc)
+target_compile_options(all_reduce_rhd_tail_test PRIVATE -U_FORTIFY_SOURCE)
+target_include_directories(all_reduce_rhd_tail_test PRIVATE
+    ${_omnipipe_executor_utils_ut_include_dirs}
+    ${PROJECT_SOURCE_DIR}/src/ops/all_reduce/algorithm/executor
+)
+_detect_cann_version(all_reduce_rhd_tail_test)
+target_link_libraries(all_reduce_rhd_tail_test PRIVATE
+    $<BUILD_INTERFACE:intf_llt_pub>
+    GTest::gtest_main
+    -lpthread
+)
+run_llt_test(TARGET all_reduce_rhd_tail_test TASK_NUM 1)

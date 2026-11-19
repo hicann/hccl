@@ -40,6 +40,8 @@ protected:
         unsetenv("HCCL_OP_EXPANSION_MODE");
         unsetenv("HCCL_INDEPENDENT_OP");
         unsetenv("HCCL_ENABLE_OPEN_AICPU");
+        unsetenv("HCCL_ALGO");
+        unsetenv("ENABLE_HOSTDPU_FOR_LLT");
     }
     static void SetUpTestCase() {}
     static void TearDownTestCase() {}
@@ -47,7 +49,7 @@ protected:
 
 void RunAllReduceCase(
     const TopoMeta& topoInfo, const u64 dataCount, const HcclDataType dataType, const u32 dataTypeSize,
-    const HcclReduceOp reduceOp)
+    const HcclReduceOp reduceOp, const char* algoConfig = nullptr, const bool enableHostDpu = false)
 {
     // 仿真模型初始化
     SimWorld::Global()->Init(topoInfo, HcclDevType::DEV_TYPE_950);
@@ -55,6 +57,13 @@ void RunAllReduceCase(
     // 设置展开模式为HOST_TS
     setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
     setenv("HCCL_INDEPENDENT_OP", "1", 1);
+    // RHD 系用例：显式配置执行器链；DPU 形态需置位 ENABLE_HOSTDPU_FOR_LLT。
+    if (algoConfig != nullptr) {
+        setenv("HCCL_ALGO", algoConfig, 1);
+    }
+    if (enableHostDpu) {
+        setenv("ENABLE_HOSTDPU_FOR_LLT", "1", 1);
+    }
 
     // 算子执行参数设置
     u32 rankSize = 0;
@@ -293,6 +302,36 @@ TEST_F(ST_ALL_REDUCE_TEST, st_all_reduce_hcclbuff_add_1)
     u64 dataCount = 200 * 1024 * 1024 + 1;
     HcclReduceOp reduceOp = HcclReduceOp::HCCL_REDUCE_MIN;
     RunAllReduceCase(topoMeta, dataCount, dataType, dataTypeSize, reduceOp);
+}
+
+// ========== RHD（递归折半倍增）显式配置二级形态 ==========
+// allreduce:sequence{level0=meshconcur,level1=rhd}：L0 框内 MeshConcur、L1 跨框 RHD。
+// 设备形态（AICPU 引擎），命中 AicpuAllReduceSequenceMeshConcurRHD；数据正确性由 CheckAllReduce 断言，
+// 算法命中证据由 VM checker 的 --expect-algo 用例承载（CI ST 不解析算法名）。
+// rhd_dev_001：d1=6 非 2 次幂且 count 非整除（%12=8）——层内前后处理 + 尾块 staging 生效。
+TEST_F(ST_ALL_REDUCE_TEST, st_all_reduce_rhd_dev_tail_nondivisible)
+{
+    TopoMeta topoMeta{{{0, 1}, {0, 1}, {0, 1}, {0, 1}, {0, 1}, {0, 1}}};
+    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_FP32;
+    u32 dataTypeSize = 4;
+    u64 dataCount = 262144 + 4; // 262148 % 12 = 8
+    HcclReduceOp reduceOp = HcclReduceOp::HCCL_REDUCE_SUM;
+    RunAllReduceCase(
+        topoMeta, dataCount, dataType, dataTypeSize, reduceOp, "allreduce:sequence{level0=meshconcur,level1=rhd}",
+        false);
+}
+
+// rhd_dev_002：d1=4 2 次幂且 count 整除——纯主体路径（无尾块 staging）。
+TEST_F(ST_ALL_REDUCE_TEST, st_all_reduce_rhd_dev_divisible)
+{
+    TopoMeta topoMeta{{{0, 1}, {0, 1}, {0, 1}, {0, 1}}};
+    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_FP32;
+    u32 dataTypeSize = 4;
+    u64 dataCount = 262144; // 262144 % 8 = 0
+    HcclReduceOp reduceOp = HcclReduceOp::HCCL_REDUCE_SUM;
+    RunAllReduceCase(
+        topoMeta, dataCount, dataType, dataTypeSize, reduceOp, "allreduce:sequence{level0=meshconcur,level1=rhd}",
+        false);
 }
 
 // np16 每卡 2MB（总量 32MB）正处于旧 tile 估算会误判回退、当前估算仍走对称路径的区间，

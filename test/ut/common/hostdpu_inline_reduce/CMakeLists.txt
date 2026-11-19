@@ -37,6 +37,10 @@ set(_includes ${CMAKE_CURRENT_SOURCE_DIR} ${_repo_root}/include ${_repo_root}/sr
     ${_repo_root}/src/ops/reduce_scatter/selector
     ${_repo_root}/src/ops/reduce_scatter/algorithm/executor
     ${_repo_root}/src/ops/reduce_scatter/algorithm/template/aicpu
+    ${_repo_root}/src/ops/all_gather/algorithm/template/aicpu
+    ${_repo_root}/src/ops/op_common/algorithm/template/ccu
+    ${_repo_root}/src/ops/reduce_scatter/algorithm/template/ccu
+    ${_repo_root}/src/ops/all_gather/algorithm/template/ccu
 )
 set(_cann "${ASCEND_CANN_PACKAGE_PATH}/${CMAKE_SYSTEM_PROCESSOR}-linux")
 list(APPEND _includes ${_cann}/include ${_cann}/include/hccl ${_cann}/include/acl
@@ -92,6 +96,19 @@ add_library(inline_reduce_selector_support OBJECT
     ${_repo_root}/src/ops/reduce/selector/reduce_auto_selector.cc
     ${_repo_root}/src/ops/reduce_scatter/selector/reduce_scatter_auto_selector.cc)
 configure_inline_reduce_ut(inline_reduce_selector_support)
+
+# RHD 使用生产注册属性与真实拓扑过滤；执行器创建沿用无设备的测试桩。
+if(_version GREATER_EQUAL 90000000)
+    add_library(all_reduce_rhd_registration OBJECT
+        ${_repo_root}/src/ops/all_reduce/algorithm/executor/ins_v2_all_reduce_sequence_executor_aicpu.cc
+        ${_repo_root}/src/ops/all_reduce/algorithm/executor/ins_v2_all_reduce_sequence_executor_aicpu_3level.cc)
+    configure_inline_reduce_ut(all_reduce_rhd_registration)
+    target_compile_options(all_reduce_rhd_registration PRIVATE -include ${CMAKE_CURRENT_SOURCE_DIR}/registration_stub.h)
+    add_executable(all_reduce_rhd_test all_reduce_rhd_test.cc
+        $<TARGET_OBJECTS:inline_reduce_selector_support> $<TARGET_OBJECTS:all_reduce_rhd_registration>)
+    configure_inline_reduce_ut(all_reduce_rhd_test)
+    run_llt_test(TARGET all_reduce_rhd_test TASK_NUM 1)
+endif()
 
 foreach(_part legacy_selector selector_engine)
     add_executable(dpu_${_part}_test ${_part}_test.cc
