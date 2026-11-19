@@ -189,10 +189,7 @@ static inline void RunReduceDPUCase(
     setenv("HCCL_INDEPENDENT_OP", "1", 1);
 
     // 算子执行参数设置
-    u32 rankSize = 0;
-    for (auto elem : topoInfo[0]) {
-        rankSize += elem.size();
-    }
+    u32 rankSize = GetRankSize(topoInfo);
 
     // 多线程运行ALL REDUCE ONE SHOT算子
     std::vector<std::thread> threads;

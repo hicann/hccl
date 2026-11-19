@@ -25,6 +25,11 @@ set(SOURCE_FILES
     ${PROJECT_SOURCE_DIR}/src/ops/op_common/algorithm/topo_match/topo_match_two_level.cc
     ${PROJECT_SOURCE_DIR}/src/ops/op_common/algorithm/topo_match/topo_match_three_level.cc
     ${PROJECT_SOURCE_DIR}/src/ops/reduce/algorithm/executor/reduce_sequence_executor_aicpu_3level.cc
+    # RHD 系模板实现（3 级注册闭包：executor TU 引用的 4 个 RHD 模板；其工具/原语依赖走 stub）
+    ${PROJECT_SOURCE_DIR}/src/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_rhd.cc
+    ${PROJECT_SOURCE_DIR}/src/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_rhd_dpu_inter.cc
+    ${PROJECT_SOURCE_DIR}/src/ops/all_gather/algorithm/template/aicpu/ins_temp_all_gather_rhd.cc
+    ${PROJECT_SOURCE_DIR}/src/ops/all_gather/algorithm/template/aicpu/ins_temp_all_gather_rhd_dpu.cc
     ${PROJECT_SOURCE_DIR}/src/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_mesh_1D_Z_axis_detour.cc
     ${PROJECT_SOURCE_DIR}/src/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_nhr.cc
     ${PROJECT_SOURCE_DIR}/src/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_mesh_1D.cc
@@ -127,10 +132,19 @@ target_include_directories(reduce_sequence_mesh_nhr_aicpu_reduce_test PRIVATE
 target_compile_options(reduce_sequence_mesh_nhr_aicpu_reduce_test PRIVATE
     -U_FORTIFY_SOURCE
     -g --coverage -fprofile-arcs -ftest-coverage -fno-access-control
-    $<$<COMPILE_LANGUAGE:CXX>:-std=c++14>
+    $<$<COMPILE_LANGUAGE:CXX>:-std=c++17>
 )
 
 target_compile_definitions(reduce_sequence_mesh_nhr_aicpu_reduce_test PRIVATE CANN_VERSION_NUM=${_UT_CANN_VERSION_NUM})
+# 仅对 4 个 RHD 模板实现源开 AICPU_COMPILE（host 侧重符号编译排除，链接闭包只剩
+# device 壳与 CalcCostCoeff/构造）；不用目标级定义——会把既有 NHR 注册的
+# REGISTER_ALG_ATTRS 也退化成空宏（attrs 注册查询返回空）
+set_source_files_properties(
+    ${PROJECT_SOURCE_DIR}/src/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_rhd.cc
+    ${PROJECT_SOURCE_DIR}/src/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_rhd_dpu_inter.cc
+    ${PROJECT_SOURCE_DIR}/src/ops/all_gather/algorithm/template/aicpu/ins_temp_all_gather_rhd.cc
+    ${PROJECT_SOURCE_DIR}/src/ops/all_gather/algorithm/template/aicpu/ins_temp_all_gather_rhd_dpu.cc
+    PROPERTIES COMPILE_DEFINITIONS AICPU_COMPILE)
 message(STATUS "[UT] reduce_sequence_mesh_nhr_aicpu_reduce_test Detected CANN_VERSION_NUM = ${_UT_CANN_VERSION_NUM}")
 target_link_libraries(reduce_sequence_mesh_nhr_aicpu_reduce_test PRIVATE
     $<BUILD_INTERFACE:intf_llt_pub>

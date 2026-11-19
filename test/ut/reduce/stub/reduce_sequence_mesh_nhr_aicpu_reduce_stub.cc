@@ -28,6 +28,8 @@
 #include "op_common.h"
 #include "securec.h"
 #include "template_utils.h"
+#include "alg_v2_template_register.h"
+#include "dpu_alg_nhr_opt_wrapper.h"
 
 // ==== 数据面调用记录：LocalCopy/LocalReduce 逐次记录缓冲基址，
 // 用例按 userBuf/cclMem 基址区分读写归属，断言段序与 in-place 时序 ====
@@ -615,6 +617,156 @@ int CostModelManager::CalcSyncTaskNum(u32 rankSize)
     // 哨兵值：非零，保证 taskNum>0、D=5e-7*taskNum>0 可断言（系数与 CalcLaunchParams 一致）
     (void)rankSize;
     return 2;
+}
+
+// ==== RHD 模板闭包 stub（executor TU 的 RHD 注册引用 4 个模板类，其实现 TU 编入
+// 目标源列表；这些 TU 依赖的 template_utils RHD 工具与写归约原语在 UT 环境不可用，
+// 与上方 NHR 几何 stub 同款模式提供桩实现）====
+HcclResult CalcRhdPart1Info(u32 rankSize, u32 myAlgRank, u32 root, RhdPart1Info& info)
+{
+    (void)rankSize;
+    (void)myAlgRank;
+    (void)root;
+    info = RhdPart1Info{};
+    return HCCL_SUCCESS;
+}
+
+HcclResult GenRhdReduceScatterSteps(const RhdPart1Info& info, std::vector<RhdStepInfo>& steps)
+{
+    (void)info;
+    steps.clear();
+    return HCCL_SUCCESS;
+}
+
+HcclResult GenRhdAllGatherSteps(const RhdPart1Info& info, std::vector<RhdStepInfo>& steps)
+{
+    (void)info;
+    steps.clear();
+    return HCCL_SUCCESS;
+}
+
+HcclResult GenRhdPrePostSteps(
+    const RhdPart1Info& info, RhdStepInfo& pre, RhdStepInfo& post, RhdSegMode preSegMode, RhdSegMode postSegMode)
+{
+    (void)info;
+    (void)preSegMode;
+    (void)postSegMode;
+    pre = RhdStepInfo{};
+    post = RhdStepInfo{};
+    return HCCL_SUCCESS;
+}
+
+u32 GetRhdStepNum(u32 rankSize)
+{
+    (void)rankSize;
+    return 0;
+}
+
+u32 RhdUnitStartOfRank(u32 rankSize, u32 algRank)
+{
+    (void)rankSize;
+    (void)algRank;
+    return 0;
+}
+
+u32 RhdAlgRankOfVirtual(u32 physRankSize, u32 root, u32 virtualRank)
+{
+    (void)physRankSize;
+    (void)root;
+    (void)virtualRank;
+    return 0;
+}
+
+RhdSegBytes RhdSegToBytesUniform(u32 unitStart, u32 unitEnd, u64 sliceSize, u64 tailSize, u32 tailUnit)
+{
+    (void)unitEnd;
+    (void)tailSize;
+    (void)tailUnit;
+    RhdSegBytes bytes;
+    bytes.offset = static_cast<u64>(unitStart) * sliceSize;
+    bytes.len = 0;
+    return bytes;
+}
+
+HcclResult RhdBuildUnitSizes(u32 rankSize, const std::vector<u64>& allRankSliceSize, std::vector<u64>& unitSizes)
+{
+    (void)rankSize;
+    unitSizes.assign(allRankSliceSize.size(), 0);
+    return HCCL_SUCCESS;
+}
+
+HcclResult RecvWriteReduce(const DataReduceInfo& recvInfo, const ThreadHandle& thread)
+{
+    (void)recvInfo;
+    (void)thread;
+    return HCCL_SUCCESS;
+}
+
+HcclResult SendWriteReduce(const DataReduceInfo& sendInfo, const ThreadHandle& thread)
+{
+    (void)sendInfo;
+    (void)thread;
+    return HCCL_SUCCESS;
+}
+
+HcclResult CalcChannelRequestNhrHighestHostRoce(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    const std::vector<std::vector<u32>>& subcommInfo, std::vector<HcclChannelDesc>& channels)
+{
+    (void)comm;
+    (void)param;
+    (void)topoInfo;
+    (void)subcommInfo;
+    channels.clear();
+    return HCCL_SUCCESS;
+}
+
+HcclResult RhdSegToBytesAllRank(u32 unitStart, u32 unitEnd, const std::vector<u64>& unitSizes, RhdSegBytes& bytes)
+{
+    (void)unitEnd;
+    (void)unitSizes;
+    bytes.offset = 0;
+    bytes.len = 0;
+    return HCCL_SUCCESS;
+}
+
+HcclResult CalcChannelRequestMesh1DHighestHostRoce(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    const std::vector<std::vector<u32>>& subcommInfo, std::vector<HcclChannelDesc>& channels)
+{
+    (void)comm;
+    (void)param;
+    (void)topoInfo;
+    (void)subcommInfo;
+    channels.clear();
+    return HCCL_SUCCESS;
+}
+
+InsAlgTemplateRegistry& InsAlgTemplateRegistry::Instance()
+{
+    static InsAlgTemplateRegistry instance;
+    return instance;
+}
+
+HcclResult InsAlgTemplateRegistry::Register(const std::string& name, const InsAlgTemplateCreator& algTemplateCreator)
+{
+    (void)name;
+    (void)algTemplateCreator;
+    return HCCL_SUCCESS;
+}
+
+std::unique_ptr<InsAlgTemplateBase> InsAlgTemplateRegistry::GetAlgTemplate(const std::string& name)
+{
+    (void)name;
+    return nullptr;
+}
+
+HcclResult DpuBatchTransfer(std::vector<DpuTransferCtx>& pairs, ThreadHandle thread, bool isDrainSupported)
+{
+    (void)pairs;
+    (void)thread;
+    (void)isDrainSupported;
+    return HCCL_SUCCESS;
 }
 
 } // namespace ops_hccl

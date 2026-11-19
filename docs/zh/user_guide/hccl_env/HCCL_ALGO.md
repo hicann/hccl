@@ -45,7 +45,7 @@ export HCCL_ALGO="<ExecutorType>{level0=<algoType>,level1=<algoType>};not(<Execu
       - MeshConcurrent（meshconcurrent）：Mesh/CLOS双路径并发算法，在同一组rank内联合利用Mesh直连链路与CLOS链路，按预设带宽比例将每个对端的收发数据划分为两部分并发处理；适用于AlltoAll/AlltoAllV算子。
       - MeshChunk（meshchunk）：支持chunk的Mesh算法，把数据切成多块（ReduceScatter下为N-1块、(N-1)步）逐步与对端交换，收发与归约融合；适用于fullmesh直连的ReduceScatter。
       - MeshChunkTwoShot（meshchunktwoshot）：TwoShot版MeshChunk算法，AllReduce走ReduceScatter+AllGather两步，其中ReduceScatter阶段使用mesh chunk。
-      - MeshChunkConcur（meshchunkconcur）：Chunk轮转+CLOS轴绕路并发算法，在MeshChunk分块逐步交换的基础上，同时合并level0直连mesh链路与level1 CLOS上行链路，按两侧带宽比对每个chunk的数据分流；收发与归约在DMA传输侧融合，消除通信后的串行本地规约；适用于两级拓扑（server/pod/PC16）下大数据量ReduceScatter。
+      - MeshChunkConcur（meshchunkconcur）：Chunk轮转+CLOS轴绕路并发算法，在MeshChunk分块逐步交换的基础上，同时合并level0直连mesh链路与level1 CLOS上行链路，按两侧带宽比对每个chunk的数据分流；收发与归约在DMA传输侧融合，消除通信后的串行本地归约；适用于两级拓扑（server/pod/PC16）下大数据量ReduceScatter。
       - MeshSingleChannel（meshsinglechannel）：单通道Mesh算法，与默认mesh同算法，但每对rank只建立1条channel、不做多通道数据切分；适合需要降低通道/流同步开销或链路资源受限的AllToAll算子场景。
       - Pairwise（pairwise）：逐对通信算法，多机多卡场景下，每机（单机多卡）作为一组，每轮按对称配对矩阵配对一个目标组（避免网络一打多），本机各卡与目标组的对端逐对建立channel并发收发。当前仅AllToAll/AllToAllV/AllToAllVC（AICPU）支持，要求level0为MESH_1D、单机8卡、rankSize ≥ 16且为16的倍数；其中AllToAllV/AllToAllVC还要求level0对称且rankSize ≤ 128，超出范围自动回退到Mesh算法。
       - MeshMultiLink（meshmultilink）：多链路Mesh算法，适用于每对rank有多条链路的拓扑。按本端Die划分链路，数据根据各链路包含的port数量在两个Die的链路上分流并发，适用于端口分布在两个Die上的AllToAll/AllToAllV算子。
@@ -106,23 +106,8 @@ export HCCL_ALGO="allreduce:sequence{mesh,nhr}"
 export HCCL_ALGO="reducescatter:sequence{level0=meshchunkconcur,level1=nhr}"
 # AllGather算子禁止使用level0执行Mesh算法、level1执行NHR算法的Parallel并行执行器。
 export HCCL_ALGO="allgather:not(parallel{mesh,nhr})"
-# AllGather算子启用AICPU引擎二级RHD算法（AicpuAllGatherSequenceMeshConcurRHD，level0机内Mesh、level1跨机RHD）。
+# AllGather算子启用二级RHD算法（level0机内Mesh、level1跨机RHD）。
 export HCCL_ALGO="allgather:sequence{level0=meshconcur,level1=rhd}"
-# AllGather算子启用AICPU引擎三级RHD算法（AicpuAllGatherSequenceMeshConcurRHDRHD，L2/L1均RHD，执行序L2→L1→L0）。
-export HCCL_ALGO="allgather:sequence{level0=meshconcur,level1=rhd,level2=rhd}"
-# AllGather算子启用host-DPU（DPU引擎）二级RHD算法（DpuAllGatherSequenceMeshRHD，L0=server内Mesh、L1=server间host-DPU RHD）。
-# AICPU/DPU款同名配置由拓扑自动消歧：host-DPU拓扑（level1链路位于host侧）命中DPU款，普通拓扑命中AICPU款。
-export HCCL_ALGO="allgather:sequence{level0=mesh,level1=rhd}"
-# AllGather算子启用host-DPU（DPU引擎）三级RHD算法（DpuAllGatherSequenceMeshConcurRHDRHD，L1=设备侧CLOS RHD、L2=host-DPU RHD）。
-export HCCL_ALGO="allgather:sequence{level0=meshconcur,level1=rhd,level2=rhd}"
-# Scatter算子采用Sequence执行器，level0执行MeshConcur算法（CLOS轴绕路），level1执行RHD算法（二级拓扑）。
-export HCCL_ALGO="scatter:sequence{level0=meshconcur,level1=rhd}"
-# Scatter算子三级拓扑：level0执行MeshConcur算法，level1与level2均执行RHD算法（跨超节点为host-DPU引擎）。
-export HCCL_ALGO="scatter:sequence{level0=meshconcur,level1=rhd,level2=rhd}"
-# Broadcast算子显式启用RHD，二级拓扑；AICPU与HostDPU路径由拓扑和展开模式自动匹配。
-export HCCL_ALGO="broadcast:sequence{level0=meshconcur,level1=rhd}"
-# Broadcast算子显式启用RHD，三级拓扑；level1与level2均执行RHD。
-export HCCL_ALGO="broadcast:sequence{level0=meshconcur,level1=rhd,level2=rhd}"
 ```
 
 ### 配置生效语义
@@ -230,31 +215,6 @@ export HCCL_ALGO="allreduce=level0:NA;level1:ring/allgather=level0:NA;level1:H-D
 <!-- end id3 -->
 
 ## 使用约束
-
-<!-- npu="950" id12 -->
-<a id="barrier_rhd_config"></a>
-
-### Barrier的RHD算法配置
-
-Ascend 950PR&950DT系列产品的Barrier支持在符合分组和链路要求的二级、三级拓扑中显式配置RHD算法。框内使用Mesh，外层使用RHD。外层rank数支持2的整数次幂及其他规模。不同Server或超节点的卡数不等时，仍须满足分组和链路要求。
-
-以下单算子示例使用Ascend 950PR&950DT系列产品的默认展开模式`AICPU_TS`，无需额外设置[HCCL_OP_EXPANSION_MODE](HCCL_OP_EXPANSION_MODE.md)。
-
-```bash
-# 二级拓扑
-export HCCL_ALGO='barrier:sequence{level0=mesh,level1=rhd}'
-# 三级拓扑
-export HCCL_ALGO='barrier:sequence{level0=mesh,level1=rhd,level2=rhd}'
-```
-
-也可在通信域初始化前调用`HcclCommConfigInit`，将上述算法字符串写入`HcclCommConfig.hcclAlgo`，再调用`HcclCommInitRootInfoConfig`或`HcclCommInitClusterInfoConfig`创建通信域。同一通信域的各rank应使用一致配置。通信域配置非空时，以通信域配置为准。通信域配置为空时，使用环境变量。
-
-AICPU与HostDPU共用上述算法配置。HostDPU指由主机侧通过RoCE链路执行最外层同步的模式。HCCL根据通信域的拓扑和链路自动选择执行模式，可通过选路日志中的算法名确认。
-
-`ST_DPU_THREAD_NEW_FLOW`用于启用HostDPU的DPU线程新流程。当前Barrier的HostDPU RHD使用共享内存请求和响应。运行该算法时需取消设置此变量，否则回退至自适应选路。
-
-RHD仅在显式配置时参与选路。显式配置的RHD算法因拓扑层级或链路约束被过滤时，系统记录WARNING日志并回退至自适应选路。可通过`SelectMinCost: selected algName=`日志确认实际选中的算法。裸值`rhd`和`barrier:rhd`按`sole`解析，配置Barrier RHD时请使用上述`sequence`形式。
-<!-- end id12 -->
 
 ### 通用约束
 
