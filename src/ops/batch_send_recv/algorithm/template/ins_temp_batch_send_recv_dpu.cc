@@ -294,6 +294,7 @@ HcclResult InsTempBatchSendRecvDpu::RunDpuPrimitives(
         const std::vector<DataSlice> srcSlices = recvInfo.slices_.srcSlices_;
         const std::vector<DataSlice> dstSlices = recvInfo.slices_.dstSlices_;
         const ChannelInfo& recvChannel = recvInfo.channel_;
+        CHK_RET(HcommChannelDrainOnThreadWithCompat(thread, recvChannel.handle, isDrainSupported));
         u32 sliceNum = srcSlices.size();
         for (int i = 0; i < sliceNum; i++) {
             CHK_RET(static_cast<HcclResult>(
