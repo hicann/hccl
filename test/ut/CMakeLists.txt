@@ -63,6 +63,10 @@ add_subdirectory(reduce_scatter_seq64)
 # reduce_scatter_meshchunk_concur: MeshChunkConcur 模板（槽位寻址/scratch乘数/线程数/带宽分流）UT。
 add_subdirectory(reduce_scatter_meshchunk_concur)
 add_subdirectory(alltoall_aiv)
+# alltoall_urma_aiv: AIV直驱URMA AllToAllV kernel（Mesh1D）的 CPU 桩级覆盖，重点是奇偶rankSize分轮
+# 配对全集性、核间对端均分(remainder)与空闲核旁路、notify 1/2 双值协议多轮清零复用推进（调度器死锁
+# 检测兜底）、多通道按元素个数切分守恒、own 数据 sendCounts!=recvCounts 时 min 防御。
+add_subdirectory(alltoall_urma_aiv)
 add_subdirectory(all_gather_aiv)
 # batch_send_recv_aiv: BSR AIV kernel（Mesh1D）的 CPU 桩级覆盖，重点是 tag 只由轮次决定（不再读写通信域
 # 共享的 tag 计数器）、收发两侧 flag 编址一致、数据经 sender bucket 的端到端落点与屏障活跃对端筛选。

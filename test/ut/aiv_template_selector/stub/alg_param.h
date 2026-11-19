@@ -30,7 +30,7 @@ using HcclComm = void*;
 enum HcclResult { HCCL_SUCCESS = 0, HCCL_E_INTERNAL = 1, HCCL_E_PARA = 2, HCCL_E_PTR = 3, HCCL_E_NOT_SUPPORT = 12 };
 enum class OpMode { OPBASE, OFFLOAD };
 enum class CommEngine { COMM_ENGINE_AIV, COMM_ENGINE_AICPU_TS, COMM_ENGINE_CCU };
-enum class OpExecuteConfig { AIV, AIV_URMA };
+enum class OpExecuteConfig { DEFAULT, AICPU_TS, AIV, AIV_ONLY, AIV_URMA };
 enum HcclReduceOp { HCCL_REDUCE_SUM = 0, HCCL_REDUCE_MAX = 2, HCCL_REDUCE_PROD = 3, HCCL_REDUCE_MIN = 4 };
 constexpr HcclReduceOp HCCL_REDUCE_RESERVED = HCCL_REDUCE_SUM;
 enum class HcclCMDType {
@@ -63,7 +63,7 @@ struct DataDescription {
 struct OpParam {
     OpMode opMode = OpMode::OPBASE;
     CommEngine engine = CommEngine::COMM_ENGINE_AIV;
-    OpExecuteConfig opExecuteConfig = OpExecuteConfig::AIV;
+    OpExecuteConfig opExecuteConfig = OpExecuteConfig::DEFAULT;
     HcclCMDType opType = HcclCMDType::HCCL_CMD_ALLREDUCE;
     HcclComm hcclComm = nullptr;
     bool supportSymmetricMemory = false;

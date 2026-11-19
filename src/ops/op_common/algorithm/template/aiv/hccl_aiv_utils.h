@@ -21,8 +21,9 @@
 #include "alg_param.h"
 
 namespace ops_hccl {
-constexpr u32 MAX_RANK_SIZE_V = 256; // 注意要和device侧的一致
-constexpr u32 MAX_RANK_SIZE = 1024;  // 对端对称 VA 数组容量，注意要和device侧的一致
+constexpr u32 MAX_RANK_SIZE_V = 256;               // 注意要和device侧的一致
+constexpr u32 MAX_RANK_SIZE = 1024;                // 对端对称 VA 数组容量，注意要和device侧的一致
+constexpr u32 AIV_URMA_ALLTOALLV_GROUP_SIZE = 16U; // 注意要和device侧的一致
 
 constexpr u32 AIV_TAG_ADDR_OFFSET = 16 * 1024;
 constexpr u64 AIV_SYM_PEER_OUT_ADDR_OFFSET = 8 * 1024; // 注意要和device侧的一致

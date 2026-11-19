@@ -53,9 +53,12 @@ bool SelectorEngine::IsOpSupported(HcclCMDType opType)
 }
 
 // 候选引擎列表转为前缀字符串列表
-static std::vector<std::string> CandidateEnginesToPrefixes(const std::vector<OpExecuteConfig>& engines)
+static std::vector<std::string> CandidateEnginesToPrefixes(const std::vector<std::pair<OpExecuteConfig, int>>& engines)
 {
-    std::set<OpExecuteConfig> engineSet(engines.begin(), engines.end());
+    std::set<OpExecuteConfig> engineSet;
+    for (const auto& e : engines) {
+        engineSet.insert(e.first);
+    }
     std::vector<std::string> prefixes;
     int count = 0;
     const EnginePrefixEntry* entries = GetEnginePrefixEntries(count);
@@ -67,31 +70,44 @@ static std::vector<std::string> CandidateEnginesToPrefixes(const std::vector<OpE
     return prefixes;
 }
 
-// 候选引擎优先级(回退序)
-static std::vector<OpExecuteConfig> GetEnginePriority(OpExecuteConfig opExecuteConfig)
+// 候选引擎优先级: {引擎, 优先级}对, 数值大者优先
+static std::vector<std::pair<OpExecuteConfig, int>> GetEnginePriority(OpExecuteConfig opExecuteConfig)
 {
+    // 所有非URMA档: 平级(0), 候选关系与回退序维持原状
+    const auto flat = [](std::vector<OpExecuteConfig> engines) {
+        std::vector<std::pair<OpExecuteConfig, int>> result;
+        result.reserve(engines.size());
+        for (OpExecuteConfig e : engines) {
+            result.emplace_back(e, 0);
+        }
+        return result;
+    };
     switch (opExecuteConfig) {
         case OpExecuteConfig::CCU_MS:
-            return {
-                OpExecuteConfig::CCU_MS, OpExecuteConfig::CCU_SCHED, OpExecuteConfig::AICPU_TS,
-                OpExecuteConfig::HOSTCPU};
+            return flat(
+                {OpExecuteConfig::CCU_MS, OpExecuteConfig::CCU_SCHED, OpExecuteConfig::AICPU_TS,
+                 OpExecuteConfig::HOSTCPU});
         case OpExecuteConfig::CCU_SCHED:
-            return {OpExecuteConfig::CCU_SCHED, OpExecuteConfig::AICPU_TS, OpExecuteConfig::HOSTCPU};
+            return flat({OpExecuteConfig::CCU_SCHED, OpExecuteConfig::AICPU_TS, OpExecuteConfig::HOSTCPU});
         case OpExecuteConfig::CCU_MS_ONLY:
-            return {OpExecuteConfig::CCU_MS};
+            return flat({OpExecuteConfig::CCU_MS});
         case OpExecuteConfig::CCU_SCHED_ONLY:
-            return {OpExecuteConfig::CCU_SCHED};
+            return flat({OpExecuteConfig::CCU_SCHED});
         case OpExecuteConfig::AIV:
-            return {
-                OpExecuteConfig::AIV, OpExecuteConfig::AIV_URMA, OpExecuteConfig::AICPU_TS, OpExecuteConfig::HOSTCPU};
+            return flat(
+                {OpExecuteConfig::AIV, OpExecuteConfig::AIV_URMA, OpExecuteConfig::AICPU_TS, OpExecuteConfig::HOSTCPU});
+        case OpExecuteConfig::AIV_URMA:
+            // URMA优先级(1)高于AICPU_TS/HOSTCPU(0): 最终选择取最高优先级层中的cost最低者,
+            // URMA算法存在则必选, 仅当其被功能过滤(算子未实现/拓扑不支持/CANN版本不满足)才落到平级层
+            return {{OpExecuteConfig::AIV_URMA, 1}, {OpExecuteConfig::AICPU_TS, 0}, {OpExecuteConfig::HOSTCPU, 0}};
         case OpExecuteConfig::AIV_ONLY:
-            return {OpExecuteConfig::AIV};
+            return flat({OpExecuteConfig::AIV});
         case OpExecuteConfig::AICPU_TS:
-            return {OpExecuteConfig::AICPU_TS, OpExecuteConfig::HOSTCPU};
+            return flat({OpExecuteConfig::AICPU_TS, OpExecuteConfig::HOSTCPU});
         case OpExecuteConfig::HOSTCPU:
-            return {OpExecuteConfig::HOSTCPU};
+            return flat({OpExecuteConfig::HOSTCPU});
         default:
-            return {OpExecuteConfig::AICPU_TS, OpExecuteConfig::HOSTCPU};
+            return flat({OpExecuteConfig::AICPU_TS, OpExecuteConfig::HOSTCPU});
     }
 }
 
@@ -121,7 +137,7 @@ static std::string MakeCostModelTag(OpExecuteConfig engine)
 // 回溯需与 MarkHcclAlgoPriority 同源重建, 避免对 preferred 算法套用其未经历的软策略检查;
 // 复刻管线 FilterByEngine 语义: 非候选引擎条目 count=0, 与管线打标时的模型形态一致
 static CostModel* BuildPriorityMarkedModel(
-    HcclComm comm, const std::vector<OpExecuteConfig>& candidateEngines,
+    HcclComm comm, const std::vector<std::pair<OpExecuteConfig, int>>& candidateEngines,
     const std::vector<std::string>& candidatePrefixes)
 {
     auto* cm = new (std::nothrow) CostModel{nullptr, 0};
@@ -133,7 +149,10 @@ static CostModel* BuildPriorityMarkedModel(
         delete cm;
         return nullptr;
     }
-    std::set<OpExecuteConfig> candidateSet(candidateEngines.begin(), candidateEngines.end());
+    std::set<OpExecuteConfig> candidateSet;
+    for (const auto& e : candidateEngines) {
+        candidateSet.insert(e.first);
+    }
     for (int i = 0; i < cm->count; ++i) {
         const char* algName = cm->costAlgoParams[i].algName;
         const AlgAttrs* attrs = (algName != nullptr) ? AlgAttrsRegistry::Instance().Get(algName) : nullptr;
@@ -257,8 +276,11 @@ void SelectorEngine::LogAlgoNotMatchDetails(HcclComm comm, const OpParam& param,
     }
     // 软策略开关与管线同口径: tuner 接管或 HCCL_ALGO 正向指定(preferred)的算法跳过 customCheck
     const bool tunerLoaded = HcclTunerIsLoaded();
-    const std::vector<OpExecuteConfig> candidateEngines = GetEnginePriority(param.opExecuteConfig);
-    const std::set<OpExecuteConfig> candidateSet(candidateEngines.begin(), candidateEngines.end());
+    const std::vector<std::pair<OpExecuteConfig, int>> candidateEngines = GetEnginePriority(param.opExecuteConfig);
+    std::set<OpExecuteConfig> candidateSet;
+    for (const auto& e : candidateEngines) {
+        candidateSet.insert(e.first);
+    }
     const AlgoFilterCtx ctx{comm, &param, topoInfo, &candidateSet};
     CostModel* markedCm
         = BuildPriorityMarkedModel(comm, candidateEngines, CandidateEnginesToPrefixes(candidateEngines));
@@ -303,9 +325,14 @@ SelectorEngine::InitCostModel(HcclComm comm, TopoInfoWithNetLayerDetails* topoIn
         ~SrcCmGuard() { CostModelManager::FreeCostModel(cmRef); }
     } srcCmGuard{srcCm};
 
-    const std::vector<OpExecuteConfig> candidateEngines = GetEnginePriority(param.opExecuteConfig);
+    const std::vector<std::pair<OpExecuteConfig, int>> candidateEngines = GetEnginePriority(param.opExecuteConfig);
     const std::vector<std::string> candidatePrefixes = CandidateEnginesToPrefixes(candidateEngines);
-    CHK_RET(CostModelManager::GenerateCostModel(comm, srcCm, param, topoInfo, candidateEngines, candidatePrefixes));
+    std::vector<OpExecuteConfig> flatEngines;
+    flatEngines.reserve(candidateEngines.size());
+    for (const auto& e : candidateEngines) {
+        flatEngines.push_back(e.first);
+    }
+    CHK_RET(CostModelManager::GenerateCostModel(comm, srcCm, param, topoInfo, flatEngines, candidatePrefixes));
 
     // 自包含序列化布局: [CostModel 头][CostAlgoParams 条目][pad][CostModelParam 连续区]
     // param 只存内容, 条目指针修正为 buffer 内部地址 → comm 销毁随整块 ctx 释放, 零泄漏
@@ -439,8 +466,9 @@ SelectorEngine::Run(HcclComm comm, OpParam& param, TopoInfoWithNetLayerDetails* 
     // step 3: tuner 改 cost(未加载或空表跳过)
     CHK_RET(TunerEnrichCostTable(comm, ct, param, tunerModified));
 
-    // step 4: min(ct)
-    HcclResult ret = SelectMinCost(ct, param, tunerModified, algName);
+    // step 4: 引擎优先级分层取最优(最高优先级层内取cost最低, 参见GetEnginePriority)
+    const std::vector<std::pair<OpExecuteConfig, int>> enginePriority = GetEnginePriority(param.opExecuteConfig);
+    HcclResult ret = SelectMinCost(ct, param, tunerModified, enginePriority, algName);
 
     if (ret != HCCL_SUCCESS) {
         HCCL_ERROR("[SelectorEngine] Run failed, no algorithm selected.");
@@ -566,7 +594,9 @@ std::string SelectorEngine::QueryExecutorName(const std::string& algName)
     return (alg != nullptr && alg->executorName != nullptr) ? alg->executorName : "";
 }
 
-HcclResult SelectorEngine::SelectMinCost(const CostTable& ct, OpParam& param, bool tunerModified, std::string& algName)
+HcclResult SelectorEngine::SelectMinCost(
+    const CostTable& ct, OpParam& param, bool tunerModified,
+    const std::vector<std::pair<OpExecuteConfig, int>>& enginePriority, std::string& algName)
 {
     if (ct.count <= 0) {
         // 拓扑与算子条件由随后的回溯头部统一打印, 此处不重复
@@ -574,15 +604,43 @@ HcclResult SelectorEngine::SelectMinCost(const CostTable& ct, OpParam& param, bo
         return HCCL_E_NOT_SUPPORT;
     }
 
-    // 遍历找最小 cost 并打印 costTable 明细, 格式: | idx | algName | cost |
+    // 引擎优先级查询表: URMA档下URMA(1)高于其余引擎(0)
+    // 最终算法 = 候选中实际出现的最高优先级层内 cost 最低者(URMA存在则必选, 不因cost差距回退)
+    std::map<OpExecuteConfig, int> enginePrio;
+    for (const auto& e : enginePriority) {
+        enginePrio[e.first] = e.second;
+    }
+    // 两遍法: 第一遍收集每条候选的引擎优先级并求候选中实际出现的最高层;
+    // 第二遍在最高层内取cost最低(平级时全表同层, 行为与旧纯cost比较一致)
+    // 无效条目(name==nullptr或cost<0, 如tuner标记)不参与最高层判定, 否则会屏蔽掉合法候选
+    std::vector<int> prioOf(ct.count, 0);
+    int activeMaxPrio = INT_MIN;
+    for (int i = 0; i < ct.count; ++i) {
+        const char* name = ct.costs[i].algName;
+        const AlgAttrs* entryAttrs = (name != nullptr) ? AlgAttrsRegistry::Instance().Get(name) : nullptr;
+        int prio = 0;
+        if (entryAttrs != nullptr) {
+            auto it = enginePrio.find(entryAttrs->engine);
+            if (it != enginePrio.end()) {
+                prio = it->second;
+            }
+        }
+        prioOf[i] = prio;
+        if (name != nullptr && ct.costs[i].cost >= 0.0f) {
+            activeMaxPrio = std::max(activeMaxPrio, prio);
+        }
+    }
+
+    // 遍历找分层后最小 cost 并打印 costTable 明细, 格式: | idx | algName | enginePrio | cost |
     HCCL_INFO(
         "[SelectorEngine] SelectMinCost: costTable count=%d, opType=%d, dataSize=%llu.", ct.count,
         static_cast<int>(param.opType), param.inputSize);
     HCCL_INFO("[SelectorEngine] "
-              "+-----+--------------------------------------------------+--------------+");
-    HCCL_INFO("[SelectorEngine] | idx | algName                                          | cost         |");
+              "+-----+--------------------------------------------------+------------+--------------+");
+    HCCL_INFO(
+        "[SelectorEngine] | idx | algName                                          | enginePrio | cost         |");
     HCCL_INFO("[SelectorEngine] "
-              "+-----+--------------------------------------------------+--------------+");
+              "+-----+--------------------------------------------------+------------+--------------+");
     int minIdx = -1;
     float minCost = 0.0f;
     std::vector<std::string> tiedAlgos;
@@ -598,9 +656,10 @@ HcclResult SelectorEngine::SelectMinCost(const CostTable& ct, OpParam& param, bo
             return HCCL_E_INTERNAL;
         }
         HCCL_INFO(
-            "[SelectorEngine] | %3d | %-48s | %12s |", i, nameStr.substr(0, ALGO_NAME_COL_WIDTH).c_str(), costBuf);
+            "[SelectorEngine] | %3d | %-48s | %10d | %12s |", i, nameStr.substr(0, ALGO_NAME_COL_WIDTH).c_str(),
+            prioOf[i], costBuf);
 
-        if (name == nullptr || cost < 0.0f) {
+        if (name == nullptr || cost < 0.0f || prioOf[i] < activeMaxPrio) {
             continue;
         }
         if (minIdx == -1 || cost < minCost) {

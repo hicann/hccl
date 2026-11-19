@@ -41,7 +41,9 @@ private:
     // tunerModified 出参标识 cost 表是否被 tuner 改写, 供选路失败时区分死因
     HcclResult TunerEnrichCostTable(HcclComm comm, CostTable& ct, const OpParam& param, bool& tunerModified);
 
-    HcclResult SelectMinCost(const CostTable& ct, OpParam& param, bool tunerModified, std::string& algName);
+    HcclResult SelectMinCost(
+        const CostTable& ct, OpParam& param, bool tunerModified,
+        const std::vector<std::pair<OpExecuteConfig, int>>& enginePriority, std::string& algName);
 
     // 选不到算法时回溯打印所有候选算法被过滤的原因(引擎→topo→executor→op, 与管线阶段一一对应);
     // only 模式(AIV_ONLY/CCU_MS_ONLY/CCU_SCHED_ONLY)额外保留专属报错前缀与明细标题契约(AIV_ONLY 见

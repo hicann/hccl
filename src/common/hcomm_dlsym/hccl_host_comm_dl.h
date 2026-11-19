@@ -43,6 +43,7 @@ typedef HcclOpExpansionMode HcclConfigTypeOpExpansionMode;
 #define HCCL_OP_EXPANSION_EXT_CCU_SCHED 5
 #define HCCL_OP_EXPANSION_EXT_CCU_MS_ONLY 7
 #define HCCL_OP_EXPANSION_EXT_CCU_SCHED_ONLY 8
+#define HCCL_OP_EXPANSION_EXT_AIV_URMA 9
 
 #ifdef __cplusplus
 extern "C" {

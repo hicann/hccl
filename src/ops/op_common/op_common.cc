@@ -4734,6 +4734,12 @@ HcclResult ApplyOpExpansionMode(OpParam& param, HcclOpExpansionMode finalMode)
             param.engine = CommEngine::COMM_ENGINE_CCU;
             HCCL_DEBUG("[ApplyOpExpansionMode] CCU_SCHED_ONLY mode selected.");
             break;
+        case static_cast<HcclOpExpansionMode>(HCCL_OP_EXPANSION_EXT_AIV_URMA):
+            param.opExecuteConfig = OpExecuteConfig::AIV_URMA;
+            param.engine = CommEngine::COMM_ENGINE_AIV;
+            CHK_RET(RegisterKernel());
+            HCCL_DEBUG("[ApplyOpExpansionMode] AIV_URMA mode selected.");
+            break;
         default:
             // 回退到aicpu
             HCCL_WARNING("[ApplyOpExpansionMode] Invalid HcclOpExpansionMode: %d, fallback to AICPU_TS.", finalMode);

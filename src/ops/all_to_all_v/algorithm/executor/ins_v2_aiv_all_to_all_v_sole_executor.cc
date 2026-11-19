@@ -179,7 +179,10 @@ HcclResult InsV2AivAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestr
     maxTmpMemSize_ = tempAlgParams.buffInfo.hcclBuff.size;
     u64 transportBoundDataSize = UB_MAX_DATA_SIZE;
     HCCL_INFO("[InsV2AivAlltoAllVSoleExecutor]maxTmpMemSize_ [%u]", maxTmpMemSize_);
-    if (templateScratchMultiplier != 0) {
+    if (param.opExecuteConfig == OpExecuteConfig::AIV_URMA) {
+        // AIV直驱URMA不经CCL Buffer中转, 数据经URMA直写对端用户output, 一次下发全量, 不受ccl buffer切分约束
+        maxDataSizePerLoop = transportBoundDataSize;
+    } else if (templateScratchMultiplier != 0) {
         u64 scratchBoundDataSize
             = maxTmpMemSize_ / templateScratchMultiplier / HCCL_MIN_SLICE_ALIGN * HCCL_MIN_SLICE_ALIGN;
         maxDataSizePerLoop = std::min(transportBoundDataSize, scratchBoundDataSize);
@@ -295,7 +298,12 @@ std::vector<CostModelParam> InsV2AivAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTe
 {
     (void)comm;
     (void)topoInfo;
-    (void)algName;
+    (void)param;
+    // AIV直驱URMA固定系数3，普通AIV档下URMA作为平级候选参与cost比较
+    // AIV_URMA档下由引擎优先级机制保底
+    if (algName != nullptr && std::string(algName).find("Urma") != std::string::npos) {
+        return {{0.0f, 0.0f, 3.0f, 0.0f}};
+    }
     // AllToAllV和AllToAllVC获取不到其他rank间的通信量，不实现costmodel
     return {{0.0f, 0.0f, 2.0f, 0.0f}};
 }
@@ -329,5 +337,14 @@ REGISTER_ALG_ATTRS(
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
         return !t->level2UbRtp && !t->topLevelUboe;
     };);
+#if CANN_VERSION_NUM >= CANN_VERSION(9, 2, 0)
+// ubrtp/uboe拓扑可支持, 不再经topoCustomCheck过滤
+REGISTER_EXEC_V2(
+    HcclCMDType::HCCL_CMD_ALLTOALLV, AivUrmaAllToAllVSoleMesh, InsV2AivAlltoAllVSoleExecutor, TopoMatchOneLevel,
+    AivTempAlltoAllVMesh1D);
+REGISTER_ALG_ATTRS(AivUrmaAllToAllVSoleMesh, topo.maxSupportRankSize = MAX_RANK_SIZE_V;
+                   topo.supportLevel0Topos = LEVEL0_TOPO_ANY; topo.isSupportLevel0PcieMix = true;
+                   topo.supportDevTypes = {HcclDevType::DEV_TYPE_950};);
+#endif
 #endif
 } // namespace ops_hccl

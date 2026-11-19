@@ -79,13 +79,19 @@ protected:
 
     void IncSliceId() { ++sliceId_; }
 
+    HcclResult GetRes(AlgResourceRequest& resourceRequest) const
+    {
+        resourceRequest = resRequest_;
+        return HCCL_SUCCESS;
+    }
+
     u32 myRank_ = 0;
     u32 tempRankSize_ = 0;
     std::vector<std::vector<u32>> subCommRanks_;
     u32 root_ = 0;
     u32 sliceId_ = 0;
     HcclDataType dataType_ = HCCL_DATA_TYPE_FP32;
-    OpExecuteConfig opExecuteConfig_ = OpExecuteConfig::AIV;
+    OpExecuteConfig opExecuteConfig_{OpExecuteConfig::DEFAULT};
     AlgResourceRequest resRequest_;
 };
 

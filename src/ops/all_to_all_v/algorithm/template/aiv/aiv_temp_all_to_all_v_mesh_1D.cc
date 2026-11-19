@@ -37,8 +37,11 @@ HcclResult AivTempAlltoAllVMesh1D::CalcRes(
     if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
         std::vector<HcclChannelDesc> myChannelDescs;
         CHK_RET(CalcChannelRequestMeshClosMultiJetty(comm, param, topoInfo, subCommRanks_, myChannelDescs, true));
+        // AIV直驱URMA建链须为UB_CTP协议(WriteWithNotifyNbi/WriteValueNbi仅UB_CTP支持)
+        CommProtocol expectedProtocol
+            = (param.opExecuteConfig == OpExecuteConfig::AIV_URMA) ? COMM_PROTOCOL_UB_CTP : COMM_PROTOCOL_UB_MEM;
         for (auto channel : myChannelDescs) {
-            if (channel.channelProtocol == COMM_PROTOCOL_UB_MEM) {
+            if (channel.channelProtocol == expectedProtocol) {
                 level0Channels.push_back(channel);
             }
         }
@@ -47,6 +50,7 @@ HcclResult AivTempAlltoAllVMesh1D::CalcRes(
         CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, level0Channels));
     }
     resourceRequest.channels.push_back(level0Channels);
+    resRequest_ = resourceRequest;
     HCCL_WARNING("[AivTempAlltoAllVMesh1D] Resource calculation is temporarily not performed in the template.");
     return HCCL_SUCCESS;
 }
@@ -58,7 +62,10 @@ HcclResult AivTempAlltoAllVMesh1D::CalNumBlocks(u32& numBlocks, u64 dataSize, u3
         HCCL_ERROR("[AivTempAlltoAllVMesh1D] numBlocksLimit is 0");
         return HcclResult::HCCL_E_NOT_SUPPORT;
     }
-    if (numBlocksLimit < tempRankSize_) {
+    if (opExecuteConfig_ == OpExecuteConfig::AIV_URMA) {
+        u32 urmaLimit = std::min(tempRankSize_, AIV_URMA_ALLTOALLV_GROUP_SIZE);
+        numBlocks = std::min(numBlocksLimit, urmaLimit);
+    } else if (numBlocksLimit < tempRankSize_) {
         numBlocks = numBlocksLimit;
     } else {
         // 多核一 rank，对齐到 rankSize 倍数
@@ -74,6 +81,7 @@ HcclResult AivTempAlltoAllVMesh1D::KernelRun(
 {
     HCCL_INFO("[AivTempAlltoAllVMesh1D] KernelRun start");
 
+    opExecuteConfig_ = param.opExecuteConfig;
     IncSliceId(); // 自动增长sliceId，传入sliceId
     dataType_ = param.all2AllVDataDes.sendType;
     AivOpArgs aivAlltoAllVArgs;
@@ -113,6 +121,11 @@ HcclResult AivTempAlltoAllVMesh1D::KernelRun(
     aivAlltoAllVArgs.repeatNum = tempAlgParams.repeatNum;
     aivAlltoAllVArgs.inputRepeatStride = tempAlgParams.inputRepeatStride;
     aivAlltoAllVArgs.outputRepeatStride = tempAlgParams.outputRepeatStride;
+    // 单级算法无子通信域层级概念(AG两级为inter=1/intra=0), 固定0
+    aivAlltoAllVArgs.subCommRankLevel = 0;
+    if (opExecuteConfig_ == OpExecuteConfig::AIV_URMA) {
+        aivAlltoAllVArgs.argsType = KernelArgsType::ARGS_TYPE_URMA;
+    }
 
     CHK_RET(ExecuteKernelLaunch(aivAlltoAllVArgs));
 

@@ -90,8 +90,11 @@ AllAlgos* GetAllAlgos()
 const EnginePrefixEntry* GetEnginePrefixEntries(int& count)
 {
     static const std::vector<EnginePrefixEntry> entries = {
-        {"CcuSched", OpExecuteConfig::CCU_SCHED}, {"CcuMS", OpExecuteConfig::CCU_MS},
-        {"Aicpu", OpExecuteConfig::AICPU_TS},     {"Aiv", OpExecuteConfig::AIV},
+        {"CcuSched", OpExecuteConfig::CCU_SCHED},
+        {"CcuMS", OpExecuteConfig::CCU_MS},
+        {"Aicpu", OpExecuteConfig::AICPU_TS},
+        {"AivUrma", OpExecuteConfig::AIV_URMA},
+        {"Aiv", OpExecuteConfig::AIV},
         {"Dpu", OpExecuteConfig::HOSTCPU},
     };
     count = static_cast<int>(entries.size());

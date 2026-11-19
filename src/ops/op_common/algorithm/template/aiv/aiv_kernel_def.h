@@ -139,6 +139,25 @@ static std::vector<AivKernelInfo> g_alltoallvAivKernelInfoList = {
     {"aiv_alltoallv_fp8_e4m3fn_t", HcclDataType::HCCL_DATA_TYPE_FP8E4M3},
     {"aiv_alltoallv_fp8_e5m2_t", HcclDataType::HCCL_DATA_TYPE_FP8E5M2},
     {"aiv_alltoallv_fp8_e8m0_t", HcclDataType::HCCL_DATA_TYPE_FP8E8M0},
+#if CANN_VERSION_NUM >= CANN_VERSION(9, 2, 0)
+    // URMA AllToAllV kernel 与普通 AIV kernel 编入同一个.o, 靠 ARGS_TYPE_URMA 的 funcKey 区分
+    {"aiv_urma_alltoallv_half", HcclDataType::HCCL_DATA_TYPE_FP16, KernelArgsType::ARGS_TYPE_URMA},
+    {"aiv_urma_alltoallv_int16_t", HcclDataType::HCCL_DATA_TYPE_INT16, KernelArgsType::ARGS_TYPE_URMA},
+    {"aiv_urma_alltoallv_uint16_t", HcclDataType::HCCL_DATA_TYPE_UINT16, KernelArgsType::ARGS_TYPE_URMA},
+    {"aiv_urma_alltoallv_float", HcclDataType::HCCL_DATA_TYPE_FP32, KernelArgsType::ARGS_TYPE_URMA},
+    {"aiv_urma_alltoallv_uint64_t", HcclDataType::HCCL_DATA_TYPE_FP64, KernelArgsType::ARGS_TYPE_URMA},
+    {"aiv_urma_alltoallv_int32_t", HcclDataType::HCCL_DATA_TYPE_INT32, KernelArgsType::ARGS_TYPE_URMA},
+    {"aiv_urma_alltoallv_uint32_t", HcclDataType::HCCL_DATA_TYPE_UINT32, KernelArgsType::ARGS_TYPE_URMA},
+    {"aiv_urma_alltoallv_int8_t", HcclDataType::HCCL_DATA_TYPE_INT8, KernelArgsType::ARGS_TYPE_URMA},
+    {"aiv_urma_alltoallv_uint8_t", HcclDataType::HCCL_DATA_TYPE_UINT8, KernelArgsType::ARGS_TYPE_URMA},
+    {"aiv_urma_alltoallv_bfloat16_t", HcclDataType::HCCL_DATA_TYPE_BFP16, KernelArgsType::ARGS_TYPE_URMA},
+    {"aiv_urma_alltoallv_int64_t", HcclDataType::HCCL_DATA_TYPE_INT64, KernelArgsType::ARGS_TYPE_URMA},
+    {"aiv_urma_alltoallv_uint64_t", HcclDataType::HCCL_DATA_TYPE_UINT64, KernelArgsType::ARGS_TYPE_URMA},
+    {"aiv_urma_alltoallv_hifloat8_t", HcclDataType::HCCL_DATA_TYPE_HIF8, KernelArgsType::ARGS_TYPE_URMA},
+    {"aiv_urma_alltoallv_fp8_e4m3fn_t", HcclDataType::HCCL_DATA_TYPE_FP8E4M3, KernelArgsType::ARGS_TYPE_URMA},
+    {"aiv_urma_alltoallv_fp8_e5m2_t", HcclDataType::HCCL_DATA_TYPE_FP8E5M2, KernelArgsType::ARGS_TYPE_URMA},
+    {"aiv_urma_alltoallv_fp8_e8m0_t", HcclDataType::HCCL_DATA_TYPE_FP8E8M0, KernelArgsType::ARGS_TYPE_URMA},
+#endif
 };
 static std::string g_alltoallvAivBinaryName = "hccl_aiv_all_to_all_v_op_910_95.o";
 
