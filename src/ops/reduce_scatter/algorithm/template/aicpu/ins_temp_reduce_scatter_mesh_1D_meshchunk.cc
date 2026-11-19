@@ -56,17 +56,59 @@ HcclResult InsTempReduceScatterMesh1DMeshChunk::CalcRes(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     AlgResourceRequest& resourceRequest)
 {
-    u32 threadNum = templateRankSize_ > 1 ? templateRankSize_ - 1 : 1;
+    CHK_RET(GetRes(resourceRequest));
+    std::vector<HcclChannelDesc> level0Channels;
+    CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, level0Channels));
+    resourceRequest.channels.push_back(level0Channels);
+    HCCL_WARNING("Resource calculation is temporarily not performed in the template.");
+    return HcclResult::HCCL_SUCCESS;
+}
+
+u64 InsTempReduceScatterMesh1DMeshChunk::GetThreadNum() const
+{
+    return templateRankSize_ > 1 ? templateRankSize_ - 1 : 1;
+}
+
+HcclResult InsTempReduceScatterMesh1DMeshChunk::GetRes(AlgResourceRequest& resourceRequest) const
+{
+    u32 threadNum = static_cast<u32>(GetThreadNum());
     resourceRequest.slaveThreadNum = threadNum - 1;
     const u32 NOTIFY_NUM_PER_SLAVE_THREAD = 2;
     for (u32 index = 0; index < threadNum - 1; index++) {
         resourceRequest.notifyNumPerThread.push_back(NOTIFY_NUM_PER_SLAVE_THREAD);
     }
     resourceRequest.notifyNumOnMainThread = (threadNum - 1) * NOTIFY_NUM_PER_SLAVE_THREAD;
-    std::vector<HcclChannelDesc> level0Channels;
-    CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, level0Channels));
-    resourceRequest.channels.push_back(level0Channels);
-    HCCL_WARNING("Resource calculation is temporarily not performed in the template.");
+    return HcclResult::HCCL_SUCCESS;
+}
+
+u64 InsTempReduceScatterMesh1DMeshChunk::ScratchSlotBaseOff(
+    const TemplateDataParams& p, u32 repeatIdx, u32 algRank) const
+{
+    return p.buffInfo.hcclBuffBaseOff + repeatIdx * p.outputRepeatStride + algRank * p.outputSliceStride;
+}
+
+HcclResult InsTempReduceScatterMesh1DMeshChunk::CalcDataSplitByPortGroup(
+    const u64 totalDataCount, const u64 dataTypeSize, const std::vector<ChannelInfo>& channels,
+    std::vector<u64>& elemCountOut, std::vector<u64>& sizeOut, std::vector<u64>& elemOffset)
+{
+    elemCountOut.clear();
+    sizeOut.clear();
+    elemOffset.clear();
+    u32 chNum = static_cast<u32>(channels.size());
+    if (chNum == 0 || dataTypeSize == 0) {
+        return HcclResult::HCCL_E_PARA;
+    }
+    // 基类默认: 通道均分(sole 场景 1 通道 = 全量, 行为与旧代码一致)
+    u64 remain = totalDataCount;
+    u64 off = 0;
+    for (u32 c = 0; c < chNum; c++) {
+        u64 cnt = (c == chNum - 1) ? remain : totalDataCount / chNum;
+        elemCountOut.push_back(cnt);
+        sizeOut.push_back(cnt * dataTypeSize);
+        elemOffset.push_back(off);
+        off += cnt * dataTypeSize;
+        remain -= cnt;
+    }
     return HcclResult::HCCL_SUCCESS;
 }
 
@@ -146,8 +188,8 @@ HcclResult InsTempReduceScatterMesh1DMeshChunk::PreCopy(
             tempAlgParams.buffInfo.inBuffBaseOff + repeatIdx * tempAlgParams.inputRepeatStride
                 + rankIdx_ * tempAlgParams.inputSliceStride,
             processSize_);
-        DataSlice dstSlice
-            = DataSlice(tempAlgParams.buffInfo.hcclBuff.addr, tempAlgParams.buffInfo.hcclBuffBaseOff, processSize_);
+        DataSlice dstSlice = DataSlice(
+            tempAlgParams.buffInfo.hcclBuff.addr, ScratchSlotBaseOff(tempAlgParams, repeatIdx, rankIdx_), processSize_);
         CHK_RET(LocalCopy(threads[0], srcSlice, dstSlice));
     }
     return HcclResult::HCCL_SUCCESS;
@@ -158,13 +200,16 @@ HcclResult InsTempReduceScatterMesh1DMeshChunk::LocalDataCopy(
 {
     HCCL_INFO("[InsTempReduceScatterMesh1DMeshChunk][LocalDataCopy], copy from userIn to userOut");
     for (u32 repeatIdx = 0; repeatIdx < tempAlgParams.repeatNum; repeatIdx++) {
-        DataSlice srcSlice = DataSlice(
-            tempAlgParams.buffInfo.inputPtr,
-            tempAlgParams.buffInfo.inBuffBaseOff + repeatIdx * tempAlgParams.inputRepeatStride
-                + rankIdx_ * tempAlgParams.inputSliceStride,
-            processSize_);
-        DataSlice dstSlice
-            = DataSlice(tempAlgParams.buffInfo.outputPtr, tempAlgParams.buffInfo.outBuffBaseOff, processSize_);
+        const u64 srcOff = tempAlgParams.buffInfo.inBuffBaseOff + repeatIdx * tempAlgParams.inputRepeatStride
+                           + rankIdx_ * tempAlgParams.inputSliceStride;
+        // 序列对称场景 outputPtr==inputPtr 且偏移相同(实际收尾由框间模板承载), 跳过自拷贝
+        const u64 dstOff = tempAlgParams.buffInfo.outBuffBaseOff + repeatIdx * tempAlgParams.outputRepeatStride
+                           + rankIdx_ * tempAlgParams.outputSliceStride;
+        if (tempAlgParams.buffInfo.inputPtr == tempAlgParams.buffInfo.outputPtr && srcOff == dstOff) {
+            continue;
+        }
+        DataSlice srcSlice = DataSlice(tempAlgParams.buffInfo.inputPtr, srcOff, processSize_);
+        DataSlice dstSlice = DataSlice(tempAlgParams.buffInfo.outputPtr, dstOff, processSize_);
         CHK_RET(LocalCopy(threads[0], srcSlice, dstSlice));
     }
     return HcclResult::HCCL_SUCCESS;
@@ -178,13 +223,13 @@ HcclResult InsTempReduceScatterMesh1DMeshChunk::RunReduceScatter(
     u32 myAlgRank = 0;
     CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], myAlgRank));
 
+    // 单 rank 防御：无对端可交换，跳过轮转（PreCopy/PostCopy 完成数据穿透）
+    if (templateRankSize_ == 1) {
+        HCCL_INFO("[InsTempReduceScatterMesh1DMeshChunk][RunReduceScatter] single rank, skip rotation.");
+        return HcclResult::HCCL_SUCCESS;
+    }
+
     uint64_t sliceNum = templateRankSize_ - 1;
-    CHK_PRT_RET(
-        sliceNum == 0,
-        HCCL_ERROR(
-            "[InsTempReduceScatterMesh1DMeshChunk][RunReduceScatter] templateRankSize_[%u] is 1, sliceNum is 0.",
-            templateRankSize_),
-        HcclResult::HCCL_E_INTERNAL);
     uint64_t mySliceSize = sliceInfoVec[myAlgRank][0].size; // 获取本rank需要处理的数据量，executor已按4K对齐
     uint64_t mySliceCount = mySliceSize / DATATYPE_SIZE_TABLE[dataType_];
 
@@ -243,62 +288,84 @@ HcclResult InsTempReduceScatterMesh1DMeshChunk::DoMeshChunk(
             uint16_t frontNum = 2 * myAlgRank - nextRank + templateRankSize_;
             uint16_t frontRank = frontNum % templateRankSize_;
             u32 toRank = subCommRanks_[0][frontRank];
-            const ChannelInfo& linkSend = channels.at(toRank)[0];
-            const ChannelInfo& linkRecv = channels.at(toRank)[0];
-            void* remoteCclBuffAddr = linkSend.remoteCclMem.addr;
-            void* remoteBuffAddr
-                = supportSymmetricMemAccess_ ? linkSend.remoteInputGraphMode.addr : linkSend.remoteCclMem.addr;
-            u64 remoteBuffBaseOff = tempAlgParams.buffInfo.hcclBuffBaseOff;
-            uint16_t queIdx;
-            if (frontRank < myAlgRank) {
-                queIdx = frontRank;
-            } else {
-                queIdx = frontRank - 1;
+            const std::vector<ChannelInfo>& peerChs = channels.at(toRank);
+            u32 curChannelNum = std::min(static_cast<u32>(peerChs.size()), channelsPerRank_);
+            // 切分/消费口径一致: 只把实际会消费的前 curChannelNum 条通道视图传给切分,
+            // 保证切分份数==发送份数——否则基类模板(channelsPerRank_ 恒 1)在多通道
+            // peerChs 下会把数据切成 N 份却只发第 0 份, 造成静默丢数据
+            std::vector<ChannelInfo> splitView(peerChs.begin(), peerChs.begin() + curChannelNum);
+            CHK_RET(CalcDataSplitByPortGroup(
+                sliceSize[i] / dataTypeSize_, dataTypeSize_, splitView, elemCountOut_, sizeOut_, elemOffset_));
+            uint16_t frontRankShifted = frontRank < myAlgRank ? frontRank : frontRank - 1;
+            for (u32 channelIdx = 0; channelIdx < curChannelNum; channelIdx++) {
+                if (sizeOut_[channelIdx] == 0) {
+                    continue;
+                }
+                const ChannelInfo& linkSend = peerChs[channelIdx];
+                const ChannelInfo& linkRecv = peerChs[channelIdx];
+                void* remoteBuffAddr
+                    = supportSymmetricMemAccess_ ? linkSend.remoteInputGraphMode.addr : linkSend.remoteCclMem.addr;
+                u64 subSendOff = sliceSendOffset_ + elemOffset_[channelIdx];
+                u64 subRecvOff = sliceRecvOffset_ + elemOffset_[channelIdx];
+                u64 subSize = sizeOut_[channelIdx];
+                u32 queIdx = frontRankShifted * channelsPerRank_ + channelIdx;
+                CHK_PRT_RET(
+                    queIdx >= threads.size(),
+                    HCCL_ERROR(
+                        "[InsTempReduceScatterMesh1DMeshChunk][DoMeshChunk] queIdx[%u] out of range, threadNum[%zu], "
+                        "channelsPerRank_[%u]",
+                        queIdx, threads.size(), channelsPerRank_),
+                    HcclResult::HCCL_E_INTERNAL);
+
+                std::vector<DataSlice> txSrcSlices;
+                std::vector<DataSlice> txDstSlices;
+                std::vector<DataSlice> rxSrcSlices;
+                std::vector<DataSlice> rxDstSlices;
+                for (u32 repeatIdx = 0; repeatIdx < repeatNum; repeatIdx++) {
+                    u64 inputBaseOff = tempAlgParams.buffInfo.inBuffBaseOff
+                                       + repeatIdx * tempAlgParams.inputRepeatStride
+                                       + myAlgRank * tempAlgParams.inputSliceStride;
+                    u64 slotRecvBase = ScratchSlotBaseOff(tempAlgParams, repeatIdx, myAlgRank);
+                    u64 slotSendBase = ScratchSlotBaseOff(tempAlgParams, repeatIdx, frontRank);
+                    u64 sliceExchOffset = supportSymmetricMemAccess_ ? subSendOff : subRecvOff;
+                    DataSlice rxSrcSlice = DataSlice(
+                        supportSymmetricMemAccess_ ? remoteBuffAddr : tempAlgParams.buffInfo.inputPtr,
+                        inputBaseOff + sliceExchOffset, subSize, subSize / dataTypeSize_);
+                    DataSlice rxDstSlice = DataSlice(
+                        supportSymmetricMemAccess_ ? tempAlgParams.buffInfo.inputPtr :
+                                                     tempAlgParams.buffInfo.hcclBuff.addr,
+                        supportSymmetricMemAccess_ ? (inputBaseOff + sliceExchOffset) : (slotRecvBase + subRecvOff),
+                        subSize, subSize / dataTypeSize_);
+                    // 写方向: 接收方(frontRank)槽位为本 rank 持有的对端 slice 副本偏移;
+                    // rx 列表在此占位不被消费, 其偏移仅保持 DataSlice 结构完整
+                    // (与下方 WriteReduce 注释一致, 实际搬运只消费 tx 切片)
+                    const u64 txBaseOff = tempAlgParams.buffInfo.inBuffBaseOff
+                                          + repeatIdx * tempAlgParams.inputRepeatStride
+                                          + frontRank * tempAlgParams.inputSliceStride + subSendOff;
+                    DataSlice txSrcSlice
+                        = DataSlice(tempAlgParams.buffInfo.inputPtr, txBaseOff, subSize, subSize / dataTypeSize_);
+                    DataSlice txDstSlice = DataSlice(
+                        remoteBuffAddr, supportSymmetricMemAccess_ ? txBaseOff : (slotSendBase + subSendOff), subSize,
+                        subSize / dataTypeSize_);
+
+                    rxSrcSlices.push_back(rxSrcSlice);
+                    rxDstSlices.push_back(rxDstSlice);
+                    txSrcSlices.push_back(txSrcSlice);
+                    txDstSlices.push_back(txDstSlice);
+                }
+                SendRecvReduceInfo sendRecvReduceInfo{
+                    {linkSend, linkRecv},
+                    {{txSrcSlices, txDstSlices}, {rxSrcSlices, rxDstSlices}},
+                    dataType_,
+                    reduceOp_};
+
+                // 对称与非对称路径统一推模式(上游 adaptive symm): WriteReduce 只消费 tx 切片,
+                // rx 列表仅占位不被消费; 对称写远端 input 窗口, 非对称写远端 cclBuff
+                CHK_PRT_RET(
+                    SendRecvBatchWriteReduce(sendRecvReduceInfo, threads[queIdx]),
+                    HCCL_ERROR("[InsTempReduceScatterMesh1DMeshChunk][DoMeshChunk] SendRecvBatchWriteReduce failed"),
+                    HcclResult::HCCL_E_INTERNAL);
             }
-
-            std::vector<DataSlice> txSrcSlices;
-            std::vector<DataSlice> txDstSlices;
-            std::vector<DataSlice> rxSrcSlices;
-            std::vector<DataSlice> rxDstSlices;
-            for (u32 repeatIdx = 0; repeatIdx < repeatNum; repeatIdx++) {
-                u64 inputBaseOff = tempAlgParams.buffInfo.inBuffBaseOff + repeatIdx * tempAlgParams.inputRepeatStride
-                                   + myAlgRank * tempAlgParams.inputSliceStride;
-                // 对称内存路径：推模式 write-reduce，本 rank 将自己对「对端区域(frontRank)子块」的拷贝
-                // 直接写规约到对端 input 的同一位置，收发地址均按对端区域定位
-                u64 peerRegionOff = tempAlgParams.buffInfo.inBuffBaseOff + repeatIdx * tempAlgParams.inputRepeatStride
-                                    + frontRank * tempAlgParams.inputSliceStride + sliceSendOffset_;
-                DataSlice rxSrcSlice = DataSlice(
-                    supportSymmetricMemAccess_ ? remoteBuffAddr : tempAlgParams.buffInfo.inputPtr,
-                    supportSymmetricMemAccess_ ? peerRegionOff : (inputBaseOff + sliceRecvOffset_), sliceSize[i],
-                    sliceSize[i] / dataTypeSize_); // 接收源
-                DataSlice rxDstSlice = DataSlice(
-                    supportSymmetricMemAccess_ ? tempAlgParams.buffInfo.inputPtr : tempAlgParams.buffInfo.hcclBuff.addr,
-                    supportSymmetricMemAccess_ ? peerRegionOff : (remoteBuffBaseOff + sliceRecvOffset_), sliceSize[i],
-                    sliceSize[i] / dataTypeSize_); // 接收目标
-                DataSlice txSrcSlice = DataSlice(
-                    tempAlgParams.buffInfo.inputPtr,
-                    tempAlgParams.buffInfo.inBuffBaseOff + repeatIdx * tempAlgParams.inputRepeatStride
-                        + frontRank * tempAlgParams.inputSliceStride + sliceSendOffset_,
-                    sliceSize[i], sliceSize[i] / dataTypeSize_); // 发送源
-                DataSlice txDstSlice = DataSlice(
-                    remoteBuffAddr, supportSymmetricMemAccess_ ? peerRegionOff : (remoteBuffBaseOff + sliceSendOffset_),
-                    sliceSize[i], sliceSize[i] / dataTypeSize_); // 发送目标
-
-                rxSrcSlices.push_back(rxSrcSlice);
-                rxDstSlices.push_back(rxDstSlice);
-                txSrcSlices.push_back(txSrcSlice);
-                txDstSlices.push_back(txDstSlice);
-            }
-            SendRecvReduceInfo sendRecvReduceInfo{
-                {linkSend, linkRecv}, {{txSrcSlices, txDstSlices}, {rxSrcSlices, rxDstSlices}}, dataType_, reduceOp_};
-
-            // 对称与非对称路径统一推模式：WriteReduce 只消费 tx 切片；上方 rx 列表仅占位、不被消费，寻址
-            // 未按接收方对齐（对称分支 rxDst 仍指向本地 input 的 frontRank 索引，语义含混），恢复 Read
-            // 系原语前须先修正； 对称路径目标为对端 input 对称窗口，非对称路径目标为对端 cclBuff
-            CHK_PRT_RET(
-                SendRecvBatchWriteReduce(sendRecvReduceInfo, threads[queIdx]),
-                HCCL_ERROR("[InsTempReduceScatterMesh1DMeshChunk] RunReduceScatter SendRecvBatchWriteReduce failed"),
-                HcclResult::HCCL_E_INTERNAL);
 
             sliceSendOffset_ += sliceSize[i];
             if (templateRankSize_ > rankNum && i < (templateRankSize_ - rankNum)) {
@@ -327,10 +394,15 @@ HcclResult InsTempReduceScatterMesh1DMeshChunk::PostCopy(
         threads.empty(), HCCL_ERROR("[InsTempReduceScatterMesh1DMeshChunk][PostCopy] threads is empty"), HCCL_E_PARA);
     // 先把本卡的数据从input搬运到output
     for (u32 repeatIdx = 0; repeatIdx < tempAlgParams.repeatNum; repeatIdx++) {
-        DataSlice myRankSlice
-            = DataSlice(tempAlgParams.buffInfo.hcclBuff.addr, tempAlgParams.buffInfo.hcclBuffBaseOff, processSize_);
-        DataSlice outputSlice
-            = DataSlice(tempAlgParams.buffInfo.outputPtr, tempAlgParams.buffInfo.outBuffBaseOff, processSize_);
+        u64 srcOff = ScratchSlotBaseOff(tempAlgParams, repeatIdx, myAlgRank);
+        u64 dstOff = tempAlgParams.buffInfo.outBuffBaseOff + repeatIdx * tempAlgParams.outputRepeatStride
+                     + myAlgRank * tempAlgParams.outputSliceStride;
+        // 序列框内场景 outputPtr == hcclBuff.addr 且偏移相同时跳过自拷贝
+        if (tempAlgParams.buffInfo.hcclBuff.addr == tempAlgParams.buffInfo.outputPtr && srcOff == dstOff) {
+            continue;
+        }
+        DataSlice myRankSlice = DataSlice(tempAlgParams.buffInfo.hcclBuff.addr, srcOff, processSize_);
+        DataSlice outputSlice = DataSlice(tempAlgParams.buffInfo.outputPtr, dstOff, processSize_);
         CHK_RET(LocalCopy(threads[0], myRankSlice, outputSlice));
     }
     return HcclResult::HCCL_SUCCESS;
@@ -339,7 +411,7 @@ HcclResult InsTempReduceScatterMesh1DMeshChunk::PostCopy(
 void InsTempReduceScatterMesh1DMeshChunk::GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub)
 {
     notifyIdxMainToSub.clear();
-    u32 threadNum = templateRankSize_ > 1 ? templateRankSize_ - 1 : 1;
+    u32 threadNum = static_cast<u32>(GetThreadNum());
     u32 slaveThreadNum = threadNum - 1;
     for (u32 slaveThreadIdx = 0; slaveThreadIdx < slaveThreadNum; slaveThreadIdx++) {
         notifyIdxMainToSub.push_back(0);
@@ -349,7 +421,7 @@ void InsTempReduceScatterMesh1DMeshChunk::GetNotifyIdxMainToSub(std::vector<u32>
 void InsTempReduceScatterMesh1DMeshChunk::GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain)
 {
     notifyIdxSubToMain.clear();
-    u32 threadNum = templateRankSize_ > 1 ? templateRankSize_ - 1 : 1;
+    u32 threadNum = static_cast<u32>(GetThreadNum());
     u32 notifyNum = threadNum - 1;
     for (u32 notifyIdx = 0; notifyIdx < notifyNum; notifyIdx++) {
         notifyIdxSubToMain.push_back(notifyIdx);
@@ -359,7 +431,7 @@ void InsTempReduceScatterMesh1DMeshChunk::GetNotifyIdxSubToMain(std::vector<u32>
 void InsTempReduceScatterMesh1DMeshChunk::NotifyIdxMainToSubInMeshChunk(std::vector<u32>& notifyIdxMainToSub)
 {
     notifyIdxMainToSub.clear();
-    u32 threadNum = templateRankSize_ > 1 ? templateRankSize_ - 1 : 1;
+    u32 threadNum = static_cast<u32>(GetThreadNum());
     u32 slaveThreadNum = threadNum - 1;
     for (u32 slaveThreadIdx = 0; slaveThreadIdx < slaveThreadNum; slaveThreadIdx++) {
         notifyIdxMainToSub.push_back(1);
@@ -369,7 +441,7 @@ void InsTempReduceScatterMesh1DMeshChunk::NotifyIdxMainToSubInMeshChunk(std::vec
 void InsTempReduceScatterMesh1DMeshChunk::NotifyIdxSubToMainInMeshChunk(std::vector<u32>& notifyIdxSubToMain)
 {
     notifyIdxSubToMain.clear();
-    u32 threadNum = templateRankSize_ > 1 ? templateRankSize_ - 1 : 1;
+    u32 threadNum = static_cast<u32>(GetThreadNum());
     u32 notifyNum = threadNum - 1;
     for (u32 notifyIdx = 0; notifyIdx < notifyNum; notifyIdx++) {
         notifyIdxSubToMain.push_back(notifyIdx + notifyNum);

@@ -60,6 +60,8 @@ add_subdirectory(order_launch)
 # 测 src/ 产品代码，与 alltoall_hier 同级无条件注册；注意 build.sh -u 的 UT 构建不传
 # ENABLE_EXPERIMENTAL，放入下方 if(ENABLE_EXPERIMENTAL) 分支将不被 -u 覆盖。
 add_subdirectory(reduce_scatter_seq64)
+# reduce_scatter_meshchunk_concur: MeshChunkConcur 模板（槽位寻址/scratch乘数/线程数/带宽分流）UT。
+add_subdirectory(reduce_scatter_meshchunk_concur)
 add_subdirectory(alltoall_aiv)
 add_subdirectory(all_gather_aiv)
 # batch_send_recv_aiv: BSR AIV kernel（Mesh1D）的 CPU 桩级覆盖，重点是 tag 只由轮次决定（不再读写通信域

@@ -49,6 +49,25 @@ public:
     void GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub) override;
     void GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) override;
 
+    u64 GetThreadNum() const override;
+    HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
+    u64 ScratchSlotBaseOff(const TemplateDataParams& p, u32 repeatIdx, u32 algRank) const;
+    HcclResult CalcDataSplitByPortGroup(
+        const u64 totalDataCount, const u64 dataTypeSize, const std::vector<ChannelInfo>& channels,
+        std::vector<u64>& elemCountOut, std::vector<u64>& sizeOut, std::vector<u64>& elemOffset) override;
+
+protected:
+    // 注意: 本成员刻意遮蔽基类 CommonAlgTemplateBase::channelsPerRank_(同名不同体):
+    // - sole 路径执行器调用的是基类 SetchannelsPerRank(写基类成员), 本成员保持默认 1,
+    //   DoMeshChunk 的 min(peerChs.size(), channelsPerRank_) 因此恒取 1, 维持上游 sole
+    //   单通道语义 —— 删除本遮蔽会让 sole 在多通道拓扑读到真实通道数, 复发多通道切分回归;
+    // - Concur 路径由子类 override 的 SetchannelsPerRank 写/读本成员, 读写一致。
+    // 勿"顺手清理"本遮蔽。
+    u32 channelsPerRank_{1};
+    std::vector<u64> elemCountOut_;
+    std::vector<u64> sizeOut_;
+    std::vector<u64> elemOffset_;
+
 private:
     HcclResult RunReduceScatter(
         const std::map<u32, std::vector<ChannelInfo>>& channels, const std::vector<ThreadHandle>& threads,

@@ -158,6 +158,30 @@ TEST_F(HcclAlgoParserTest, MeshConfigurationDoesNotExposeWriteSemantics)
     EXPECT_NE(parser.Parser("alltoall:sole{meshwrite}"), HCCL_SUCCESS);
 }
 
+// 测试正确用例6：meshchunkconcur 解析（新算法 MeshChunkConcurNHR 的 HCCL_ALGO 配置）
+TEST_F(HcclAlgoParserTest, ParseMeshChunkConcurAsLevel0OfSequence)
+{
+    HcclAlgoParser parser;
+    std::string input = "reducescatter:sequence{level0=meshchunkconcur,level1=nhr}";
+
+    HcclResult ret = parser.Parser(input);
+    EXPECT_EQ(ret, HCCL_SUCCESS);
+    EXPECT_EQ(parser.executorList.size(), 1u);
+
+    // 检查：reducescatter:sequence{meshchunkconcur,nhr}
+    EXPECT_EQ(parser.executorList[0].opType, "reducescatter");
+    EXPECT_EQ(parser.executorList[0].executorType, "sequence");
+    EXPECT_EQ(parser.executorList[0].algoList.size(), 2u);
+    EXPECT_EQ(parser.executorList[0].algoList[0].algoType, "meshchunkconcur");
+    EXPECT_TRUE(parser.executorList[0].algoList[0].enable);
+    EXPECT_EQ(parser.executorList[0].algoList[1].algoType, "nhr");
+    EXPECT_TRUE(parser.executorList[0].algoList[1].enable);
+
+    // 验证 ALGO_TYPES 映射和 AlgoType 枚举
+    EXPECT_EQ(GetAlgoNameToTypeMap().at("MeshChunkConcur"), AlgoType::MESH_CHUNK_CONCUR);
+    EXPECT_EQ(GetAlgoTypeToNameMap().at(AlgoType::MESH_CHUNK_CONCUR), "MeshChunkConcur");
+}
+
 // 测试错误用例1：非法 opType
 TEST_F(HcclAlgoParserTest, ParseErrorInvalidOpType)
 {

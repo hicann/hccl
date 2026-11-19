@@ -48,7 +48,8 @@ enum class AlgoType : uint8_t {
     MESH_NDA, // Mesh 的 NDA 变体（UBX host 直驱网卡场景）
     UNKNOWN,
     HD_AICPU_REDUCE, // ReduceScatter HD（递归折半）AicpuReduce 变体；追加在末尾保持既有枚举数值不变
-    RHD,             // Scatter RHD（递归折半倍增）；追加在末尾保持既有枚举数值不变
+    MESH_CHUNK_CONCUR, // ReduceScatter MeshChunk+Concur（分块+Z轴绕路）变体；追加在末尾保持既有枚举数值不变
+    RHD,               // Scatter RHD（递归折半倍增）；追加在末尾保持既有枚举数值不变
 };
 
 // Mesh 类算法集合
@@ -61,6 +62,7 @@ const std::set<AlgoType> MESH_ALGO_TYPES
        AlgoType::MESH_MULTILINK,
        AlgoType::MESH_CHUNK,
        AlgoType::MESH_CHUNK_TWOSHOT,
+       AlgoType::MESH_CHUNK_CONCUR,
        AlgoType::MESH_SINGLE_CHANNEL,
        AlgoType::MESH_CONCURRENT,
        AlgoType::MESH_MULTIJETTY,
@@ -70,7 +72,10 @@ const std::set<AlgoType> MESH_ALGO_TYPES
 const std::set<AlgoType> NHR_ALGO_TYPES
     = {AlgoType::NHR, AlgoType::NHR_MULTILINK, AlgoType::NHR_AICPU_REDUCE, AlgoType::NHR_MULTIJETTY, AlgoType::NHR_NDA};
 // MeshConcur 类算法（MESH_CONCUR 与 MESH_CONCURRENT 都触发 CLOS 双层规则）
-const std::set<AlgoType> MESH_CONCUR_ALGO_TYPES = {AlgoType::MESH_CONCUR, AlgoType::MESH_CONCURRENT};
+// MESH_CHUNK_CONCUR 为 Z 轴绕行并发变体, 同样依赖 mesh+CLOS 双来源
+// (仅新算法枚举加入, MESH_CHUNK 单来源算法勿加)
+const std::set<AlgoType> MESH_CONCUR_ALGO_TYPES
+    = {AlgoType::MESH_CONCUR, AlgoType::MESH_CONCURRENT, AlgoType::MESH_CHUNK_CONCUR};
 
 // NDA 变体类算法（最高层为 host 直驱网卡场景：L0 不做 mesh 锚点，由段内压缩映射到
 // HOST 锚点以下的最高物理层，即 server 内最大域，避免被锚到更低的 device fullmesh 层）

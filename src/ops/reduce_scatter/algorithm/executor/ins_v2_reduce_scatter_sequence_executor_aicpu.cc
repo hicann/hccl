@@ -10,6 +10,7 @@
 
 #include "ins_v2_reduce_scatter_sequence_executor_aicpu.h"
 #include "ins_temp_reduce_scatter_mesh_1D_Z_axis_detour.h"
+#include "ins_temp_reduce_scatter_mesh_1D_meshchunk_concur.h"
 #include "ins_temp_reduce_scatter_nhr.h"
 #include "alg_data_trans_wrapper.h"
 #include "ins_temp_reduce_scatter_mesh_1D.h"
@@ -129,7 +130,8 @@ InsV2ReduceScatterSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
               v.insert(v.end(), p0.begin(), p0.end());
               v.insert(v.end(), p1.begin(), p1.end());
 
-              bool isAicpuParallel = (strcmp(algName, "AicpuReduceScatterSequenceMeshConcurNHR") == 0);
+              bool isAicpuParallel = (strcmp(algName, "AicpuReduceScatterSequenceMeshConcurNHR") == 0)
+                                     || (strcmp(algName, "AicpuReduceScatterSequenceMeshChunkConcurNHR") == 0);
               if (isAicpuParallel) {
                   float bConst = 0.000020f;
                   for (auto& p : v) {
@@ -572,6 +574,21 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
 REGISTER_ALG_ATTRS(
     AicpuReduceScatterSequenceMeshConcurNHR, topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
     topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT;
+    op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
+        u64 perRankSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
+        u64 totalSize = perRankSize * topo->userRankSize;
+        return totalSize > RS_AICPU_SEQUENCE_SIZE_THRESHOLD;
+    });
+
+REGISTER_EXECUTOR_BY_TWO_TEMPS(
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSequenceMeshChunkConcurNHR,
+    InsV2ReduceScatterSequenceExecutorAicpu, TopoMatchTwoLevel, InsTempReduceScatterMesh1DMeshChunkConcur,
+    InsTempReduceScatterNHR);
+REGISTER_ALG_ATTRS(
+    AicpuReduceScatterSequenceMeshChunkConcurNHR, topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
+    topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3; op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT;
+    topo.isSupportLevel0PcieMix = true;
+    topo.isSupportLevel1Nhr = true; // 框间即 NHR 模板，L1 为 NHR 形态的拓扑（如分轨组网）不应被拦
     op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
         u64 perRankSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
         u64 totalSize = perRankSize * topo->userRankSize;

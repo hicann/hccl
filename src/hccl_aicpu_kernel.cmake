@@ -90,6 +90,7 @@ add_library(hccl_aicpu_kernel SHARED
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_nhr.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_reduce/algorithm/template/aicpu/ins_temp_reduce_scatter_hd.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_mesh_1D_meshchunk.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_mesh_1D_meshchunk_concur.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_aicpu_reduce_nhr.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_aicpu_reduce_hd.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_rhd.cc

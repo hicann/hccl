@@ -45,6 +45,7 @@ export HCCL_ALGO="<ExecutorType>{level0=<algoType>,level1=<algoType>};not(<Execu
       - MeshConcurrent（meshconcurrent）：Mesh/CLOS双路径并发算法，在同一组rank内联合利用Mesh直连链路与CLOS链路，按预设带宽比例将每个对端的收发数据划分为两部分并发处理；适用于AlltoAll/AlltoAllV算子。
       - MeshChunk（meshchunk）：支持chunk的Mesh算法，把数据切成多块（ReduceScatter下为N-1块、(N-1)步）逐步与对端交换，收发与归约融合；适用于fullmesh直连的ReduceScatter。
       - MeshChunkTwoShot（meshchunktwoshot）：TwoShot版MeshChunk算法，AllReduce走ReduceScatter+AllGather两步，其中ReduceScatter阶段使用mesh chunk。
+      - MeshChunkConcur（meshchunkconcur）：Chunk轮转+CLOS轴绕路并发算法，在MeshChunk分块逐步交换的基础上，同时合并level0直连mesh链路与level1 CLOS上行链路，按两侧带宽比对每个chunk的数据分流；收发与归约在DMA传输侧融合，消除通信后的串行本地规约；适用于两级拓扑（server/pod/PC16）下大数据量ReduceScatter。
       - MeshSingleChannel（meshsinglechannel）：单通道Mesh算法，与默认mesh同算法，但每对rank只建立1条channel、不做多通道数据切分；适合需要降低通道/流同步开销或链路资源受限的AllToAll算子场景。
       - Pairwise（pairwise）：逐对通信算法，多机多卡场景下，每机（单机多卡）作为一组，每轮按对称配对矩阵配对一个目标组（避免网络一打多），本机各卡与目标组的对端逐对建立channel并发收发。当前仅AllToAll/AllToAllV/AllToAllVC（AICPU）支持，要求level0为MESH_1D、单机8卡、rankSize ≥ 16且为16的倍数；其中AllToAllV/AllToAllVC还要求level0对称且rankSize ≤ 128，超出范围自动回退到Mesh算法。
       - MeshMultiLink（meshmultilink）：多链路Mesh算法，适用于每对rank有多条链路的拓扑。按本端Die划分链路，数据根据各链路包含的port数量在两个Die的链路上分流并发，适用于端口分布在两个Die上的AllToAll/AllToAllV算子。
@@ -67,8 +68,6 @@ export HCCL_ALGO="<ExecutorType>{level0=<algoType>,level1=<algoType>};not(<Execu
 export HCCL_ALGO="nhr"
 # 所有算子都不使用sole(nhr)算法
 export HCCL_ALGO="not(nhr)"
-# 算法顺序执行，level0执行Mesh算法，level1执行NHR算法
-export HCCL_ALGO="sequence{mesh,nhr}"
 # 算法顺序执行，level0可执行NHR算法以外的其他算法，level1执行NHR算法
 export HCCL_ALGO="sequence{level0=not(nhr),level1=nhr}"
 # 不支持parallel{mesh,nhr}算法（即level0采用Mesh，level1采用NHR，且level0与level1并行执行），其他都可以选择
@@ -105,6 +104,8 @@ export HCCL_ALGO="<OpType>:<ExecutorType>{level0=<algoType>,level1=<algoType>,..
 ```bash
 # AllReduce算子采用Sequence执行器顺序执行算法，level0执行Mesh算法, level1执行NHR算法。
 export HCCL_ALGO="allreduce:sequence{mesh,nhr}"
+# ReduceScatter算子采用Sequence执行器顺序执行算法，level0执行MeshChunkConcur算法，level1执行NHR算法。
+export HCCL_ALGO="reducescatter:sequence{level0=meshchunkconcur,level1=nhr}"
 # AllGather算子禁止使用level0执行Mesh算法、level1执行NHR算法的Parallel并行执行器。
 export HCCL_ALGO="allgather:not(parallel{mesh,nhr})"
 # AllGather算子启用AICPU引擎二级RHD算法（AicpuAllGatherSequenceMeshConcurRHD，level0机内Mesh、level1跨机RHD）。
