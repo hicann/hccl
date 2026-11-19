@@ -63,9 +63,11 @@ HcclResult AicpuTaskCachePolicy::IsAicpuTaskCacheEnable(
     }
 
     if (AicpuTaskCacheUtils::IsAlltoallvType(param.opType)) {
-        // 暂停V类task cache，正式通信沿用普通展开路径。
-        HCCL_INFO("[AicpuTaskCachePolicy][IsAicpuTaskCacheEnable] AlltoAllV/AlltoAllVC task cache is disabled");
-        return HCCL_SUCCESS;
+        bool isSupported = false;
+        CHK_RET(IsAlltoallvCacheSupported(param, resCtx, isSupported));
+        if (!isSupported) {
+            return HCCL_SUCCESS;
+        }
     }
 
     // inplace 场景放行(task cache 支持 inplace 准入): 重叠特征(位置+宽度)由 tag 区分(见 GetAicpuTaskCacheTag)
