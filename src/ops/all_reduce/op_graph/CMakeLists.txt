@@ -17,3 +17,9 @@ if(TARGET opgraph_hccl)
         ${src_list}
     )
 endif()
+
+if(HCCL_GE_CUSTOP)
+    target_sources(opgraph_hccl PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/hcom_all_reduce_op.cc
+    )
+endif()

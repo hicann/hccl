@@ -334,7 +334,9 @@ install(TARGETS opgraph_hccl
     COMPONENT hccl
 )
 
-add_dependencies(hccl opgraph_hccl)
+# 依赖方向按产物消费关系声明: opgraph_hccl 消费 hccl 的构建产物
+# (custop 内容编入后链接 libhccl.so 的 HcclXxxGraphMode 接口), hccl 先构建
+add_dependencies(opgraph_hccl hccl)
 
 #生成ES API
 list(APPEND CMAKE_MODULE_PATH "${ASCEND_CANN_PACKAGE_PATH}/include/ge/cmake")
@@ -366,7 +368,11 @@ if(NOT ENABLE_TEST)
     )
 endif()
 
-add_dependencies(hccl es_hccl)
+# es_hccl 产物拷贝链 (build_es_hccl → install_es_hccl → 拷贝 es_output/) 均为非 ALL 的
+# custom target; ALL 锚点直接依赖真实产出目标 build_es_hccl, 保证默认构建后
+# make package (CPack install) 时 es_output/ 产物就位
+add_custom_target(es_hccl_package ALL)
+add_dependencies(es_hccl_package build_es_hccl)
 
 install(DIRECTORY ${CMAKE_BINARY_DIR}/es_output/include/es_hccl
     DESTINATION ${INSTALL_INCLUDE_DIR}/es/

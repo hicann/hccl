@@ -30,6 +30,7 @@ add_subdirectory(common/sym_mem_gate)
 add_subdirectory(common/template_utils)
 add_subdirectory(common/alg_rank)
 add_subdirectory(selector_engine)
+add_subdirectory(op_graph_utils)
 # reduce_scatter_nhr_dpu: NHR DPU 模板 host 半（几何/布局/序列化/KernelRun 错误路径），
 # 定义 AICPU_COMPILE 裁掉 RunNHR；DPU 半由 common/hostdpu_inline_reduce 覆盖。
 add_subdirectory(reduce_scatter_nhr_dpu)

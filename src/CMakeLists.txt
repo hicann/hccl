@@ -275,6 +275,9 @@ add_definitions(-DORION_MODE)
 
 if(PRODUCT_SIDE STREQUAL "host")
     include(hccl.cmake)
+    # custom op (EagerExecuteOp 适配层) 无条件接入:
+    # toolkit 能力不足时由 hccl_ge_custom_op.cmake 的特性探测整体跳过 (HCCL_GE_CUSTOP 不置位)
+    include(hccl_ge_custom_op.cmake)
 else()
     include(hccl_aicpu_kernel.cmake)
 endif()
