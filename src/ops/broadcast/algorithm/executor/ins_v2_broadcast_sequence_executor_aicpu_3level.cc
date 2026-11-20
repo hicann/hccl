@@ -608,22 +608,32 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<
 
     // 对称内存零拷贝：所有模板直接使用用户buffer，bypass ccl buffer
     if (param.supportSymmetricMemory) {
+        // L0 out类型改写为OUTPUT使能直写:GenTempAlgParamsScatterL0已置outBuffBaseOff=0,直写落点
+        // 与PostCopy回拷落点同为[algRank*sliceSize]最终布局位置,布局不变仅消CCL中继一跳;广播单buffer
+        // API(input==output)下remoteOutputGraphMode.addr即对端用户buffer;PCIe(isDmaRead_)下symDirectWrite
+        // 与PostCopy跳过谓词均含守卫、行为不变;root因isInplaceRootRank仍保留自槽搬移。L0为Mesh单跳,
+        // 无需fullLayoutTransit
         tempAlgParamsScatterL0.buffInfo.outputPtr = param.inputPtr;
-        tempAlgParamsScatterL0.buffInfo.outBuffType = BufferType::INPUT;
+        tempAlgParamsScatterL0.buffInfo.outBuffType = BufferType::OUTPUT;
         tempAlgParamsScatterL0.enableRemoteMemAccess = true;
 
+        // L1/L2为全量buffer形态:out类型改写为OUTPUT对齐scatter模板对称判据(outBuffType==OUTPUT
+        // 使能直写)并置fullLayoutTransit,多跳transit直落对端用户buffer最终布局位置,全程不经
+        // ccl buffer;若维持INPUT,直写判据关闭、数据滞留CCL,与AG侧用户buffer远读断链(checker 404)
         tempAlgParamsScatterL1.buffInfo.inputPtr = param.inputPtr;
         tempAlgParamsScatterL1.buffInfo.outputPtr = param.inputPtr;
         tempAlgParamsScatterL1.buffInfo.inBuffType = BufferType::INPUT;
-        tempAlgParamsScatterL1.buffInfo.outBuffType = BufferType::INPUT;
+        tempAlgParamsScatterL1.buffInfo.outBuffType = BufferType::OUTPUT;
         tempAlgParamsScatterL1.enableRemoteMemAccess = true;
+        tempAlgParamsScatterL1.fullLayoutTransit = true;
 
         if (!skipLevel2_) {
             tempAlgParamsScatterL2.buffInfo.inputPtr = param.inputPtr;
             tempAlgParamsScatterL2.buffInfo.outputPtr = param.inputPtr;
             tempAlgParamsScatterL2.buffInfo.inBuffType = BufferType::INPUT;
-            tempAlgParamsScatterL2.buffInfo.outBuffType = BufferType::INPUT;
+            tempAlgParamsScatterL2.buffInfo.outBuffType = BufferType::OUTPUT;
             tempAlgParamsScatterL2.enableRemoteMemAccess = true;
+            tempAlgParamsScatterL2.fullLayoutTransit = true;
 
             tempAlgParamsAllGatherL2.buffInfo.inputPtr = param.inputPtr;
             tempAlgParamsAllGatherL2.buffInfo.outputPtr = param.inputPtr;

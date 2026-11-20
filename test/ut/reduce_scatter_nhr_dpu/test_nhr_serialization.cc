@@ -76,6 +76,11 @@ namespace {
         params.rhdStepIdx = 2;
         params.rhdStepCnt = 4;
         params.rhdSkipPost = true;
+        // RHD 尾块后续字段（同上约定）：置非默认以保证往返一致性断言不退化
+        params.subCommRankLevel = 1;
+        params.level0ChannelNumPerRank = 2;
+        // 尾部追加字段 fullLayoutTransit（同上约定）：置非默认以保证往返一致性断言不退化
+        params.fullLayoutTransit = true;
         return params;
     }
 
@@ -115,6 +120,9 @@ namespace {
         EXPECT_EQ(actual.rhdStepIdx, expected.rhdStepIdx);
         EXPECT_EQ(actual.rhdStepCnt, expected.rhdStepCnt);
         EXPECT_EQ(actual.rhdSkipPost, expected.rhdSkipPost);
+        EXPECT_EQ(actual.subCommRankLevel, expected.subCommRankLevel);
+        EXPECT_EQ(actual.level0ChannelNumPerRank, expected.level0ChannelNumPerRank);
+        EXPECT_EQ(actual.fullLayoutTransit, expected.fullLayoutTransit);
         EXPECT_EQ(actual.stepSliceInfo.stepCount, expected.stepSliceInfo.stepCount);
         EXPECT_EQ(actual.stepSliceInfo.stepSliceSize, expected.stepSliceInfo.stepSliceSize);
         EXPECT_EQ(actual.stepSliceInfo.stepInputSliceStride, expected.stepSliceInfo.stepInputSliceStride);
@@ -188,11 +196,12 @@ namespace {
     {
         // 尾部截断（reduceOp 字段不完整）当前实现不抛异常，读取失败时不改写目标值。
         // RHD 字段（rhdStepIdx/rhdStepCnt/rhdSkipPost）追加在 reduceOp 之后，其后还有
-        // subCommRankLevel/level0ChannelNumPerRank（各 4B）——截断量须连整条尾巴一起截掉
-        // 才能使 reduceOp 落入不可读区间
+        // subCommRankLevel/level0ChannelNumPerRank（各 4B）与尾部追加的 fullLayoutTransit
+        // （1B）——截断量须连整条尾巴一起截掉才能使 reduceOp 落入不可读区间；若少截 1B，
+        // reduceOp 残留首字节，operator>> 的部分读取会改写目标值低字节（02→00）
         const TemplateDataParams src = MakeFullParams(HCCL_DATA_TYPE_FP32, HCCL_REDUCE_SUM);
         std::vector<char> data = src.Serialize();
-        const size_t tailBytes = sizeof(u32) + sizeof(u32) + sizeof(bool) + sizeof(u32) * 2;
+        const size_t tailBytes = sizeof(u32) + sizeof(u32) + sizeof(bool) + sizeof(u32) * 2 + sizeof(bool);
         ASSERT_GT(data.size(), sizeof(HcclReduceOp) + tailBytes);
         data.resize(data.size() - sizeof(HcclReduceOp) - tailBytes);
 
@@ -225,14 +234,56 @@ namespace {
         EXPECT_EQ(dst.allRankSliceSize, src.allRankSliceSize);
     }
 
+    // RHD 尾块中段残留（1~16B，载荷中段截断或部分版本偏斜）：残留首字节为 rhdStepIdx
+    // 低字节（src 置 2，非零即 true），fullLayoutTransit 自检以整条尾部在场为前提，
+    // 不得误读该字节——absent 契约要求保持默认 false，RHD 尾块同须保持默认
+    TEST(NhrSerializationTest, PartialRhdTailResidueKeepsFullLayoutTransitFalse)
+    {
+        const TemplateDataParams src = MakeFullParams(HCCL_DATA_TYPE_FP32, HCCL_REDUCE_SUM);
+        std::vector<char> data = src.Serialize();
+        const size_t rhdTailBytes = sizeof(u32) + sizeof(u32) + sizeof(bool) + sizeof(u32) * 2;
+        ASSERT_EQ(src.rhdStepIdx, 2u); // 残留首字节 0x02，旧实现会误读为 true
+        ASSERT_EQ(src.fullLayoutTransit, true);
+        for (size_t residue = 1; residue < rhdTailBytes; residue++) { // 逐残留量 1~16B 全覆盖
+            std::vector<char> truncated = data;
+            truncated.resize(truncated.size() - sizeof(bool) - (rhdTailBytes - residue));
+            TemplateDataParams dst;
+            dst.DeSerialize(truncated);
+            EXPECT_EQ(dst.fullLayoutTransit, false);
+            EXPECT_EQ(dst.rhdStepIdx, 0u);
+            EXPECT_EQ(dst.rhdStepCnt, 0u);
+        }
+    }
+
+    // RHD 尾字段 17B 完整在场、仅缺尾部 fullLayoutTransit 的精确边界（截断量 = full 大小减
+    // 1B）：新读旧数据恰好截止于 RHD 尾字段末尾——独立第二段自检存在的动机（若两段合并为
+    // 单段 tailBytes+1 判断，本场景会连带把 RHD 尾字段误判缺失）。正确行为：RHD 尾字段照常
+    // 读入（rhdStepIdx=2/rhdStepCnt=4/rhdSkipPost=true），仅 fullLayoutTransit 保持默认 false
+    TEST(NhrSerializationTest, OnlyFullLayoutTransitAbsentKeepsRhdTailFields)
+    {
+        const TemplateDataParams src = MakeFullParams(HCCL_DATA_TYPE_FP32, HCCL_REDUCE_SUM);
+        std::vector<char> data = src.Serialize();
+        data.resize(data.size() - sizeof(bool)); // 仅截掉尾部 fullLayoutTransit（1B）
+
+        TemplateDataParams dst;
+        dst.DeSerialize(data);
+        EXPECT_EQ(dst.rhdStepIdx, 2u); // RHD 尾字段完整在场，不得被连带误判缺失
+        EXPECT_EQ(dst.rhdStepCnt, 4u);
+        EXPECT_EQ(dst.rhdSkipPost, true);
+        EXPECT_EQ(dst.fullLayoutTransit, false); // 仅本字段 absent，保持默认
+    }
+
     TEST(NhrSerializationTest, RhdStepFieldsSurviveRoundTrip)
     {
-        // RHD 追加字段（rhdStepIdx/rhdStepCnt/rhdSkipPost）位于流末尾：置非默认后往返须逐值一致，
+        // RHD 追加字段（rhdStepIdx/rhdStepCnt/rhdSkipPost）及尾块后续字段
+        // （subCommRankLevel/level0ChannelNumPerRank）位于流末尾：置非默认后往返须逐值一致，
         // 其余字段（count/sliceSize/reduceOp/dataType 等）由 ExpectFullParamsEqual 全量校验
         const TemplateDataParams src = MakeFullParams(HCCL_DATA_TYPE_FP32, HCCL_REDUCE_SUM);
         ASSERT_EQ(src.rhdStepIdx, 2u);
         ASSERT_EQ(src.rhdStepCnt, 4u);
         ASSERT_EQ(src.rhdSkipPost, true);
+        ASSERT_EQ(src.subCommRankLevel, 1u);
+        ASSERT_EQ(src.level0ChannelNumPerRank, 2u);
         std::vector<char> data = src.Serialize();
 
         TemplateDataParams dst;
@@ -241,6 +292,8 @@ namespace {
         EXPECT_EQ(dst.rhdStepIdx, src.rhdStepIdx);
         EXPECT_EQ(dst.rhdStepCnt, src.rhdStepCnt);
         EXPECT_EQ(dst.rhdSkipPost, src.rhdSkipPost);
+        EXPECT_EQ(dst.subCommRankLevel, src.subCommRankLevel);
+        EXPECT_EQ(dst.level0ChannelNumPerRank, src.level0ChannelNumPerRank);
         EXPECT_EQ(dst.count, src.count);
         EXPECT_EQ(dst.sliceSize, src.sliceSize);
         EXPECT_EQ(dst.dataType, src.dataType);

@@ -685,7 +685,15 @@ void InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1
     dataParams.inputRepeatStride = 0;
     dataParams.outputRepeatStride = 0;
     if (param.supportSymmetricMemory) {
+        // 对齐scatter系模板的对称判据(outBuffType==OUTPUT使能末跳直写,inBuffType==INPUT使能root直读):
+        // sym下各stage的in/out物理上均为用户buffer,类型改写为用户语义,恢复"直落+交换"零拷贝数据面,
+        // 同时inBuffType不再为HCCL_BUFFER,尾循环srcOffset不会误用循环外常量hcclBuffBaseOff
+        dataParams.buffInfo.inBuffType = BufferType::INPUT;
+        dataParams.buffInfo.outBuffType = BufferType::OUTPUT;
         dataParams.enableRemoteMemAccess = true;
+        // 广播为全量buffer形态:声明output覆盖算法全布局,scatter系模板多跳transit也直落
+        // 对端用户buffer最终布局位置,全程不经ccl buffer(与恒单轮、无scratch容量约束配套)
+        dataParams.fullLayoutTransit = true;
     }
     HCCL_INFO(
         "[InsBroadcastParallelExecutor][GenDataParamstempAlg]myRank_[%u] hcclBuffBaseOff[%llu]", myRank_,
@@ -850,6 +858,8 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
         sliceCount = std::min(sliceCount, dataCount_);
     }
     if (param.supportSymmetricMemory) {
+        // 全量用户buffer形态:scatter/aggr各跳(含多跳NHR transit)均直落对端用户buffer最终布局位置
+        // (fullLayoutTransit),全程不经过ccl buffer,恒单轮、无scratch容量约束
         sliceCount = dataCount_;
         HCCL_INFO("[InsBroadcastParallelExecutor][OrchestrateLoop] %s: symmetric memory enabled", param.algName);
     }

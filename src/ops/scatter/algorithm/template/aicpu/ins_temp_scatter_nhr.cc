@@ -287,6 +287,12 @@ InsTempScatterNHR::PreCopy(const TemplateDataParams& tempAlgParams, const std::v
     }
     const u32 dataTypeSize = DATATYPE_SIZE_TABLE[dataType_];
     if (enableRemoteMemAccess_ && !isDmaRead_) {
+        if (tempAlgParams.fullLayoutTransit) {
+            // 全量布局形态(broadcast系sequence):root的切片已由上级scatter直写至全布局位置,
+            // 多跳NHR亦直落最终位置,无"自槽搬运"语义(单级scatter的自槽补拷在此为错误源)
+            HCCL_INFO("[InsTempScatterNHR][Precopy] skip self-slot copy, full layout transit, myRank = %u", myRank_);
+            return HCCL_SUCCESS;
+        }
         const bool toOutput = tempAlgParams.buffInfo.outBuffType == BufferType::OUTPUT;
         const bool inIsInput = tempAlgParams.buffInfo.inBuffType == BufferType::INPUT;
         if (!toOutput && !inIsInput) {
@@ -363,9 +369,12 @@ InsTempScatterNHR::PostCopy(const TemplateDataParams& tempAlgParams, const std::
                                    && tempAlgParams.buffInfo.outBuffType == BufferType::OUTPUT
                                    && tempAlgParams.buffInfo.inputPtr == tempAlgParams.buffInfo.outputPtr;
     // 对称内存：OUTPUT 落点层各 rank 的最终 chunk 已由末跳直写落 userOut（②），跳过 PostCopy；
-    // in-place root 例外（自槽延后至此）；中转层（outBuffType==HCCL_BUFFER）维持既有拷贝行为
-    const bool skipSymPostCopy = enableRemoteMemAccess_ && !isDmaRead_
-                                 && tempAlgParams.buffInfo.outBuffType == BufferType::OUTPUT && !isInplaceRootRank;
+    // in-place root 例外（自槽延后至此）；中转层（outBuffType==HCCL_BUFFER）维持既有拷贝行为；
+    // 全量布局形态(broadcast系sequence)无自槽语义:root切片已由上级直写,多跳NHR直落最终位置
+    const bool skipSymPostCopy
+        = enableRemoteMemAccess_ && !isDmaRead_
+          && (tempAlgParams.fullLayoutTransit
+              || (tempAlgParams.buffInfo.outBuffType == BufferType::OUTPUT && !isInplaceRootRank));
     for (u32 r = 0; r < tempAlgParams.repeatNum; r++) {
         void* srcPtr = isInplaceRootRank ? tempAlgParams.buffInfo.inputPtr : tempAlgParams.buffInfo.hcclBuff.addr;
         u64 srcOffset = isInplaceRootRank ?
@@ -429,9 +438,12 @@ HcclResult InsTempScatterNHR::BatchSend(
                                 && tempAlgParams.buffInfo.inBuffType == BufferType::INPUT;
     const bool outputLayer
         = enableRemoteMemAccess_ && !isDmaRead_ && tempAlgParams.buffInfo.outBuffType == BufferType::OUTPUT;
+    // 全量布局形态(broadcast系):调用方output用户buffer覆盖算法全布局,所有跳(含transit)
+    // 直落对端用户buffer的最终布局位置,root与中间rank的转发源均为本端用户buffer,零CCL
+    const bool fullLayoutDirect = enableRemoteMemAccess_ && !isDmaRead_ && tempAlgParams.fullLayoutTransit;
     // toAlgRank 仅末跳直写（finalHopDirectWrite）使用，非 outputLayer 路径不执行 GetAlgRank
     u32 toAlgRank = 0;
-    if (outputLayer) {
+    if (outputLayer && !fullLayoutDirect) {
         CHK_RET(GetAlgRank(stepInfo.toRank, subCommRanks_[0], toAlgRank));
     }
     std::vector<DataSlice> srcSlices;
@@ -446,19 +458,29 @@ HcclResult InsTempScatterNHR::BatchSend(
                                             dataOffsetTail_[channelIdx] :
                                             dataOffset_[channelIdx];
             u64 srcOffset
-                = rootDirectRead ?
-                      (tempAlgParams.buffInfo.inBuffBaseOff + txId * tempAlgParams.inputSliceStride
-                       + repeat * tempAlgParams.inputRepeatStride + txPartialOffset) :
-                      (repeat * templateRankSize_ * tempAlgParams.sliceSize + tempAlgParams.buffInfo.hcclBuffBaseOff
-                       + txId * tempAlgParams.sliceSize + txPartialOffset);
-            void* srcPtr = rootDirectRead ? tempAlgParams.buffInfo.inputPtr : tempAlgParams.buffInfo.hcclBuff.addr;
-            const bool finalHopDirectWrite = outputLayer && txId == toAlgRank;
-            u64 dstOffset = finalHopDirectWrite ?
+                = fullLayoutDirect ?
+                      (tempAlgParams.buffInfo.outBuffBaseOff + txId * tempAlgParams.outputSliceStride
+                       + repeat * tempAlgParams.sliceSize + txPartialOffset) :
+                      (rootDirectRead ? (tempAlgParams.buffInfo.inBuffBaseOff + txId * tempAlgParams.inputSliceStride
+                                         + repeat * tempAlgParams.inputRepeatStride + txPartialOffset) :
+                                        (repeat * templateRankSize_ * tempAlgParams.sliceSize
+                                         + tempAlgParams.buffInfo.hcclBuffBaseOff + txId * tempAlgParams.sliceSize
+                                         + txPartialOffset));
+            void* srcPtr = fullLayoutDirect ? tempAlgParams.buffInfo.outputPtr :
+                                              (rootDirectRead ? tempAlgParams.buffInfo.inputPtr :
+                                                                tempAlgParams.buffInfo.hcclBuff.addr);
+            const bool finalHopDirectWrite = !fullLayoutDirect && outputLayer && txId == toAlgRank;
+            u64 dstOffset = fullLayoutDirect ?
                                 (tempAlgParams.buffInfo.outBuffBaseOff + txId * tempAlgParams.outputSliceStride
                                  + repeat * tempAlgParams.sliceSize + txPartialOffset) :
-                                (tempAlgParams.buffInfo.hcclBuffBaseOff + txId * tempAlgParams.sliceSize
-                                 + repeat * templateRankSize_ * tempAlgParams.sliceSize + txPartialOffset);
-            void* dstPtr = finalHopDirectWrite ? linkSend.remoteOutputGraphMode.addr : linkSend.remoteCclMem.addr;
+                                (finalHopDirectWrite ?
+                                     (tempAlgParams.buffInfo.outBuffBaseOff + txId * tempAlgParams.outputSliceStride
+                                      + repeat * tempAlgParams.sliceSize + txPartialOffset) :
+                                     (tempAlgParams.buffInfo.hcclBuffBaseOff + txId * tempAlgParams.sliceSize
+                                      + repeat * templateRankSize_ * tempAlgParams.sliceSize + txPartialOffset));
+            void* dstPtr = fullLayoutDirect ?
+                               linkSend.remoteOutputGraphMode.addr :
+                               (finalHopDirectWrite ? linkSend.remoteOutputGraphMode.addr : linkSend.remoteCclMem.addr);
             CHK_PTR_NULL(dstPtr);
             curSliceSize = (tempAlgParams.tailSize != 0 && txId == templateRankSize_ - 1) ? dataSplitTail_[channelIdx] :
                                                                                             dataSplit_[channelIdx];
@@ -551,14 +573,16 @@ HcclResult InsTempScatterNHR::BatchSR(
     CHK_PTR_NULL(linkSend.remoteCclMem.addr);
     CHK_PTR_NULL(linkRecv.remoteCclMem.addr);
     // 对称内存统一规则（同 BatchSend）：root 源直读 userIn（①）；本层 OUTPUT 落点且接收方 ==
-    // 槽位最终目的 rank 时直写对端 userOut（②）；rx 侧为 write 模式，统一按 CCL 槽位编址
+    // 槽位最终目的 rank 时直写对端 userOut（②）；rx 侧为 write 模式，统一按 CCL 槽位编址；
+    // 全量布局形态（fullLayoutDirect）时所有跳直写对端用户buffer最终布局位置（同 BatchSend）
     const bool rootDirectRead = enableRemoteMemAccess_ && !isDmaRead_ && u32(myRank_) == root_
                                 && tempAlgParams.buffInfo.inBuffType == BufferType::INPUT;
     const bool outputLayer
         = enableRemoteMemAccess_ && !isDmaRead_ && tempAlgParams.buffInfo.outBuffType == BufferType::OUTPUT;
+    const bool fullLayoutDirect = enableRemoteMemAccess_ && !isDmaRead_ && tempAlgParams.fullLayoutTransit;
     // toAlgRank 仅末跳直写（finalHopDirectWrite）使用，非 outputLayer 路径不执行 GetAlgRank
     u32 toAlgRank = 0;
-    if (outputLayer) {
+    if (outputLayer && !fullLayoutDirect) {
         CHK_RET(GetAlgRank(stepInfo.toRank, subCommRanks_[0], toAlgRank));
     }
 
@@ -577,19 +601,29 @@ HcclResult InsTempScatterNHR::BatchSR(
                                             dataOffsetTail_[channelIdx] :
                                             dataOffset_[channelIdx];
             u64 srcOffset
-                = rootDirectRead ?
-                      (tempAlgParams.buffInfo.inBuffBaseOff + txId * tempAlgParams.inputSliceStride
-                       + repeat * tempAlgParams.inputRepeatStride + txPartialOffset) :
-                      (repeat * templateRankSize_ * tempAlgParams.sliceSize + tempAlgParams.buffInfo.hcclBuffBaseOff
-                       + txId * tempAlgParams.sliceSize + txPartialOffset);
-            void* srcPtr = rootDirectRead ? tempAlgParams.buffInfo.inputPtr : tempAlgParams.buffInfo.hcclBuff.addr;
-            const bool finalHopDirectWrite = outputLayer && txId == toAlgRank;
-            u64 dstOffset = finalHopDirectWrite ?
+                = fullLayoutDirect ?
+                      (tempAlgParams.buffInfo.outBuffBaseOff + txId * tempAlgParams.outputSliceStride
+                       + repeat * tempAlgParams.sliceSize + txPartialOffset) :
+                      (rootDirectRead ? (tempAlgParams.buffInfo.inBuffBaseOff + txId * tempAlgParams.inputSliceStride
+                                         + repeat * tempAlgParams.inputRepeatStride + txPartialOffset) :
+                                        (repeat * templateRankSize_ * tempAlgParams.sliceSize
+                                         + tempAlgParams.buffInfo.hcclBuffBaseOff + txId * tempAlgParams.sliceSize
+                                         + txPartialOffset));
+            void* srcPtr = fullLayoutDirect ? tempAlgParams.buffInfo.outputPtr :
+                                              (rootDirectRead ? tempAlgParams.buffInfo.inputPtr :
+                                                                tempAlgParams.buffInfo.hcclBuff.addr);
+            const bool finalHopDirectWrite = !fullLayoutDirect && outputLayer && txId == toAlgRank;
+            u64 dstOffset = fullLayoutDirect ?
                                 (tempAlgParams.buffInfo.outBuffBaseOff + txId * tempAlgParams.outputSliceStride
                                  + repeat * tempAlgParams.sliceSize + txPartialOffset) :
-                                (tempAlgParams.buffInfo.hcclBuffBaseOff + txId * tempAlgParams.sliceSize
-                                 + repeat * templateRankSize_ * tempAlgParams.sliceSize + txPartialOffset);
-            void* dstPtr = finalHopDirectWrite ? linkSend.remoteOutputGraphMode.addr : linkSend.remoteCclMem.addr;
+                                (finalHopDirectWrite ?
+                                     (tempAlgParams.buffInfo.outBuffBaseOff + txId * tempAlgParams.outputSliceStride
+                                      + repeat * tempAlgParams.sliceSize + txPartialOffset) :
+                                     (tempAlgParams.buffInfo.hcclBuffBaseOff + txId * tempAlgParams.sliceSize
+                                      + repeat * templateRankSize_ * tempAlgParams.sliceSize + txPartialOffset));
+            void* dstPtr = fullLayoutDirect ?
+                               linkSend.remoteOutputGraphMode.addr :
+                               (finalHopDirectWrite ? linkSend.remoteOutputGraphMode.addr : linkSend.remoteCclMem.addr);
             CHK_PTR_NULL(dstPtr);
             curSliceSize = (tempAlgParams.tailSize != 0 && txId == templateRankSize_ - 1) ? dataSplitTail_[channelIdx] :
                                                                                             dataSplit_[channelIdx];

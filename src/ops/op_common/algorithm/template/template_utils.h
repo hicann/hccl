@@ -351,6 +351,10 @@ struct TemplateDataParams {
     bool skipPrePhase{false};
     u32 subCommRankLevel{0};
     u32 level0ChannelNumPerRank{0};
+    // 对称内存全量布局形态标志:调用方(broadcast系)的output用户buffer覆盖算法全布局,
+    // 多跳transit可直落对端用户buffer的最终布局位置,全程不经过ccl buffer。
+    // 序列化遵守本结构跨版本契约(见上方RHD注释):只随流末尾追加,禁止插入中段
+    bool fullLayoutTransit{false};
 
     std::vector<char> Serialize() const
     {
@@ -389,6 +393,8 @@ struct TemplateDataParams {
         binaryStream << rhdSkipPost;
         binaryStream << subCommRankLevel;
         binaryStream << level0ChannelNumPerRank;
+        // 尾部追加字段:遵守跨版本只追加末尾契约(见结构体声明区注释)
+        binaryStream << fullLayoutTransit;
         std::vector<char> result;
         binaryStream.Dump(result);
         return result;
@@ -453,6 +459,23 @@ struct TemplateDataParams {
                     "defaults: rhdStepIdx[%u] rhdStepCnt[%u] rhdSkipPost[%d] subCommRankLevel[%u] "
                     "level0ChannelNumPerRank[%u].",
                     rhdStepIdx, rhdStepCnt, static_cast<int>(rhdSkipPost), subCommRankLevel, level0ChannelNumPerRank);
+            }
+        }
+        // fullLayoutTransit 尾部追加字段独立第二段自检（同上口径）：不并入 tailBytes，
+        // 避免新版本读旧数据（data 恰好截止于 RHD 尾字段末尾）时连带使 RHD 尾字段误判缺失。
+        // 读取以整条尾部（RHD 尾字段 + 本字段）自 tailReadPos 起全部在场为前提：残留
+        // 1~16B（载荷中段截断或部分版本偏斜）时上方 RHD 块已跳过、读位置未前移，若仅按
+        // 剩余 1B 放行会把 rhdStepIdx 首字节误读为本字段（非零即 true），违背本分支
+        // absent 保持默认 false 契约。更旧格式（data 截止于 reduceOp）在上方分支已保持
+        // RHD 默认且流可能失效（tailReadPos 为 INVALID_POS），此处同样判失效后保持默认 false
+        if (tailReadPos != BinaryStream::INVALID_POS
+            && tailReadPos + tailBytes + sizeof(fullLayoutTransit) <= data.size()) {
+            binaryStream >> fullLayoutTransit;
+        } else {
+            static std::atomic<bool> fltAbsentLogged{false};
+            if (!fltAbsentLogged.exchange(true)) {
+                HCCL_WARNING("[TemplateDataParams][DeSerialize] fullLayoutTransit absent (legacy or truncated "
+                             "payload), keep default false.");
             }
         }
     }
