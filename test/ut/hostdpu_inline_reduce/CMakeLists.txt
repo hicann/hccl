@@ -21,8 +21,9 @@ set(_ut_src_list
     ${CMAKE_CURRENT_SOURCE_DIR}/log_stub.cc
     # 公共协商 C 接口共享桩（强符号覆盖弱壳）
     ${_repo_root}/test/ut/common/comm_negotiation_stub/neg_c_stub.cc
-    # 被测真实源码
+    # 被测真实源码（含IsStreamInCaptureMode真实实现：桩下沉到ACL接口层，判空分支可被直接覆盖）
     ${_repo_root}/src/ops/op_common/hostdpu_inline_reduce.cc
+    ${_repo_root}/src/ops/op_common/stream_capture.cc
     ${_repo_root}/src/common/hcomm_dlsym/hcomm_primitives_dl.cc
 )
 

@@ -57,6 +57,7 @@ add_executable(ccu_resource_expansion_test
     stub/hcomm_stub.cc
     stub/op_common_stub.cc
     ${PROJECT_SOURCE_DIR}/src/ops/op_common/op_common.cc
+    ${PROJECT_SOURCE_DIR}/src/ops/op_common/stream_capture.cc
     ${PROJECT_SOURCE_DIR}/src/ops/op_common/ccu_log.cc
     ${PROJECT_SOURCE_DIR}/src/common/log.cc
 )

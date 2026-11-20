@@ -11,7 +11,9 @@
 /*
  * hostDPU inline reduce UT 桩实现：
  * - comm_negotiation（IsNegotiationComm C++本体 / NegotiateCommC）由共享桩打桩
- *   （test/ut/common/comm_negotiation_stub/neg_c_stub.cc），本UT不编译公共协商模块，仅验证策略层逻辑；
+ *   （test/ut/common/comm_negotiation_stub），本UT不编译公共协商模块，仅验证策略层逻辑；
+ * - IsStreamInCaptureMode 由真实源码 stream_capture.cc 编入，桩仅下沉到 ACL 接口
+ *   aclmdlRICaptureGetInfo（开关控制捕获态+入参观测）；
  * - HcclDlsym 按符号集合返回假句柄，驱动 HcommPrimitivesDlInit 的 INIT_SUPPORT_FLAG 真实流程；
  * - HcommEndpointCheckFeature 强符号定义，覆盖 hcomm_primitives_dl.cc 的弱默认实现；
  * - HcclEngineCtx* 用 (comm, tag) 内存 KV 保真实现，语义与 HCOMM 一致。
@@ -21,6 +23,8 @@
 #include <map>
 #include <mutex>
 #include <utility>
+#include "acl_base.h"
+#include "acl_rt.h"
 #include "ut_ir_stub.h"
 #include "hccl_dl.h"
 #include "hcomm_primitives_dl.h"
@@ -75,16 +79,21 @@ HcclResult IrStubPresetCap(HcclComm comm, int8_t capVal, uint64_t size)
 
 using namespace ut;
 
-/* ---------------- op_common 依赖桩 ---------------- */
-namespace ops_hccl {
-// IsStreamInCaptureMode 桩（真实定义在 op_common.cc，本 UT 不编译该文件；声明由被测源码前向声明）
-bool IsStreamInCaptureMode(aclrtStream stream)
+/* ---------------- ACL 接口桩 ---------------- */
+// IsStreamInCaptureMode 已改由真实源码 stream_capture.cc 参与编译（判空分支直接覆盖），
+// 打桩下沉到ACL接口层：aclmdlRICaptureGetInfo 按桩开关返回捕获态，并记录调用计数与stream入参，
+// 用例可断言"nullptr不得进入ACL捕获查询"（任一防线回退导致nullptr穿透到ACL时用例变红）
+extern "C" aclError aclmdlRICaptureGetInfo(aclrtStream stream, aclmdlRICaptureStatus* status, aclmdlRI* modelRI)
 {
-    (void)stream;
-    return g_irStub.streamInCapture;
+    g_irStub.captureQueryCnt++;
+    g_irStub.lastCaptureStream = stream;
+    if (status != nullptr && modelRI != nullptr) {
+        *modelRI = nullptr;
+        *status = g_irStub.streamInCapture ? aclmdlRICaptureStatus::ACL_MODEL_RI_CAPTURE_STATUS_ACTIVE :
+                                             aclmdlRICaptureStatus::ACL_MODEL_RI_CAPTURE_STATUS_NONE;
+    }
+    return ACL_SUCCESS;
 }
-
-} // namespace ops_hccl
 
 extern "C" {
 /* ---------------- dlsym 桩：按符号集合返回假句柄（驱动 INIT_SUPPORT_FLAG 真实流程） ---------------- */

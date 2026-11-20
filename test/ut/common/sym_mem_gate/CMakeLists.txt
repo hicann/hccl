@@ -44,6 +44,7 @@ set(SYMEM_UT_FILES
     stub/hcomm_stub.cc
     stub/op_common_stub.cc
     ${PROJECT_SOURCE_DIR}/src/ops/op_common/op_common.cc
+    ${PROJECT_SOURCE_DIR}/src/ops/op_common/stream_capture.cc
     ${PROJECT_SOURCE_DIR}/src/ops/op_common/sym_mem_gate.cc
     ${PROJECT_SOURCE_DIR}/src/common/log.cc
 )

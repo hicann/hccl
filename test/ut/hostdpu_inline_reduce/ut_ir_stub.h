@@ -37,8 +37,9 @@ constexpr int8_t CAP_ALL_RANKS_SUPPORTED = 2;   // 协商成功，全域支持
 constexpr char HOSTDPU_INLINE_CAP_TAG[] = "hostdpu_inline_reduce_cap";
 
 struct IrStubConfig {
-    /* ---- 图模式捕获态桩（IsStreamInCaptureMode，真实定义在 op_common.cc，本 UT 不编译该文件） ---- */
-    bool streamInCapture = false; // IsStreamInCaptureMode 返回值（true=录制态，协商跳过且不写缓存）
+    bool streamInCapture = false; // ACL桩捕获态开关（true=ACTIVE录制态，IsStreamInCaptureMode据此返回true）
+    int captureQueryCnt = 0; // ACL捕获查询调用计数（nullptr不得穿透到ACL边界：调用点短路/函数内早退任一防线保证）
+    aclrtStream lastCaptureStream = nullptr; // 最近一次ACL捕获查询的stream入参（防nullptr穿透到查询API）
 
     /* ---- dlsym 层桩 ---- */
     // HcclDlsym 桩按集合返回非空句柄；改动后需重新调用 HcommPrimitivesDlInit 生效

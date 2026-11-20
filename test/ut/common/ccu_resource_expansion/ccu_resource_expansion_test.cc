@@ -20,6 +20,7 @@
 #include "log.h"
 #include "op_common.h"
 #include "securec.h"
+#include "stream_capture.h"
 
 using namespace ops_hccl;
 using namespace ut_stub;

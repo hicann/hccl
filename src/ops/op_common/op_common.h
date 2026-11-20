@@ -48,8 +48,6 @@ HcclResult HcclExecOp(
     HcclComm comm, OpParam& param, std::unique_ptr<TopoInfoWithNetLayerDetails>& topoInfo, std::string& algName,
     const ResPackGraphMode& resPack = ResPackGraphMode());
 
-bool IsStreamInCaptureMode(aclrtStream stream);
-
 bool IsAivCacheSupported(const OpParam& param);
 
 HcclResult ExecuteAivCacheLogic(

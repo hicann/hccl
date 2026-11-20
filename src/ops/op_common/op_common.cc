@@ -47,6 +47,7 @@
 #include "alg_param.h"
 #include "alg_type.h"
 #include "op_common.h"
+#include "stream_capture.h"   // IsStreamInCaptureMode（独立编译单元，轻依赖便于UT直连真实实现）
 #include "comm_negotiation.h" // NEGOTIATION_COMM_SUFFIX唯一来源收敛于协商模块（生成方/识别方同源）
 #include "ccu_fallback.h"
 #include "ccu_fallback_c.h"
@@ -509,21 +510,6 @@ HcclResult ConstructHcclDfxOpInfo(
         hcclDfxOpInfo.inputMemSize, hcclDfxOpInfo.outputMemAddr, hcclDfxOpInfo.outputMemSize, hcclDfxOpInfo.cpuTsThread,
         hcclDfxOpInfo.cpuWaitAicpuNotifyIdx);
     return HCCL_SUCCESS;
-}
-
-bool IsStreamInCaptureMode(aclrtStream stream)
-{
-    aclmdlRICaptureStatus captureStatus = aclmdlRICaptureStatus::ACL_MODEL_RI_CAPTURE_STATUS_NONE;
-    aclmdlRI rtModel = nullptr;
-    aclError aclRet = aclmdlRICaptureGetInfo(stream, &captureStatus, &rtModel);
-    if (aclRet == ACL_ERROR_RT_FEATURE_NOT_SUPPORT) {
-        return false;
-    }
-    if (aclRet != ACL_SUCCESS) {
-        HCCL_ERROR("[%s] aclmdlRICaptureGetInfo fail, ret[%d]", __func__, aclRet);
-        return false;
-    }
-    return captureStatus == aclmdlRICaptureStatus::ACL_MODEL_RI_CAPTURE_STATUS_ACTIVE;
 }
 
 bool IsAivCacheSupported(const OpParam& param)

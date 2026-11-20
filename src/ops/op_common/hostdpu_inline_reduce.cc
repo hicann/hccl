@@ -14,12 +14,10 @@
 #include "comm_negotiation.h" // IsNegotiationComm（C++本体，防递归门控判定）
 #include "comm_negotiation_c.h"
 #include "hcomm_primitives_dl.h"
+#include "stream_capture.h" // IsStreamInCaptureMode（独立编译单元，轻依赖，避免引入op_common.h重依赖）
 #include "log.h"
 
 namespace ops_hccl {
-// IsStreamInCaptureMode 声明见 op_common.h（定义于 op_common.cc）；此处前向声明以避免
-// 引入 op_common.h 的重依赖（executor/selector/ccu 等模块头），UT 由桩提供定义
-bool IsStreamInCaptureMode(aclrtStream stream);
 
 namespace {
     // inline reduce 能力缓存三态值（缓存值含义 + 缓存条目是否存在，组合即可溯源完整状态）：
@@ -129,7 +127,8 @@ HcclResult NegotiateHostDpuInlineReduceCapability(
     //    中间态窗口（条目不存在→并发首协商竞争）；
     // 3) 仅不合规残留条目（Get成功但指针空/尺寸不足）才Destroy后重建：HCOMM语义同名tag已存在
     //    即拒绝创建（HCCL_E_PARA），须先销毁再建。写段整体持分片锁，E_PARA分支仅作防御保留
-    if (!IsStreamInCaptureMode(opStream)) {
+    // 图编译期（离线选路）无runtime stream，不存在捕获态，直接按非捕获处理走缓存写入
+    if (opStream == nullptr || !IsStreamInCaptureMode(opStream)) {
         std::lock_guard<std::mutex> cacheLock(g_capCacheLockShards[lockShard]);
         void* curPtr = nullptr;
         uint64_t curSize = 0;

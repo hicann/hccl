@@ -15,6 +15,7 @@ add_subdirectory(topo_info)
 set(src_list
     ${CMAKE_CURRENT_SOURCE_DIR}/op_common.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/sym_mem_gate.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/stream_capture.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/dlhcomm_function.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/exec_timeout_manager.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ccu_log.cc

@@ -253,7 +253,7 @@ HcclResult HcclSelectAlgGraphMode(
 
     CHK_RET(InitEnvConfig());
 
-    ops_hccl::OpParam param;
+    ops_hccl::OpParam param{};
     CHK_RET(HcclGetCommName(hcclComm, param.commName));
 
     HcclDevType deviceType = HcclDevType::DEV_TYPE_COUNT;
@@ -340,7 +340,7 @@ HcclResult RecordAivOpArgsGraphMode(
     u32 rankSize = INVALID_VALUE_RANKSIZE;
     CHK_RET(HcclGetRankSize(comm, &rankSize));
 
-    ops_hccl::OpParam param;
+    ops_hccl::OpParam param{};
     param.hcclComm = comm;
     param.opType = opType;
     param.inputPtr = inputPtr;

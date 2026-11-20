@@ -748,14 +748,14 @@ struct DevAicpuOpConfig {
 };
 
 struct OpParam { // 不申请ctx，每个算子单独下发
-    void* hcclComm;
+    void* hcclComm = nullptr;
     char tag[TAG_LENGTH] = "";               // 保存topoInfo的key值
     char algTag[ALG_TAG_LENGTH] = "";        // 保存资源的key值，和算法绑定
     char fastLaunchTag[ALG_TAG_LENGTH] = ""; // 快速下发的key值
     char fallbackTag[ALG_MAX_LENGTH] = "";
     char commName[COMM_INDENTIFIER_MAX_LENGTH] = "";
     char commModeTag[TAG_LENGTH] = ""; // 保存与执行模式相关的资源信息的key值，当前aiv使用
-    aclrtStream stream;
+    aclrtStream stream = nullptr;
     void* inputPtr = nullptr;
     u64 inputSize = 0;
     void* outputPtr = nullptr;
@@ -771,7 +771,7 @@ struct OpParam { // 不申请ctx，每个算子单独下发
     u32 root = INVALID_VALUE_RANKID;
     u32 userRank = INVALID_VALUE_RANKID;
     u32 sendRecvRemoteRank = INVALID_VALUE_RANKID;
-    OpMode opMode;
+    OpMode opMode = OpMode::OFFLOAD;
     bool enableDetour{false};
     bool isMc2{false};
     bool cacheValid{false};

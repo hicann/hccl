@@ -31,6 +31,8 @@ namespace ops_hccl {
 //    若作为跳过条件，混跑时部分rank跳过会使全域AllReduce集合成员分叉导致对端挂死；捕获态不写缓存
 //    是防录制期并发拒绝假失败固化为NEGOTIATION_DEGRADED终态、连累同comm稳态算子（缓存命中读取
 //    不受影响，replay后非捕获态op缓存miss时正常协商并缓存）
+// 6. opStream==nullptr为合法入参（图编译期离线选路无runtime stream）：按非捕获处理并正常写终态缓存，
+//    nullptr在缓存写入调用点短路、不会进入捕获查询（防空/脏指针传入ACL接口）
 // 注意：不得以env/per-op属性门控本协商——env是per-process的，异构env会使部分rank进入协商集合
 // 而其余rank跳过，导致协商集合通信挂死；env/per-op门控属于使能层（opCustomCheck/legacy分支）
 HcclResult NegotiateHostDpuInlineReduceCapability(

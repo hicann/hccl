@@ -17,10 +17,18 @@
  * 3. 首次协商：本端查询→全域聚合→写终态缓存；协商失败降级不上抛；缓存写失败/并发竞争同名已存在不阻断；
  *    写前二次Get并发收敛：并发拒绝假失败采纳并发者已写入的成功终态，迟到成功覆盖假失败终态
  * 4. dlsym能力查询层：空指针校验 / 符号缺失降级 / 复合符号判定 / 查询失败降级 / 结果透传
+ * 5. 图编译期stream语义回归看护：nullptr（离线选路无runtime stream）按非捕获处理正常写缓存，
+ *    且不得穿透到ACL捕获查询（ACL桩captureQueryCnt锚点，防线回退即变红）；
+ *    IsStreamInCaptureMode真实实现直连覆盖（nullptr早退分支+非空经ACL查询）；
+ *    OpParam::stream默认nullptr（NSDMI）——防"未初始化脏值传入aclmdlRICaptureGetInfo"缺陷回归
  */
 #include <gtest/gtest.h>
+#include <cstring>
+#include <new>
+#include "alg_param.h"
 #include "hostdpu_inline_reduce.h"
 #include "hcomm_primitives_dl.h"
+#include "stream_capture.h"
 #include "ut_ir_stub.h"
 
 using namespace ops_hccl;
@@ -130,17 +138,22 @@ TEST_F(HostDpuInlineReduceTest, SkipWhenP2pOpType)
 TEST_F(HostDpuInlineReduceTest, CaptureModeSkipsCacheWriteOnly)
 {
     // 图模式捕获态：协商照常参与（capture是per-rank本地状态，若跳过协商会使全域AllReduce集合成员
-    // 分叉导致对端挂死），但不写终态缓存（录制期并发拒绝假失败不固化为NEGOTIATION_DEGRADED终态）
+    // 分叉导致对端挂死），但不写终态缓存（录制期并发拒绝假失败不固化为NEGOTIATION_DEGRADED终态）。
+    // 须传非空stream：nullptr会被SUT调用点短路（图编译期语义），捕获判定到不了ACL桩，用例会退化
+    // （ACL桩不看stream取值，仅返回streamInCapture开关）
     g_irStub.streamInCapture = true;
     g_negStub.allRanksCapable = true;
     TopoInfoWithNetLayerDetails topo;
     SetupTopo(topo);
     HcclComm comm = FakeComm(0x1006);
     ASSERT_EQ(
-        NegotiateHostDpuInlineReduceCapability(comm, HcclCMDType::HCCL_CMD_ALLREDUCE, nullptr, &topo), HCCL_SUCCESS);
-    EXPECT_TRUE(topo.allDpuSupportInlineReduce);                      // 协商结果正常设置到能力位
-    EXPECT_EQ(g_irStub.checkFeatureCnt, 1);                           // 本端查询照常执行
-    EXPECT_EQ(g_negStub.reduceMinCnt, 1);                             // 全域协商照常执行
+        NegotiateHostDpuInlineReduceCapability(
+            comm, HcclCMDType::HCCL_CMD_ALLREDUCE, reinterpret_cast<aclrtStream>(0x1234), &topo),
+        HCCL_SUCCESS);
+    EXPECT_TRUE(topo.allDpuSupportInlineReduce); // 协商结果正常设置到能力位
+    EXPECT_EQ(g_irStub.checkFeatureCnt, 1);      // 本端查询照常执行
+    EXPECT_EQ(g_negStub.reduceMinCnt, 1);        // 全域协商照常执行
+    EXPECT_EQ(g_irStub.captureQueryCnt, 1);      // 捕获判定确实经桩（非空stream未被短路）
     EXPECT_FALSE(ut::IrStubHasCtx(comm, ut::HOSTDPU_INLINE_CAP_TAG)); // 不写终态缓存
     g_irStub.streamInCapture = false;
 
@@ -151,11 +164,66 @@ TEST_F(HostDpuInlineReduceTest, CaptureModeSkipsCacheWriteOnly)
     TopoInfoWithNetLayerDetails topo2;
     SetupTopo(topo2);
     ASSERT_EQ(
-        NegotiateHostDpuInlineReduceCapability(comm, HcclCMDType::HCCL_CMD_ALLREDUCE, nullptr, &topo2), HCCL_SUCCESS);
+        NegotiateHostDpuInlineReduceCapability(
+            comm, HcclCMDType::HCCL_CMD_ALLREDUCE, reinterpret_cast<aclrtStream>(0x1234), &topo2),
+        HCCL_SUCCESS);
     EXPECT_TRUE(topo2.allDpuSupportInlineReduce);
     EXPECT_EQ(g_irStub.checkFeatureCnt, 1);
     EXPECT_EQ(g_negStub.reduceMinCnt, 1);
+    EXPECT_EQ(g_irStub.captureQueryCnt, 1); // 缓存命中在捕获判定前返回，不新增捕获查询
     g_irStub.streamInCapture = false;
+}
+
+/* ---------------- IsStreamInCaptureMode 真实实现直连覆盖 ---------------- */
+
+TEST_F(HostDpuInlineReduceTest, StreamCaptureNullptrBranchNoAclQuery)
+{
+    // IsStreamInCaptureMode
+    // nullptr早退分支直接覆盖：nullptr必不在捕获态，且不得调用ACL捕获查询；非空stream经ACL查询，桩开关透传捕获态
+    EXPECT_FALSE(IsStreamInCaptureMode(nullptr));
+    EXPECT_EQ(g_irStub.captureQueryCnt, 0);
+    g_irStub.streamInCapture = true;
+    EXPECT_TRUE(IsStreamInCaptureMode(reinterpret_cast<aclrtStream>(0x1234)));
+    EXPECT_EQ(g_irStub.captureQueryCnt, 1);
+    EXPECT_EQ(g_irStub.lastCaptureStream, reinterpret_cast<aclrtStream>(0x1234));
+    g_irStub.streamInCapture = false;
+    EXPECT_FALSE(IsStreamInCaptureMode(reinterpret_cast<aclrtStream>(0x1234)));
+    EXPECT_EQ(g_irStub.captureQueryCnt, 2);
+}
+
+/* ---------------- 图编译期stream语义回归看护 ---------------- */
+
+TEST_F(HostDpuInlineReduceTest, GraphCompileNullStreamWritesCache)
+{
+    // 图编译期无 runtime stream（opStream=nullptr）即非捕获态，正常写终态缓存；与 CaptureModeSkipsCacheWriteOnly
+    // 对照，防 nullptr 语义回退成"跳过写缓存"导致逐算子重入协商
+    g_irStub.checkFeatureValue = true;
+    g_negStub.allRanksCapable = true;
+    TopoInfoWithNetLayerDetails topo;
+    SetupTopo(topo);
+    HcclComm comm = FakeComm(0x1007);
+    ASSERT_EQ(
+        NegotiateHostDpuInlineReduceCapability(comm, HcclCMDType::HCCL_CMD_ALLREDUCE, nullptr, &topo), HCCL_SUCCESS);
+    EXPECT_TRUE(topo.allDpuSupportInlineReduce);
+    EXPECT_TRUE(ut::IrStubHasCtx(comm, ut::HOSTDPU_INLINE_CAP_TAG)); // nullptr不跳过缓存写入
+    EXPECT_EQ(ut::IrStubGetCapValue(comm, ut::HOSTDPU_INLINE_CAP_TAG), ut::CAP_ALL_RANKS_SUPPORTED);
+    // 反恒真看护：nullptr 不得穿透到 ACL 捕获查询，调用点短路与函数内早退两道防线同时回退时 captureQueryCnt 变
+    // 1，本断言变红
+    EXPECT_EQ(g_irStub.captureQueryCnt, 0);
+    EXPECT_EQ(g_irStub.lastCaptureStream, nullptr);
+}
+
+TEST_F(HostDpuInlineReduceTest, OpParamStreamDefaultNullptr)
+{
+    // OpParam 裸标量 NSDMI 看护：在 0xAA 脏存储上 default-init（placement new 不带 ()，带 () 会被 value-init
+    // 清零而使看护失效），NSDMI 缺失即得 0xAA 填充值必失败，避免"栈恰好为 0"的假通过；OpParam
+    // 全成员平凡可析构，无需显式析构
+    alignas(ops_hccl::OpParam) unsigned char dirtyBuf[sizeof(ops_hccl::OpParam)];
+    (void)memset(dirtyBuf, 0xAA, sizeof(dirtyBuf));
+    ops_hccl::OpParam* param = ::new (static_cast<void*>(dirtyBuf)) ops_hccl::OpParam;
+    EXPECT_EQ(param->stream, nullptr);
+    EXPECT_EQ(param->hcclComm, nullptr); // 同类无NSDMI裸指针成员一并看护
+    EXPECT_EQ(param->opMode, ops_hccl::OpMode::OFFLOAD);
 }
 
 /* ---------------- per-comm 三态能力缓存命中 ---------------- */
