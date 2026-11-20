@@ -24,7 +24,7 @@ typedef unsigned short u16;
 typedef unsigned int u32;
 typedef unsigned long long u64;
 
-const u32 HCCL_TAG_MAX_LEN = 191; // 最大的tag 长度
+const u32 HCCL_TAG_MAX_LEN = 159; // 最大tag长度(字符数), 对齐OpParam::tag[TAG_LENGTH]容量: 159字符+'\0'=160字节
 
 /**
  * @brief stream handle.

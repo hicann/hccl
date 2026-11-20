@@ -4509,9 +4509,18 @@ HcclResult HcclCheckTag(const char* tag)
 {
     CHK_PTR_NULL(tag);
 
+    // 失败路径二次探测真实长度: tag为'\0'终止的C字符串, 用更宽安全上界取真实长度, 饱和时以">="如实报告下界
+    constexpr u32 TAG_REAL_LEN = 512;
     u32 tagLen = strnlen(tag, HCCL_TAG_MAX_LEN + 1);
-    if (UNLIKELY((tagLen == (HCCL_TAG_MAX_LEN + 1) || tagLen == 0))) {
-        HCCL_ERROR("[Check][Tag]errNo[0x%016llx] tag is too long", HCOM_ERROR_CODE(HCCL_E_PARA));
+    if (UNLIKELY(tagLen == (HCCL_TAG_MAX_LEN + 1))) {
+        const u32 realLen = strnlen(tag, TAG_REAL_LEN);
+        HCCL_ERROR(
+            "[Check][Tag]errNo[0x%016llx] tag is too long, realLen %s%u, maxLen is %u", HCOM_ERROR_CODE(HCCL_E_PARA),
+            realLen == TAG_REAL_LEN ? ">= " : "is ", realLen, HCCL_TAG_MAX_LEN);
+        return HCCL_E_PARA;
+    }
+    if (UNLIKELY(tagLen == 0)) {
+        HCCL_ERROR("[Check][Tag]errNo[0x%016llx] tag is empty", HCOM_ERROR_CODE(HCCL_E_PARA));
         return HCCL_E_PARA;
     }
     return HCCL_SUCCESS;
