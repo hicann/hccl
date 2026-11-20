@@ -2343,7 +2343,7 @@ static HcclResult HcclGetAicpuThread(
                     &resCtxHost->unfoldThread));
             } else {
                 CHK_RET(HcclThreadAcquire(
-                    comm, COMM_ENGINE_CPU, 1, ORDER_UNFOLD_THREAD_NOTIFY_NUM, &resCtxHost->unfoldThread));
+                    comm, COMM_ENGINE_CPU_TS, 1, ORDER_UNFOLD_THREAD_NOTIFY_NUM, &resCtxHost->unfoldThread));
             }
         }
         CHK_RET(SaveMainThreadInfo(comm, param, threads[0], maxNotifyNum + 1));
