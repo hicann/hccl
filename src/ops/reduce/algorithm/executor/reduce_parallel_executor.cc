@@ -89,8 +89,10 @@ ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, A
         "netTypeLevel0=%d, netTypeLevel1=%d, ratio=%f",
         rankSize, rankSizeLevel0, rankSizeLevel1, portNumLevel0, portNumLevel1, static_cast<int>(netTypeLevel0),
         static_cast<int>(netTypeLevel1), ratio);
+    const AlgAttrs* ccuAttrs = ResolveProbeAlgAttrs(algName);
+    bool isCcuSched = (ccuAttrs != nullptr && ccuAttrs->engine == OpExecuteConfig::CCU_SCHED);
     std::vector<CostModelParam> params = [rankSize, rankSizeLevel0, rankSizeLevel1, portNumLevel0, portNumLevel1,
-                                          netTypeLevel0, netTypeLevel1, ratio, isPod] {
+                                          netTypeLevel0, netTypeLevel1, ratio, isPod, isCcuSched] {
         std::vector<CostModelParam> v;
         auto p0 = AlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
             rankSizeLevel0, ratio / rankSizeLevel0, netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER,
@@ -134,8 +136,11 @@ ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, A
         v.insert(v.end(), p7.begin(), p7.end());
         // parallel 固定开销
         float bConst = 0.000015f;
+        // 引擎差分校正(实机 16rank 8x2 实测标定, 经 4 组 MAX 聚合每段按 4 倍计入总 cost):
+        // CCU sched 每段 +25us 补 FastLaunch 同步/launch 建模缺失; AICPU 每段 -7us 对齐与 SoleNHR 实测交叉点(5~6M)
+        float bConstEngine = isCcuSched ? 0.000025f : -0.000007f;
         for (auto& p : v) {
-            p.C += bConst;
+            p.C += bConst + bConstEngine;
             p.D /= 2;
         }
         return v;
